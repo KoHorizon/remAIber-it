@@ -29,3 +29,9 @@ dev:
 	@go run cmd/server/main.go & \
 	cd ../frontend && bun run dev && \
 	wait
+
+tauri:
+	@echo "Starting backend and Tauri app..."
+	@go run cmd/server/main.go & \
+	cd ../frontend && bun run tauri dev && \
+	wait
