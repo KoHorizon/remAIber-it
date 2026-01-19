@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { api, Bank } from '../App';
-import './BanksList.css';
+import { useState, useEffect } from "react";
+import { api, Bank } from "../App";
+import "./BanksList.css";
 
 type Props = {
   onSelectBank: (bankId: string) => void;
@@ -10,7 +10,7 @@ export function BanksList({ onSelectBank }: Props) {
   const [banks, setBanks] = useState<Bank[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [newSubject, setNewSubject] = useState('');
+  const [newSubject, setNewSubject] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function BanksList({ onSelectBank }: Props) {
       const data = await api.getBanks();
       setBanks(data);
     } catch (err) {
-      console.error('Failed to load banks:', err);
+      console.error("Failed to load banks:", err);
     } finally {
       setIsLoading(false);
     }
@@ -36,12 +36,25 @@ export function BanksList({ onSelectBank }: Props) {
     try {
       const bank = await api.createBank(newSubject.trim());
       setBanks([...banks, bank]);
-      setNewSubject('');
+      setNewSubject("");
       setShowCreate(false);
     } catch (err) {
-      console.error('Failed to create bank:', err);
+      console.error("Failed to create bank:", err);
     } finally {
       setIsCreating(false);
+    }
+  }
+
+  async function handleDeleteBank(e: React.MouseEvent, bankId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Delete this bank and all its questions?")) return;
+
+    try {
+      await api.deleteBank(bankId);
+      setBanks(banks.filter((b) => b.id !== bankId));
+    } catch (err) {
+      console.error("Failed to delete bank:", err);
     }
   }
 
@@ -60,41 +73,59 @@ export function BanksList({ onSelectBank }: Props) {
           <div>
             <h1>Your Question Banks</h1>
             <p className="page-subtitle">
-              {banks.length === 0 
-                ? 'Create your first question bank to start learning'
-                : `${banks.length} bank${banks.length !== 1 ? 's' : ''} ready for practice`
-              }
+              {banks.length === 0
+                ? "Create your first question bank to start learning"
+                : `${banks.length} bank${banks.length !== 1 ? "s" : ""} ready for practice`}
             </p>
           </div>
-          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowCreate(true)}
+          >
             <span>+</span> New Bank
           </button>
         </div>
       </div>
 
       {showCreate && (
-        <div className="create-modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="create-modal animate-slide-up" onClick={e => e.stopPropagation()}>
+        <div
+          className="create-modal-overlay"
+          onClick={() => setShowCreate(false)}
+        >
+          <div
+            className="create-modal animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2>Create Question Bank</h2>
             <form onSubmit={handleCreate}>
               <div className="input-group">
-                <label className="input-label" htmlFor="subject">Subject</label>
+                <label className="input-label" htmlFor="subject">
+                  Subject
+                </label>
                 <input
                   id="subject"
                   type="text"
                   className="input"
                   placeholder="e.g., JavaScript Fundamentals"
                   value={newSubject}
-                  onChange={e => setNewSubject(e.target.value)}
+                  onChange={(e) => setNewSubject(e.target.value)}
                   autoFocus
                 />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setShowCreate(false)}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={!newSubject.trim() || isCreating}>
-                  {isCreating ? 'Creating...' : 'Create Bank'}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!newSubject.trim() || isCreating}
+                >
+                  {isCreating ? "Creating..." : "Create Bank"}
                 </button>
               </div>
             </form>
@@ -112,12 +143,19 @@ export function BanksList({ onSelectBank }: Props) {
       ) : (
         <div className="banks-grid">
           {banks.map((bank, i) => (
-            <div 
+            <div
               key={bank.id}
               className="bank-card card card-interactive"
               onClick={() => onSelectBank(bank.id)}
               style={{ animationDelay: `${i * 0.05}s` }}
             >
+              <button
+                className="btn-delete"
+                onClick={(e) => handleDeleteBank(e, bank.id)}
+                title="Delete bank"
+              >
+                ×
+              </button>
               <div className="bank-card-icon">◇</div>
               <h2 className="bank-card-title">{bank.subject}</h2>
               <div className="bank-card-meta">

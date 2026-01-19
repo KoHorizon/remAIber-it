@@ -4,6 +4,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	practicesession "github.com/remaimber-it/backend/internal/domain/practice_session"
@@ -13,11 +14,15 @@ import (
 )
 
 var (
-	db *store.Store
+	db *store.SQLiteStore
 )
 
 func init() {
-	db = store.New()
+	var err error
+	db, err = store.NewSQLite("remaimber.db")
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 type GradeResult struct {
@@ -41,6 +46,8 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /sessions/{sessionID}", getSession)
 	mux.HandleFunc("POST /sessions/{sessionID}/answers", submitAnswer)
 	mux.HandleFunc("POST /sessions/{sessionID}/complete", completeSession)
+	mux.HandleFunc("DELETE /banks/{bankID}", deleteBank)
+	mux.HandleFunc("DELETE /banks/{bankID}/questions/{questionID}", deleteQuestion)
 }
 
 // POST /banks
@@ -73,7 +80,11 @@ func createBank(w http.ResponseWriter, r *http.Request) {
 
 // GET /banks
 func listBanks(w http.ResponseWriter, r *http.Request) {
-	banks := db.ListBanks()
+	banks, err := db.ListBanks()
+	if err != nil {
+		http.Error(w, "failed to load banks", http.StatusInternalServerError)
+		return
+	}
 
 	response := make([]CreateBankResponse, len(banks))
 	for i, bank := range banks {
@@ -153,6 +164,12 @@ func addQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lastQuestion := bank.Questions[len(bank.Questions)-1]
+
+	// Add this line to persist to database
+	if err := db.AddQuestion(bankID, lastQuestion); err != nil {
+		http.Error(w, "failed to save question", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -349,4 +366,38 @@ func completeSession(w http.ResponseWriter, r *http.Request) {
 		MaxScore:   len(grades) * 100,
 		Results:    results,
 	})
+}
+
+// DELETE /banks/{bankID}
+func deleteBank(w http.ResponseWriter, r *http.Request) {
+	bankID := r.PathValue("bankID")
+
+	err := db.DeleteBank(bankID)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "bank not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "failed to delete bank", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DELETE /banks/{bankID}/questions/{questionID}
+func deleteQuestion(w http.ResponseWriter, r *http.Request) {
+	questionID := r.PathValue("questionID")
+
+	err := db.DeleteQuestion(questionID)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "question not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "failed to delete question", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
