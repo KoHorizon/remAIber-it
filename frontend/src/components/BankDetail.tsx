@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { api, Bank, Question, Session } from '../App';
-import './BankDetail.css';
+import { useState, useEffect } from "react";
+import { api, Bank, Question, Session } from "../App";
+import "./BankDetail.css";
 
 type Props = {
   bankId: string;
@@ -12,8 +12,8 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
   const [bank, setBank] = useState<Bank | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
-  const [newQuestion, setNewQuestion] = useState('');
-  const [newAnswer, setNewAnswer] = useState('');
+  const [newQuestion, setNewQuestion] = useState("");
+  const [newAnswer, setNewAnswer] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
 
@@ -26,7 +26,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
       const data = await api.getBank(bankId);
       setBank(data);
     } catch (err) {
-      console.error('Failed to load bank:', err);
+      console.error("Failed to load bank:", err);
     } finally {
       setIsLoading(false);
     }
@@ -38,30 +38,59 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
 
     setIsAdding(true);
     try {
-      const question = await api.addQuestion(bankId, newQuestion.trim(), newAnswer.trim());
-      setBank(prev => prev ? {
-        ...prev,
-        questions: [...(prev.questions || []), question]
-      } : null);
-      setNewQuestion('');
-      setNewAnswer('');
+      const question = await api.addQuestion(
+        bankId,
+        newQuestion.trim(),
+        newAnswer.trim(),
+      );
+      setBank((prev) =>
+        prev
+          ? {
+              ...prev,
+              questions: [...(prev.questions || []), question],
+            }
+          : null,
+      );
+      setNewQuestion("");
+      setNewAnswer("");
       setShowAddQuestion(false);
     } catch (err) {
-      console.error('Failed to add question:', err);
+      console.error("Failed to add question:", err);
     } finally {
       setIsAdding(false);
     }
   }
 
+  async function handleDeleteQuestion(e: React.MouseEvent, questionId: string) {
+    e.stopPropagation();
+    if (!confirm("Delete this question?")) return;
+
+    try {
+      await api.deleteQuestion(bankId, questionId);
+      setBank((prev) =>
+        prev
+          ? {
+              ...prev,
+              questions: (prev.questions || []).filter(
+                (q) => q.id !== questionId,
+              ),
+            }
+          : null,
+      );
+    } catch (err) {
+      console.error("Failed to delete question:", err);
+    }
+  }
+
   async function handleStartPractice() {
     if (!bank || isStartingSession) return;
-    
+
     setIsStartingSession(true);
     try {
       const session = await api.createSession(bankId);
       onStartPractice(session, bank.subject);
     } catch (err) {
-      console.error('Failed to start session:', err);
+      console.error("Failed to start session:", err);
       setIsStartingSession(false);
     }
   }
@@ -101,63 +130,81 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
             <h1>{bank.subject}</h1>
             <p className="page-subtitle">
               {questions.length === 0
-                ? 'Add questions to start practicing'
-                : `${questions.length} question${questions.length !== 1 ? 's' : ''}`
-              }
+                ? "Add questions to start practicing"
+                : `${questions.length} question${questions.length !== 1 ? "s" : ""}`}
             </p>
           </div>
           <div className="header-actions">
-            <button className="btn btn-secondary" onClick={() => setShowAddQuestion(true)}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowAddQuestion(true)}
+            >
               + Add Question
             </button>
-            <button 
-              className="btn btn-primary" 
+            <button
+              className="btn btn-primary"
               onClick={handleStartPractice}
               disabled={questions.length === 0 || isStartingSession}
             >
-              {isStartingSession ? 'Starting...' : 'Start Practice'}
+              {isStartingSession ? "Starting..." : "Start Practice"}
             </button>
           </div>
         </div>
       </div>
 
       {showAddQuestion && (
-        <div className="create-modal-overlay" onClick={() => setShowAddQuestion(false)}>
-          <div className="create-modal add-question-modal animate-slide-up" onClick={e => e.stopPropagation()}>
+        <div
+          className="create-modal-overlay"
+          onClick={() => setShowAddQuestion(false)}
+        >
+          <div
+            className="create-modal add-question-modal animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2>Add Question</h2>
             <form onSubmit={handleAddQuestion}>
               <div className="input-group">
-                <label className="input-label" htmlFor="question">Question</label>
+                <label className="input-label" htmlFor="question">
+                  Question
+                </label>
                 <input
                   id="question"
                   type="text"
                   className="input"
                   placeholder="e.g., What is a closure?"
                   value={newQuestion}
-                  onChange={e => setNewQuestion(e.target.value)}
+                  onChange={(e) => setNewQuestion(e.target.value)}
                   autoFocus
                 />
               </div>
               <div className="input-group">
-                <label className="input-label" htmlFor="answer">Expected Answer</label>
+                <label className="input-label" htmlFor="answer">
+                  Expected Answer
+                </label>
                 <textarea
                   id="answer"
                   className="input textarea"
                   placeholder="The key concepts the answer should cover..."
                   value={newAnswer}
-                  onChange={e => setNewAnswer(e.target.value)}
+                  onChange={(e) => setNewAnswer(e.target.value)}
                 />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowAddQuestion(false)}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setShowAddQuestion(false)}
+                >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary" 
-                  disabled={!newQuestion.trim() || !newAnswer.trim() || isAdding}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={
+                    !newQuestion.trim() || !newAnswer.trim() || isAdding
+                  }
                 >
-                  {isAdding ? 'Adding...' : 'Add Question'}
+                  {isAdding ? "Adding..." : "Add Question"}
                 </button>
               </div>
             </form>
@@ -175,8 +222,8 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
       ) : (
         <div className="questions-list">
           {questions.map((q, i) => (
-            <div 
-              key={q.id} 
+            <div
+              key={q.id}
               className="question-card card"
               style={{ animationDelay: `${i * 0.03}s` }}
             >
@@ -187,6 +234,13 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
                   <p className="question-answer">{q.expected_answer}</p>
                 )}
               </div>
+              <button
+                className="btn-delete"
+                onClick={(e) => handleDeleteQuestion(e, q.id)}
+                title="Delete question"
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>

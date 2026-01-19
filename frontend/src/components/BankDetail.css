@@ -1,68 +1,95 @@
-.bank-detail {
-  /* Container */
-}
-
 .header-actions {
-  display: flex;
-  gap: 0.75rem;
+    display: flex;
+    gap: 0.75rem;
 }
 
 .add-question-modal {
-  max-width: 520px;
+    max-width: 520px;
 }
 
 .questions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
 .question-card {
-  display: flex;
-  gap: 1rem;
-  animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+    position: relative;
+    display: flex;
+    gap: 1rem;
+    animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
 .question-number {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-muted);
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-muted);
 }
 
 .question-content {
-  flex: 1;
-  min-width: 0;
+    flex: 1;
+    min-width: 0;
 }
 
 .question-text {
-  font-size: 1rem;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
 }
 
 .question-answer {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-  padding-left: 0.75rem;
-  border-left: 2px solid var(--border);
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--border);
 }
 
+/* Delete button */
+.question-card .btn-delete {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all var(--transition);
+}
+
+.question-card:hover .btn-delete {
+    opacity: 1;
+}
+
+.question-card .btn-delete:hover {
+    background: var(--error);
+    color: white;
+}
+
+/* Mobile */
 @media (max-width: 640px) {
-  .header-actions {
-    flex-direction: column;
-    width: 100%;
-  }
-  
-  .header-actions .btn {
-    width: 100%;
-  }
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .header-actions .btn {
+        width: 100%;
+    }
 }
