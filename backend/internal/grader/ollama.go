@@ -57,10 +57,8 @@ USER'S ANSWER:
 GRADING INSTRUCTIONS:
 1. Extract the key concepts from the expected answer
 2. Check which concepts appear in the user's answer (exact wording not required, understanding matters)
-3. A concept is "covered" if the user demonstrated understanding of it
-4. A concept is "missed" only if it was NOT covered at all
-5. Calculate score: (concepts covered / total concepts) * 100, rounded to nearest integer
-6. Important: If a concept is in "covered", it cannot also be in "missed"
+3. Calculate score: (concepts covered / total concepts) * 100, rounded to nearest integer
+4. Be lenient with phrasing but strict on meaning
 
 Respond with valid JSON only, no other text:
 {"score": <0-100>, "covered": ["concept1", "concept2"], "missed": ["concept3"]}`,
@@ -71,7 +69,7 @@ Respond with valid JSON only, no other text:
 		Messages: []Message{
 			{Role: "user", Content: prompt},
 		},
-		Temperature: 0,
+		Temperature: 42,
 	}
 
 	jsonData, _ := json.Marshal(reqBody)

@@ -2,47 +2,49 @@
 package questionbank
 
 import (
-	"crypto/rand"
 	"errors"
+
+	"github.com/remaimber-it/backend/internal/id"
 )
 
 type QuestionBank struct {
-    ID        string      // Public - just data
-    Subject   string      // Public - just data
-    Questions []Question  // Public - but read the note below
+	ID         string
+	Subject    string
+	CategoryID *string // Optional - can be nil for uncategorized banks
+	Questions  []Question
 }
 
-
-// TODO : Might need to reconsider the naming of this constructor
 func New(subject string) *QuestionBank {
-    return &QuestionBank{
-    	ID: generateID(),
-        Subject:   subject,
-        Questions: []Question{},
-    }
+	return &QuestionBank{
+		ID:         id.GenerateID(),
+		Subject:    subject,
+		CategoryID: nil,
+		Questions:  []Question{},
+	}
+}
+
+func NewWithCategory(subject string, categoryID string) *QuestionBank {
+	return &QuestionBank{
+		ID:         id.GenerateID(),
+		Subject:    subject,
+		CategoryID: &categoryID,
+		Questions:  []Question{},
+	}
+}
+
+func (qb *QuestionBank) SetCategory(categoryID *string) {
+	qb.CategoryID = categoryID
 }
 
 func (qb *QuestionBank) AddQuestions(subject string, expectedAnswer string) error {
-    // This is a method because it has validation/business logic
-    if subject == "" {
-        return errors.New("question subject cannot be empty")
-    }
-    
-    qb.Questions = append(qb.Questions, Question{
-        ID:      generateID(), 
-        Subject: subject,
-        ExpectedAnswer: expectedAnswer,
-    })
-    return nil
-}
+	if subject == "" {
+		return errors.New("question subject cannot be empty")
+	}
 
-// generateID creates a unique ID for questions
-func generateID() string {
-    const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-    b := make([]byte, 16)
-    rand.Read(b)
-    for i := range b {
-        b[i] = chars[b[i]%byte(len(chars))]
-    }
-    return string(b)
+	qb.Questions = append(qb.Questions, Question{
+		ID:             id.GenerateID(),
+		Subject:        subject,
+		ExpectedAnswer: expectedAnswer,
+	})
+	return nil
 }

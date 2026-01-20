@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { api, Session, SessionResult } from '../App';
-import './PracticeSession.css';
+import { useState } from "react";
+import { api, Session, SessionResult } from "../App";
+import "./PracticeSession.css";
 
 type Props = {
   session: Session;
@@ -9,9 +9,14 @@ type Props = {
   onCancel: () => void;
 };
 
-export function PracticeSession({ session, bankSubject, onComplete, onCancel }: Props) {
+export function PracticeSession({
+  session,
+  bankSubject,
+  onComplete,
+  onCancel,
+}: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answer, setAnswer] = useState('');
+  const [answer, setAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
 
@@ -26,24 +31,24 @@ export function PracticeSession({ session, bankSubject, onComplete, onCancel }: 
     setIsSubmitting(true);
     try {
       await api.submitAnswer(session.id, currentQuestion.id, answer.trim());
-      
+
       if (isLastQuestion) {
         setIsCompleting(true);
         const results = await api.completeSession(session.id);
         onComplete(results);
       } else {
-        setAnswer('');
+        setAnswer("");
         setCurrentIndex(currentIndex + 1);
       }
     } catch (err) {
-      console.error('Failed to submit answer:', err);
+      console.error("Failed to submit answer:", err);
     } finally {
       setIsSubmitting(false);
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && e.metaKey) {
+    if (e.key === "Enter" && e.metaKey) {
       handleSubmit();
     }
   }
@@ -78,7 +83,10 @@ export function PracticeSession({ session, bankSubject, onComplete, onCancel }: 
       </div>
 
       <div className="practice-content">
-        <div className="question-display animate-slide-up" key={currentQuestion.id}>
+        <div
+          className="question-display animate-slide-up"
+          key={currentQuestion.id}
+        >
           <h2 className="question-prompt">{currentQuestion.subject}</h2>
         </div>
 
@@ -91,13 +99,11 @@ export function PracticeSession({ session, bankSubject, onComplete, onCancel }: 
             className="input textarea answer-input"
             placeholder="Write your answer from memory..."
             value={answer}
-            onChange={e => setAnswer(e.target.value)}
+            onChange={(e) => setAnswer(e.target.value)}
             onKeyDown={handleKeyDown}
             autoFocus
           />
-          <p className="answer-hint">
-            Press ⌘+Enter to submit
-          </p>
+          <p className="answer-hint">Press ⌘+Enter to submit</p>
         </div>
 
         <div className="practice-actions">
@@ -106,12 +112,11 @@ export function PracticeSession({ session, bankSubject, onComplete, onCancel }: 
             onClick={handleSubmit}
             disabled={!answer.trim() || isSubmitting}
           >
-            {isSubmitting 
-              ? 'Submitting...' 
-              : isLastQuestion 
-                ? 'Submit & See Results' 
-                : 'Submit & Next'
-            }
+            {isSubmitting
+              ? "Submitting..."
+              : isLastQuestion
+                ? "Submit & See Results"
+                : "Submit & Next"}
           </button>
         </div>
       </div>

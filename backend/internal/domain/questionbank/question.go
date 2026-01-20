@@ -1,7 +1,7 @@
 package questionbank
 
 type Question struct {
-    ID      string
-    Subject string
-    ExpectedAnswer string
+	ID             string
+	Subject        string
+	ExpectedAnswer string
 }

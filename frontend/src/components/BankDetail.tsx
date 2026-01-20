@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, Bank, Question, Session } from "../App";
+import { api, Bank, Session, Category } from "../App";
 import "./BankDetail.css";
 
 type Props = {
@@ -10,6 +10,7 @@ type Props = {
 
 export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
   const [bank, setBank] = useState<Bank | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
@@ -18,15 +19,19 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
   const [isStartingSession, setIsStartingSession] = useState(false);
 
   useEffect(() => {
-    loadBank();
+    loadData();
   }, [bankId]);
 
-  async function loadBank() {
+  async function loadData() {
     try {
-      const data = await api.getBank(bankId);
-      setBank(data);
+      const [bankData, categoriesData] = await Promise.all([
+        api.getBank(bankId),
+        api.getCategories(),
+      ]);
+      setBank(bankData);
+      setCategories(categoriesData || []);
     } catch (err) {
-      console.error("Failed to load bank:", err);
+      console.error("Failed to load data:", err);
     } finally {
       setIsLoading(false);
     }
@@ -71,9 +76,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
         prev
           ? {
               ...prev,
-              questions: (prev.questions || []).filter(
-                (q) => q.id !== questionId,
-              ),
+              questions: prev.questions?.filter((q) => q.id !== questionId),
             }
           : null,
       );
@@ -82,7 +85,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
     }
   }
 
-  async function handleStartPractice() {
+  async function handleStartSession() {
     if (!bank || isStartingSession) return;
 
     setIsStartingSession(true);
@@ -91,8 +94,15 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
       onStartPractice(session, bank.subject);
     } catch (err) {
       console.error("Failed to start session:", err);
+    } finally {
       setIsStartingSession(false);
     }
+  }
+
+  function getCategoryName(): string | null {
+    if (!bank?.category_id) return null;
+    const category = categories.find((c) => c.id === bank.category_id);
+    return category?.name || null;
   }
 
   if (isLoading) {
@@ -105,94 +115,93 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
 
   if (!bank) {
     return (
-      <div className="animate-fade-in">
-        <button className="back-btn" onClick={onBack}>
-          ← Back to Banks
+      <div className="bank-detail animate-fade-in">
+        <p>Bank not found</p>
+        <button className="btn btn-secondary" onClick={onBack}>
+          Go Back
         </button>
-        <div className="empty-state">
-          <p className="empty-state-text">Bank not found</p>
-        </div>
       </div>
     );
   }
 
   const questions = bank.questions || [];
+  const categoryName = getCategoryName();
 
   return (
     <div className="bank-detail animate-fade-in">
-      <button className="back-btn" onClick={onBack}>
-        ← Back to Banks
-      </button>
-
       <div className="page-header">
-        <div className="page-header-row">
-          <div>
-            <h1>{bank.subject}</h1>
-            <p className="page-subtitle">
-              {questions.length === 0
-                ? "Add questions to start practicing"
-                : `${questions.length} question${questions.length !== 1 ? "s" : ""}`}
-            </p>
-          </div>
-          <div className="header-actions">
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowAddQuestion(true)}
-            >
-              + Add Question
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={handleStartPractice}
-              disabled={questions.length === 0 || isStartingSession}
-            >
-              {isStartingSession ? "Starting..." : "Start Practice"}
-            </button>
-          </div>
+        <button className="btn btn-ghost back-btn" onClick={onBack}>
+          ← Back
+        </button>
+        <div className="bank-header-info">
+          {categoryName && (
+            <span className="bank-category">{categoryName}</span>
+          )}
+          <h1>{bank.subject}</h1>
+          <p className="page-subtitle">
+            {questions.length === 0
+              ? "No questions yet"
+              : `${questions.length} question${questions.length !== 1 ? "s" : ""}`}
+          </p>
+        </div>
+        <div className="header-actions">
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowAddQuestion(true)}
+          >
+            + Add Question
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={handleStartSession}
+            disabled={questions.length === 0 || isStartingSession}
+          >
+            {isStartingSession ? "Starting..." : "Practice"}
+          </button>
         </div>
       </div>
 
+      {/* Add Question Modal */}
       {showAddQuestion && (
         <div
-          className="create-modal-overlay"
+          className="modal-overlay"
           onClick={() => setShowAddQuestion(false)}
         >
           <div
-            className="create-modal add-question-modal animate-slide-up"
+            className="modal add-question-modal"
             onClick={(e) => e.stopPropagation()}
           >
             <h2>Add Question</h2>
             <form onSubmit={handleAddQuestion}>
-              <div className="input-group">
-                <label className="input-label" htmlFor="question">
-                  Question
-                </label>
-                <input
-                  id="question"
-                  type="text"
-                  className="input"
-                  placeholder="e.g., What is a closure?"
-                  value={newQuestion}
-                  onChange={(e) => setNewQuestion(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div className="input-group">
-                <label className="input-label" htmlFor="answer">
-                  Expected Answer
-                </label>
-                <textarea
-                  id="answer"
-                  className="input textarea"
-                  placeholder="The key concepts the answer should cover..."
-                  value={newAnswer}
-                  onChange={(e) => setNewAnswer(e.target.value)}
-                />
-              </div>
+              <label className="input-label" htmlFor="question">
+                Question
+              </label>
+              <textarea
+                id="question"
+                className="input textarea"
+                placeholder="Enter your question..."
+                value={newQuestion}
+                onChange={(e) => setNewQuestion(e.target.value)}
+                rows={3}
+                autoFocus
+              />
+
+              <label className="input-label" htmlFor="answer">
+                Expected Answer
+              </label>
+              <textarea
+                id="answer"
+                className="input textarea"
+                placeholder="Enter the expected answer with key points..."
+                value={newAnswer}
+                onChange={(e) => setNewAnswer(e.target.value)}
+                rows={5}
+              />
+
               <div className="modal-actions">
                 <button
                   type="button"
-                  className="btn btn-ghost"
+                  className="btn btn-secondary"
                   onClick={() => setShowAddQuestion(false)}
                 >
                   Cancel
@@ -212,35 +221,36 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
         </div>
       )}
 
+      {/* Questions List */}
       {questions.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">❓</div>
           <p className="empty-state-text">
-            No questions yet. Add some to build your question bank.
+            Add questions to this bank to start practicing.
           </p>
         </div>
       ) : (
         <div className="questions-list">
-          {questions.map((q, i) => (
+          {questions.map((question, i) => (
             <div
-              key={q.id}
+              key={question.id}
               className="question-card card"
-              style={{ animationDelay: `${i * 0.03}s` }}
+              style={{ animationDelay: `${i * 0.05}s` }}
             >
-              <div className="question-number">{i + 1}</div>
-              <div className="question-content">
-                <p className="question-text">{q.subject}</p>
-                {q.expected_answer && (
-                  <p className="question-answer">{q.expected_answer}</p>
-                )}
-              </div>
               <button
                 className="btn-delete"
-                onClick={(e) => handleDeleteQuestion(e, q.id)}
+                onClick={(e) => handleDeleteQuestion(e, question.id)}
                 title="Delete question"
               >
                 ×
               </button>
+              <div className="question-number">{i + 1}</div>
+              <div className="question-content">
+                <p className="question-text">{question.subject}</p>
+                {question.expected_answer && (
+                  <p className="question-answer">{question.expected_answer}</p>
+                )}
+              </div>
             </div>
           ))}
         </div>

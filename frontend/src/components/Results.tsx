@@ -1,5 +1,5 @@
-import { Question, SessionResult } from '../App';
-import './Results.css';
+import { Question, SessionResult } from "../App";
+import "./Results.css";
 
 type Props = {
   results: SessionResult;
@@ -9,20 +9,25 @@ type Props = {
 };
 
 export function Results({ results, questions, bankSubject, onBack }: Props) {
-  const percentage = Math.round((results.total_score / results.max_score) * 100);
-  
+  const percentage = Math.round(
+    (results.total_score / results.max_score) * 100,
+  );
+
   const getScoreClass = () => {
-    if (percentage >= 90) return 'score-excellent';
-    if (percentage >= 70) return 'score-good';
-    if (percentage >= 50) return 'score-needs-work';
-    return 'score-poor';
+    if (percentage >= 90) return "score-excellent";
+    if (percentage >= 70) return "score-good";
+    if (percentage >= 50) return "score-needs-work";
+    return "score-poor";
   };
 
   const getMessage = () => {
-    if (percentage >= 90) return 'Excellent work! You have a strong grasp of this material.';
-    if (percentage >= 70) return 'Good job! Keep practicing to reinforce your knowledge.';
-    if (percentage >= 50) return 'You\'re getting there. Review the missed concepts and try again.';
-    return 'Keep studying! Focus on the concepts you missed.';
+    if (percentage >= 90)
+      return "Excellent work! You have a strong grasp of this material.";
+    if (percentage >= 70)
+      return "Good job! Keep practicing to reinforce your knowledge.";
+    if (percentage >= 50)
+      return "You're getting there. Review the missed concepts and try again.";
+    return "Keep studying! Focus on the concepts you missed.";
   };
 
   return (
@@ -49,22 +54,24 @@ export function Results({ results, questions, bankSubject, onBack }: Props) {
           {results.results.map((result, i) => {
             const question = questions[i];
             const questionScore = Math.round(result.score);
-            
+
             return (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className="breakdown-card card"
                 style={{ animationDelay: `${i * 0.05}s` }}
               >
                 <div className="breakdown-header">
                   <span className="breakdown-number">Q{i + 1}</span>
-                  <span className={`breakdown-score ${questionScore >= 70 ? 'high' : questionScore >= 40 ? 'mid' : 'low'}`}>
+                  <span
+                    className={`breakdown-score ${questionScore >= 70 ? "high" : questionScore >= 40 ? "mid" : "low"}`}
+                  >
                     {questionScore}%
                   </span>
                 </div>
-                
+
                 <p className="breakdown-question">{question?.subject}</p>
-                
+
                 <div className="breakdown-feedback">
                   {result.covered.length > 0 && (
                     <div className="feedback-section">
@@ -78,7 +85,7 @@ export function Results({ results, questions, bankSubject, onBack }: Props) {
                       </ul>
                     </div>
                   )}
-                  
+
                   {result.missed.length > 0 && (
                     <div className="feedback-section">
                       <span className="feedback-label tag tag-error">
@@ -100,7 +107,7 @@ export function Results({ results, questions, bankSubject, onBack }: Props) {
 
       <div className="results-actions">
         <button className="btn btn-primary" onClick={onBack}>
-          Back to Question Banks
+          Back to Home
         </button>
       </div>
     </div>

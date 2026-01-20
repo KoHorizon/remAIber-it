@@ -1,13 +1,20 @@
 import { useState } from "react";
-import { BanksList } from "./components/BanksList";
+import { CategoriesList } from "./components/CategoriesList";
 import { BankDetail } from "./components/BankDetail";
 import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
 import "./App.css";
 
+export type Category = {
+  id: string;
+  name: string;
+  banks?: Bank[];
+};
+
 export type Bank = {
   id: string;
   subject: string;
+  category_id?: string | null;
   questions?: Question[];
 };
 
@@ -34,7 +41,7 @@ export type SessionResult = {
 };
 
 type View =
-  | { type: "banks" }
+  | { type: "home" }
   | { type: "bank"; bankId: string }
   | { type: "practice"; session: Session; bankSubject: string }
   | {
@@ -47,6 +54,47 @@ type View =
 const API_BASE = "http://localhost:8080";
 
 export const api = {
+  // Categories
+  async getCategories(): Promise<Category[]> {
+    const res = await fetch(`${API_BASE}/categories`);
+    if (!res.ok) throw new Error("Failed to fetch categories");
+    return res.json();
+  },
+
+  async getCategory(id: string): Promise<Category> {
+    const res = await fetch(`${API_BASE}/categories/${id}`);
+    if (!res.ok) throw new Error("Category not found");
+    return res.json();
+  },
+
+  async createCategory(name: string): Promise<Category> {
+    const res = await fetch(`${API_BASE}/categories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error("Failed to create category");
+    return res.json();
+  },
+
+  async updateCategory(id: string, name: string): Promise<Category> {
+    const res = await fetch(`${API_BASE}/categories/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error("Failed to update category");
+    return res.json();
+  },
+
+  async deleteCategory(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/categories/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete category");
+  },
+
+  // Banks
   async getBanks(): Promise<Bank[]> {
     const res = await fetch(`${API_BASE}/banks`);
     if (!res.ok) throw new Error("Failed to fetch banks");
@@ -59,16 +107,37 @@ export const api = {
     return res.json();
   },
 
-  async createBank(subject: string): Promise<Bank> {
+  async createBank(subject: string, categoryId?: string): Promise<Bank> {
     const res = await fetch(`${API_BASE}/banks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject }),
+      body: JSON.stringify({ subject, category_id: categoryId || null }),
     });
     if (!res.ok) throw new Error("Failed to create bank");
     return res.json();
   },
 
+  async updateBankCategory(
+    bankId: string,
+    categoryId: string | null,
+  ): Promise<Bank> {
+    const res = await fetch(`${API_BASE}/banks/${bankId}/category`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category_id: categoryId }),
+    });
+    if (!res.ok) throw new Error("Failed to update bank category");
+    return res.json();
+  },
+
+  async deleteBank(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/banks/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete bank");
+  },
+
+  // Questions
   async addQuestion(
     bankId: string,
     subject: string,
@@ -83,6 +152,17 @@ export const api = {
     return res.json();
   },
 
+  async deleteQuestion(bankId: string, questionId: string): Promise<void> {
+    const res = await fetch(
+      `${API_BASE}/banks/${bankId}/questions/${questionId}`,
+      {
+        method: "DELETE",
+      },
+    );
+    if (!res.ok) throw new Error("Failed to delete question");
+  },
+
+  // Sessions
   async createSession(bankId: string): Promise<Session> {
     const res = await fetch(`${API_BASE}/sessions`, {
       method: "POST",
@@ -96,12 +176,12 @@ export const api = {
   async submitAnswer(
     sessionId: string,
     questionId: string,
-    response: string,
+    answer: string,
   ): Promise<void> {
     const res = await fetch(`${API_BASE}/sessions/${sessionId}/answers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question_id: questionId, response }),
+      body: JSON.stringify({ question_id: questionId, answer }),
     });
     if (!res.ok) throw new Error("Failed to submit answer");
   },
@@ -113,31 +193,13 @@ export const api = {
     if (!res.ok) throw new Error("Failed to complete session");
     return res.json();
   },
-
-  // Add to the api object
-  async deleteBank(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/banks/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Failed to delete bank");
-  },
-
-  async deleteQuestion(bankId: string, questionId: string): Promise<void> {
-    const res = await fetch(
-      `${API_BASE}/banks/${bankId}/questions/${questionId}`,
-      {
-        method: "DELETE",
-      },
-    );
-    if (!res.ok) throw new Error("Failed to delete question");
-  },
 };
 
 function App() {
-  const [view, setView] = useState<View>({ type: "banks" });
+  const [view, setView] = useState<View>({ type: "home" });
 
   const navigate = {
-    toBanks: () => setView({ type: "banks" }),
+    toHome: () => setView({ type: "home" }),
     toBank: (bankId: string) => setView({ type: "bank", bankId }),
     toPractice: (session: Session, bankSubject: string) =>
       setView({ type: "practice", session, bankSubject }),
@@ -151,18 +213,20 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <button className="logo" onClick={navigate.toBanks}>
+        <button className="logo" onClick={navigate.toHome}>
           <span className="logo-icon">◈</span>
           <span className="logo-text">Remaimber</span>
         </button>
       </header>
 
       <main className="main">
-        {view.type === "banks" && <BanksList onSelectBank={navigate.toBank} />}
+        {view.type === "home" && (
+          <CategoriesList onSelectBank={navigate.toBank} />
+        )}
         {view.type === "bank" && (
           <BankDetail
             bankId={view.bankId}
-            onBack={navigate.toBanks}
+            onBack={navigate.toHome}
             onStartPractice={navigate.toPractice}
           />
         )}
@@ -177,7 +241,7 @@ function App() {
                 view.bankSubject,
               )
             }
-            onCancel={navigate.toBanks}
+            onCancel={navigate.toHome}
           />
         )}
         {view.type === "results" && (
@@ -185,7 +249,7 @@ function App() {
             results={view.results}
             questions={view.questions}
             bankSubject={view.bankSubject}
-            onBack={navigate.toBanks}
+            onBack={navigate.toHome}
           />
         )}
       </main>
