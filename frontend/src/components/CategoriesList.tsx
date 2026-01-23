@@ -30,6 +30,15 @@ export function CategoriesList({ onSelectBank }: Props) {
   );
   const [editCategoryName, setEditCategoryName] = useState("");
 
+  // Delete confirmation modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    type: "category" | "bank";
+    id: string;
+    name: string;
+    bankCount?: number;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -95,29 +104,56 @@ export function CategoriesList({ onSelectBank }: Props) {
     }
   }
 
-  async function handleDeleteCategory(e: React.MouseEvent, categoryId: string) {
+  function openDeleteCategoryModal(e: React.MouseEvent, category: Category) {
     e.stopPropagation();
-    if (!confirm("Delete this category? Banks will become uncategorized."))
-      return;
+    const categoryBanks = banks.filter((b) => b.category_id === category.id);
+    setDeleteModal({
+      type: "category",
+      id: category.id,
+      name: category.name,
+      bankCount: categoryBanks.length,
+    });
+  }
 
+  function openDeleteBankModal(e: React.MouseEvent, bank: Bank) {
+    e.stopPropagation();
+    setDeleteModal({
+      type: "bank",
+      id: bank.id,
+      name: bank.subject,
+    });
+  }
+
+  async function confirmDelete() {
+    if (!deleteModal || isDeleting) return;
+
+    setIsDeleting(true);
     try {
-      await api.deleteCategory(categoryId);
-      setCategories(categories.filter((c) => c.id !== categoryId));
-      // Update banks that were in this category
-      setBanks(
-        banks.map((b) =>
-          b.category_id === categoryId ? { ...b, category_id: null } : b,
-        ),
-      );
+      if (deleteModal.type === "category") {
+        const categoryId = deleteModal.id;
+        await api.deleteCategory(categoryId);
+        setCategories(categories.filter((c) => c.id !== categoryId));
+        // Remove banks that were in this category (they're deleted on backend now)
+        setBanks((prevBanks) =>
+          prevBanks.filter((b) => b.category_id !== categoryId),
+        );
+      } else {
+        const bankId = deleteModal.id;
+        await api.deleteBank(bankId);
+        setBanks((prevBanks) => prevBanks.filter((b) => b.id !== bankId));
+      }
+      setDeleteModal(null);
     } catch (err) {
-      console.error("Failed to delete category:", err);
+      console.error("Failed to delete:", err);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
   // Bank CRUD
   async function handleCreateBank(e: React.FormEvent) {
     e.preventDefault();
-    if (!newBankSubject.trim() || isCreating) return;
+    if (!newBankSubject.trim() || !newBankCategoryId || isCreating) return;
 
     setIsCreating(true);
     try {
@@ -133,18 +169,6 @@ export function CategoriesList({ onSelectBank }: Props) {
       console.error("Failed to create bank:", err);
     } finally {
       setIsCreating(false);
-    }
-  }
-
-  async function handleDeleteBank(e: React.MouseEvent, bankId: string) {
-    e.stopPropagation();
-    if (!confirm("Delete this bank and all its questions?")) return;
-
-    try {
-      await api.deleteBank(bankId);
-      setBanks(banks.filter((b) => b.id !== bankId));
-    } catch (err) {
-      console.error("Failed to delete bank:", err);
     }
   }
 
@@ -258,7 +282,7 @@ export function CategoriesList({ onSelectBank }: Props) {
               />
 
               <label className="input-label" htmlFor="bank-category">
-                Category (optional)
+                Category
               </label>
               <select
                 id="bank-category"
@@ -267,8 +291,11 @@ export function CategoriesList({ onSelectBank }: Props) {
                 onChange={(e) =>
                   setNewBankCategoryId(e.target.value || undefined)
                 }
+                required
               >
-                <option value="">No category</option>
+                <option value="" disabled>
+                  Select a category
+                </option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -287,12 +314,82 @@ export function CategoriesList({ onSelectBank }: Props) {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={!newBankSubject.trim() || isCreating}
+                  disabled={
+                    !newBankSubject.trim() || !newBankCategoryId || isCreating
+                  }
                 >
                   {isCreating ? "Creating..." : "Create Bank"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div className="modal-overlay" onClick={() => setDeleteModal(null)}>
+          <div
+            className="modal modal-delete"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="delete-modal-icon">⚠️</div>
+            <h2>
+              Delete {deleteModal.type === "category" ? "Category" : "Bank"}?
+            </h2>
+
+            <div className="delete-modal-content">
+              <p className="delete-target">
+                <strong>"{deleteModal.name}"</strong>
+              </p>
+
+              {deleteModal.type === "category" ? (
+                <div className="delete-warning">
+                  <p className="warning-text">
+                    This will permanently delete this category and all its
+                    content:
+                  </p>
+                  <ul className="warning-list">
+                    <li>
+                      <span className="warning-count">
+                        {deleteModal.bankCount}
+                      </span>{" "}
+                      question bank{deleteModal.bankCount !== 1 ? "s" : ""}
+                    </li>
+                    <li>All questions within those banks</li>
+                    <li>All practice session history</li>
+                  </ul>
+                  <p className="warning-final">This action cannot be undone.</p>
+                </div>
+              ) : (
+                <div className="delete-warning">
+                  <p className="warning-text">
+                    This will permanently delete this bank and all its
+                    questions.
+                  </p>
+                  <p className="warning-final">This action cannot be undone.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setDeleteModal(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -353,14 +450,14 @@ export function CategoriesList({ onSelectBank }: Props) {
                     onClick={(e) => startEditCategory(e, category)}
                     title="Edit category"
                   >
-                    ✎
+                    &#9998;
                   </button>
                   <button
                     className="btn-icon btn-icon-danger"
-                    onClick={(e) => handleDeleteCategory(e, category.id)}
+                    onClick={(e) => openDeleteCategoryModal(e, category)}
                     title="Delete category"
                   >
-                    ×
+                    &times;
                   </button>
                 </div>
               </div>
@@ -368,9 +465,7 @@ export function CategoriesList({ onSelectBank }: Props) {
               {isExpanded && (
                 <div className="category-banks">
                   {categoryBanks.length === 0 ? (
-                    <p className="empty-category">
-                      No banks in this category yet
-                    </p>
+                    <p className="empty-category">No banks in this category</p>
                   ) : (
                     categoryBanks.map((bank) => (
                       <div
@@ -378,18 +473,15 @@ export function CategoriesList({ onSelectBank }: Props) {
                         className="bank-card card card-interactive"
                         onClick={() => onSelectBank(bank.id)}
                       >
+                        <span className="bank-icon">📚</span>
+                        <span className="bank-name">{bank.subject}</span>
                         <button
                           className="btn-delete"
-                          onClick={(e) => handleDeleteBank(e, bank.id)}
+                          onClick={(e) => openDeleteBankModal(e, bank)}
                           title="Delete bank"
                         >
-                          ×
+                          &times;
                         </button>
-                        <div className="bank-card-icon">◇</div>
-                        <h3 className="bank-card-title">{bank.subject}</h3>
-                        <span className="bank-card-id">
-                          ID: {bank.id.slice(0, 8)}
-                        </span>
                       </div>
                     ))
                   )}
@@ -403,38 +495,36 @@ export function CategoriesList({ onSelectBank }: Props) {
       {/* Uncategorized Banks */}
       {uncategorizedBanks.length > 0 && (
         <div className="uncategorized-section">
-          <h3 className="section-title">Uncategorized</h3>
-          <div className="banks-grid">
-            {uncategorizedBanks.map((bank, i) => (
+          <h2 className="section-title">Uncategorized</h2>
+          <div className="uncategorized-banks">
+            {uncategorizedBanks.map((bank) => (
               <div
                 key={bank.id}
                 className="bank-card card card-interactive"
                 onClick={() => onSelectBank(bank.id)}
-                style={{ animationDelay: `${i * 0.05}s` }}
               >
+                <span className="bank-icon">📚</span>
+                <span className="bank-name">{bank.subject}</span>
                 <button
                   className="btn-delete"
-                  onClick={(e) => handleDeleteBank(e, bank.id)}
+                  onClick={(e) => openDeleteBankModal(e, bank)}
                   title="Delete bank"
                 >
-                  ×
+                  &times;
                 </button>
-                <div className="bank-card-icon">◇</div>
-                <h3 className="bank-card-title">{bank.subject}</h3>
-                <span className="bank-card-id">ID: {bank.id.slice(0, 8)}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty State */}
       {categories.length === 0 && banks.length === 0 && (
         <div className="empty-state">
-          <div className="empty-state-icon">📚</div>
+          <div className="empty-state-icon">📖</div>
           <p className="empty-state-text">
-            Start by creating a category to organize your learning, then add
-            question banks.
+            Start by creating a category to organize your question banks, or
+            create a bank directly to begin adding questions.
           </p>
         </div>
       )}

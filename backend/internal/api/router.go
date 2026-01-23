@@ -278,6 +278,8 @@ type CreateBankResponse struct {
 	CategoryID *string `json:"category_id,omitempty"`
 }
 
+// Fix for createBank in router.go - replace the existing createBank function with this:
+
 func createBank(w http.ResponseWriter, r *http.Request) {
 	var req CreateBankRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -290,25 +292,24 @@ func createBank(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate category exists if provided
-	if req.CategoryID != nil {
-		_, err := db.GetCategory(*req.CategoryID)
-		if errors.Is(err, store.ErrNotFound) {
-			http.Error(w, "category not found", http.StatusNotFound)
-			return
-		}
-		if err != nil {
-			http.Error(w, "failed to validate category", http.StatusInternalServerError)
-			return
-		}
+	// Category is now required
+	if req.CategoryID == nil || *req.CategoryID == "" {
+		http.Error(w, "category_id is required", http.StatusBadRequest)
+		return
 	}
 
-	var bank *questionbank.QuestionBank
-	if req.CategoryID != nil {
-		bank = questionbank.NewWithCategory(req.Subject, *req.CategoryID)
-	} else {
-		bank = questionbank.New(req.Subject)
+	// Validate category exists
+	_, err := db.GetCategory(*req.CategoryID)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "category not found", http.StatusNotFound)
+		return
 	}
+	if err != nil {
+		http.Error(w, "failed to validate category", http.StatusInternalServerError)
+		return
+	}
+
+	bank := questionbank.NewWithCategory(req.Subject, *req.CategoryID)
 
 	if err := db.SaveBank(bank); err != nil {
 		http.Error(w, "failed to save bank", http.StatusInternalServerError)

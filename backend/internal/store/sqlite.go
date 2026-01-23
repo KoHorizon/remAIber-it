@@ -142,10 +142,33 @@ func (s *SQLiteStore) UpdateCategory(cat *category.Category) error {
 }
 
 func (s *SQLiteStore) DeleteCategory(id string) error {
-	result, err := s.db.Exec("DELETE FROM categories WHERE id = ?", id)
+	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
+
+	// First, delete all questions belonging to banks in this category
+	_, err = tx.Exec(`
+		DELETE FROM questions 
+		WHERE bank_id IN (SELECT id FROM banks WHERE category_id = ?)
+	`, id)
+	if err != nil {
+		return err
+	}
+
+	// Then, delete all banks in this category
+	_, err = tx.Exec("DELETE FROM banks WHERE category_id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	// Finally, delete the category itself
+	result, err := tx.Exec("DELETE FROM categories WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
@@ -153,7 +176,8 @@ func (s *SQLiteStore) DeleteCategory(id string) error {
 	if rowsAffected == 0 {
 		return ErrNotFound
 	}
-	return nil
+
+	return tx.Commit()
 }
 
 // ============================================================================
