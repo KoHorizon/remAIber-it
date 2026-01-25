@@ -81,6 +81,15 @@
     margin-bottom: 1rem;
 }
 
+.no-answers-message {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    padding: 2rem 1rem;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+}
+
 .breakdown-list {
     display: flex;
     flex-direction: column;

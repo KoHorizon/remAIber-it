@@ -27,6 +27,59 @@
     color: var(--text-secondary);
 }
 
+.practice-header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.practice-timer {
+    font-family: var(--font-mono, monospace);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--surface-color);
+    padding: 0.5rem 0.875rem;
+    border-radius: 8px;
+    min-width: 70px;
+    text-align: center;
+}
+
+.practice-timer.timer-warning {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.practice-timer.timer-critical {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.progress-bar {
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary-color);
+    transition: width 0.3s ease;
+}
+
 .practice-content {
     margin-top: 2rem;
 }
@@ -68,6 +121,7 @@
 .practice-actions {
     display: flex;
     justify-content: flex-end;
+    gap: 0.75rem;
 }
 
 .btn-large {
@@ -113,5 +167,14 @@
 
     .practice-actions .btn {
         width: 100%;
+    }
+
+    .practice-header-right {
+        gap: 0.5rem;
+    }
+
+    .practice-timer {
+        font-size: 1rem;
+        padding: 0.375rem 0.625rem;
     }
 }

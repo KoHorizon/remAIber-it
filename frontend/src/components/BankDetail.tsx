@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api, Bank, Session, Category } from "../App";
+import { SessionConfigModal } from "./SessionConfigModal";
 import "./BankDetail.css";
 
 type Props = {
@@ -13,6 +14,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
+  const [showSessionConfig, setShowSessionConfig] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -85,12 +87,20 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
     }
   }
 
-  async function handleStartSession() {
+  async function handleStartSession(config: {
+    maxQuestions?: number;
+    maxDurationMin?: number;
+  }) {
     if (!bank || isStartingSession) return;
 
     setIsStartingSession(true);
+    setShowSessionConfig(false);
+
     try {
-      const session = await api.createSession(bankId);
+      const session = await api.createSession(bankId, {
+        max_questions: config.maxQuestions,
+        max_duration_min: config.maxDurationMin,
+      });
       onStartPractice(session, bank.subject);
     } catch (err) {
       console.error("Failed to start session:", err);
@@ -153,13 +163,22 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
           </button>
           <button
             className="btn btn-primary"
-            onClick={handleStartSession}
+            onClick={() => setShowSessionConfig(true)}
             disabled={questions.length === 0 || isStartingSession}
           >
             {isStartingSession ? "Starting..." : "Practice"}
           </button>
         </div>
       </div>
+
+      {/* Session Config Modal */}
+      {showSessionConfig && (
+        <SessionConfigModal
+          totalQuestions={questions.length}
+          onStart={handleStartSession}
+          onCancel={() => setShowSessionConfig(false)}
+        />
+      )}
 
       {/* Add Question Modal */}
       {showAddQuestion && (
@@ -231,26 +250,21 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
         </div>
       ) : (
         <div className="questions-list">
-          {questions.map((question, i) => (
-            <div
-              key={question.id}
-              className="question-card card"
-              style={{ animationDelay: `${i * 0.05}s` }}
-            >
+          {questions.map((q) => (
+            <div key={q.id} className="question-card">
+              <div className="question-content">
+                <p className="question-subject">{q.subject}</p>
+                {q.expected_answer && (
+                  <p className="question-answer">{q.expected_answer}</p>
+                )}
+              </div>
               <button
-                className="btn-delete"
-                onClick={(e) => handleDeleteQuestion(e, question.id)}
+                className="btn btn-ghost delete-btn"
+                onClick={(e) => handleDeleteQuestion(e, q.id)}
                 title="Delete question"
               >
                 ×
               </button>
-              <div className="question-number">{i + 1}</div>
-              <div className="question-content">
-                <p className="question-text">{question.subject}</p>
-                {question.expected_answer && (
-                  <p className="question-answer">{question.expected_answer}</p>
-                )}
-              </div>
             </div>
           ))}
         </div>

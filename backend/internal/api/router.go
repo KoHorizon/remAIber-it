@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/remaimber-it/backend/internal/domain/category"
 	practicesession "github.com/remaimber-it/backend/internal/domain/practice_session"
@@ -529,7 +530,9 @@ func deleteQuestion(w http.ResponseWriter, r *http.Request) {
 
 // POST /sessions
 type CreateSessionRequest struct {
-	BankID string `json:"bank_id"`
+	BankID         string `json:"bank_id"`
+	MaxQuestions   *int   `json:"max_questions,omitempty"`    // optional: limit number of questions
+	MaxDurationMin *int   `json:"max_duration_min,omitempty"` // optional: time limit in minutes
 }
 
 type SessionQuestion struct {
@@ -538,8 +541,9 @@ type SessionQuestion struct {
 }
 
 type CreateSessionResponse struct {
-	ID        string            `json:"id"`
-	Questions []SessionQuestion `json:"questions"`
+	ID             string            `json:"id"`
+	Questions      []SessionQuestion `json:"questions"`
+	MaxDurationMin *int              `json:"max_duration_min,omitempty"` // echo back for frontend
 }
 
 func createSession(w http.ResponseWriter, r *http.Request) {
@@ -560,7 +564,19 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session := practicesession.New(bank)
+	// Build session config from request
+	config := practicesession.DefaultConfig()
+
+	if req.MaxQuestions != nil && *req.MaxQuestions > 0 {
+		config.MaxQuestions = req.MaxQuestions
+	}
+
+	if req.MaxDurationMin != nil && *req.MaxDurationMin > 0 {
+		duration := time.Duration(*req.MaxDurationMin) * time.Minute
+		config.MaxDuration = &duration
+	}
+
+	session := practicesession.NewWithConfig(bank, config)
 	if err := db.SaveSession(session); err != nil {
 		http.Error(w, "failed to save session", http.StatusInternalServerError)
 		return
@@ -574,12 +590,19 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(CreateSessionResponse{
+	response := CreateSessionResponse{
 		ID:        session.ID,
 		Questions: questions,
-	})
+	}
+
+	// Echo back duration if set (for frontend timer)
+	if req.MaxDurationMin != nil && *req.MaxDurationMin > 0 {
+		response.MaxDurationMin = req.MaxDurationMin
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
 }
 
 // GET /sessions/{sessionID}
@@ -687,6 +710,13 @@ type CompleteSessionResponse struct {
 func completeSession(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.PathValue("sessionID")
 
+	// Get the session to know all questions
+	session, err := db.GetSession(sessionID)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+
 	// Wait for all grading to complete
 	wg := db.GetWaitGroup(sessionID)
 	if wg != nil {
@@ -699,25 +729,43 @@ func completeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	totalScore := 0
+	// Create a map of graded questions for quick lookup
+	gradedQuestions := make(map[string]store.StoredGrade)
 	for _, g := range grades {
-		totalScore += g.Score
+		gradedQuestions[g.QuestionID] = g
 	}
 
-	results := make([]GradeDetails, len(grades))
-	for i, g := range grades {
-		results[i] = GradeDetails{
-			Score:   g.Score,
-			Covered: g.Covered,
-			Missed:  g.Missed,
+	// Build results for ALL questions in the session (in order)
+	results := make([]GradeDetails, len(session.Questions))
+	totalScore := 0
+
+	for i, q := range session.Questions {
+		if grade, answered := gradedQuestions[q.ID]; answered {
+			// Question was answered
+			results[i] = GradeDetails{
+				Score:   grade.Score,
+				Covered: grade.Covered,
+				Missed:  grade.Missed,
+			}
+			totalScore += grade.Score
+		} else {
+			// Question was NOT answered - score is 0
+			results[i] = GradeDetails{
+				Score:   0,
+				Covered: []string{},
+				Missed:  []string{"Not answered"},
+			}
 		}
 	}
+
+	// Max score is based on total questions in session, not just answered ones
+	maxScore := len(session.Questions) * 100
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(CompleteSessionResponse{
 		SessionID:  sessionID,
 		TotalScore: totalScore,
-		MaxScore:   len(grades) * 100,
+		MaxScore:   maxScore,
 		Results:    results,
 	})
 }

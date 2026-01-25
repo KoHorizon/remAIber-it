@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api, Session, SessionResult } from "../App";
 import "./PracticeSession.css";
 
@@ -19,20 +19,64 @@ export function PracticeSession({
   const [answer, setAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(
+    session.max_duration_min ? session.max_duration_min * 60 : null,
+  );
+  const completingRef = useRef(false);
 
   const questions = session.questions;
   const currentQuestion = questions[currentIndex];
   const isLastQuestion = currentIndex === questions.length - 1;
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
+  // Timer effect
+  useEffect(() => {
+    if (timeRemaining === null || timeRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval);
+          // Time's up - auto-complete session
+          if (!completingRef.current) {
+            handleTimeUp();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timeRemaining]);
+
+  async function handleTimeUp() {
+    if (completingRef.current) return;
+    completingRef.current = true;
+    setIsCompleting(true);
+
+    try {
+      // Submit current answer if any
+      if (answer.trim()) {
+        await api.submitAnswer(session.id, currentQuestion.id, answer.trim());
+      }
+      const results = await api.completeSession(session.id);
+      onComplete(results);
+    } catch (err) {
+      console.error("Failed to complete session:", err);
+      completingRef.current = false;
+    }
+  }
+
   async function handleSubmit() {
-    if (!answer.trim() || isSubmitting) return;
+    if (!answer.trim() || isSubmitting || completingRef.current) return;
 
     setIsSubmitting(true);
     try {
       await api.submitAnswer(session.id, currentQuestion.id, answer.trim());
 
       if (isLastQuestion) {
+        completingRef.current = true;
         setIsCompleting(true);
         const results = await api.completeSession(session.id);
         onComplete(results);
@@ -47,10 +91,30 @@ export function PracticeSession({
     }
   }
 
+  async function handleSkip() {
+    if (isSubmitting || completingRef.current) return;
+
+    if (isLastQuestion) {
+      completingRef.current = true;
+      setIsCompleting(true);
+      const results = await api.completeSession(session.id);
+      onComplete(results);
+    } else {
+      setAnswer("");
+      setCurrentIndex(currentIndex + 1);
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && e.metaKey) {
       handleSubmit();
     }
+  }
+
+  function formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   }
 
   if (isCompleting) {
@@ -73,9 +137,18 @@ export function PracticeSession({
             Question {currentIndex + 1} of {questions.length}
           </span>
         </div>
-        <button className="btn btn-ghost" onClick={onCancel}>
-          Exit
-        </button>
+        <div className="practice-header-right">
+          {timeRemaining !== null && (
+            <span
+              className={`practice-timer ${timeRemaining <= 60 ? "timer-warning" : ""} ${timeRemaining <= 10 ? "timer-critical" : ""}`}
+            >
+              {formatTime(timeRemaining)}
+            </span>
+          )}
+          <button className="btn btn-ghost" onClick={onCancel}>
+            Exit
+          </button>
+        </div>
       </div>
 
       <div className="progress-bar">
@@ -107,6 +180,13 @@ export function PracticeSession({
         </div>
 
         <div className="practice-actions">
+          <button
+            className="btn btn-secondary"
+            onClick={handleSkip}
+            disabled={isSubmitting}
+          >
+            Skip
+          </button>
           <button
             className="btn btn-primary btn-large"
             onClick={handleSubmit}

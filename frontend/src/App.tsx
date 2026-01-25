@@ -24,9 +24,15 @@ export type Question = {
   expected_answer?: string;
 };
 
+export type SessionConfig = {
+  max_questions?: number;
+  max_duration_min?: number;
+};
+
 export type Session = {
   id: string;
   questions: Question[];
+  max_duration_min?: number;
 };
 
 export type SessionResult = {
@@ -163,11 +169,18 @@ export const api = {
   },
 
   // Sessions
-  async createSession(bankId: string): Promise<Session> {
+  async createSession(
+    bankId: string,
+    config?: SessionConfig,
+  ): Promise<Session> {
     const res = await fetch(`${API_BASE}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bank_id: bankId }),
+      body: JSON.stringify({
+        bank_id: bankId,
+        max_questions: config?.max_questions,
+        max_duration_min: config?.max_duration_min,
+      }),
     });
     if (!res.ok) throw new Error("Failed to create session");
     return res.json();

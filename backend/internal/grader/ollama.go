@@ -1,5 +1,4 @@
-// internal/llm-grader/grader.go
-package ollama
+package grader
 
 import (
 	"bytes"
@@ -28,12 +27,6 @@ type LLMRequest struct {
 	Temperature float64   `json:"temperature"`
 }
 
-type OllamaResponse struct {
-	QuestionID string
-	Response   string
-	Err        error
-}
-
 type LLMResponse struct {
 	Choices []struct {
 		Message struct {
@@ -42,6 +35,12 @@ type LLMResponse struct {
 	} `json:"choices"`
 }
 
+type GradeResult struct {
+	Covered []string `json:"covered"`
+	Missed  []string `json:"missed"`
+}
+
+// GradeAnswer asks the LLM to identify covered/missed facts, then calculates score server-side
 func GradeAnswer(question, expectedAnswer, userAnswer string) (string, error) {
 	prompt := fmt.Sprintf(`You are grading a recall exercise. The user must demonstrate they remember the correct information.
 
@@ -106,12 +105,38 @@ Respond with valid JSON only:
 	}
 	defer resp.Body.Close()
 
-	var result LLMResponse
-	json.NewDecoder(resp.Body).Decode(&result)
+	var llmResp LLMResponse
+	if err := json.NewDecoder(resp.Body).Decode(&llmResp); err != nil {
+		return "", err
+	}
 
-	if len(result.Choices) == 0 {
+	if len(llmResp.Choices) == 0 {
 		return "", fmt.Errorf("no response from LLM")
 	}
 
-	return result.Choices[0].Message.Content, nil
+	rawContent := llmResp.Choices[0].Message.Content
+
+	// Parse the LLM response to extract covered/missed
+	var gradeResult GradeResult
+	if err := json.Unmarshal([]byte(rawContent), &gradeResult); err != nil {
+		// If parsing fails, return raw content and let caller handle it
+		return rawContent, nil
+	}
+
+	// Calculate score server-side: covered / (covered + missed) * 100
+	total := len(gradeResult.Covered) + len(gradeResult.Missed)
+	score := 0
+	if total > 0 {
+		score = (len(gradeResult.Covered) * 100) / total
+	}
+
+	// Return final result with calculated score
+	finalResult := map[string]interface{}{
+		"score":   score,
+		"covered": gradeResult.Covered,
+		"missed":  gradeResult.Missed,
+	}
+
+	resultJSON, _ := json.Marshal(finalResult)
+	return string(resultJSON), nil
 }
