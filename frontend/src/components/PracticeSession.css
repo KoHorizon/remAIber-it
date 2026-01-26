@@ -27,6 +27,13 @@
     color: var(--text-secondary);
 }
 
+.practice-mode {
+    font-size: 0.75rem;
+    color: #f59e0b;
+    font-weight: 500;
+    margin-top: 0.125rem;
+}
+
 .practice-header-right {
     display: flex;
     align-items: center;

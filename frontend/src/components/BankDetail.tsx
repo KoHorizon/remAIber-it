@@ -90,6 +90,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
   async function handleStartSession(config: {
     maxQuestions?: number;
     maxDurationMin?: number;
+    focusOnWeak?: boolean;
   }) {
     if (!bank || isStartingSession) return;
 
@@ -100,6 +101,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
       const session = await api.createSession(bankId, {
         max_questions: config.maxQuestions,
         max_duration_min: config.maxDurationMin,
+        focus_on_weak: config.focusOnWeak,
       });
       onStartPractice(session, bank.subject);
     } catch (err) {
@@ -113,6 +115,22 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
     if (!bank?.category_id) return null;
     const category = categories.find((c) => c.id === bank.category_id);
     return category?.name || null;
+  }
+
+  function getMasteryColor(mastery: number): string {
+    if (mastery >= 80) return "mastery-excellent";
+    if (mastery >= 60) return "mastery-good";
+    if (mastery >= 40) return "mastery-fair";
+    if (mastery > 0) return "mastery-needs-work";
+    return "mastery-none";
+  }
+
+  function getMasteryLabel(mastery: number): string {
+    if (mastery >= 80) return "Mastered";
+    if (mastery >= 60) return "Good";
+    if (mastery >= 40) return "Learning";
+    if (mastery > 0) return "Needs work";
+    return "Not practiced";
   }
 
   if (isLoading) {
@@ -148,11 +166,19 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
             <span className="bank-category">{categoryName}</span>
           )}
           <h1>{bank.subject}</h1>
-          <p className="page-subtitle">
-            {questions.length === 0
-              ? "No questions yet"
-              : `${questions.length} question${questions.length !== 1 ? "s" : ""}`}
-          </p>
+          <div className="bank-meta">
+            <span className="page-subtitle">
+              {questions.length === 0
+                ? "No questions yet"
+                : `${questions.length} question${questions.length !== 1 ? "s" : ""}`}
+            </span>
+            <div
+              className={`bank-mastery-badge ${getMasteryColor(bank.mastery)}`}
+            >
+              <span className="mastery-value">{bank.mastery}%</span>
+              <span className="mastery-label">overall mastery</span>
+            </div>
+          </div>
         </div>
         <div className="header-actions">
           <button
@@ -250,16 +276,49 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
         </div>
       ) : (
         <div className="questions-list">
-          {questions.map((q) => (
-            <div key={q.id} className="question-card">
+          {questions.map((q, index) => (
+            <div
+              key={q.id}
+              className="question-card card"
+              style={{ animationDelay: `${index * 0.05}s` }}
+            >
+              <div className="question-header">
+                <span className="question-number">Q{index + 1}</span>
+                <div
+                  className={`question-mastery ${getMasteryColor(q.mastery)}`}
+                >
+                  <span className="mastery-percent">{q.mastery}%</span>
+                  <span className="mastery-status">
+                    {getMasteryLabel(q.mastery)}
+                  </span>
+                </div>
+              </div>
               <div className="question-content">
                 <p className="question-subject">{q.subject}</p>
                 {q.expected_answer && (
                   <p className="question-answer">{q.expected_answer}</p>
                 )}
               </div>
+              <div className="question-stats">
+                <span className="stat">
+                  <span className="stat-value">{q.times_answered}</span>
+                  <span className="stat-label">attempts</span>
+                </span>
+                <span className="stat">
+                  <span className="stat-value">{q.times_correct}</span>
+                  <span className="stat-label">correct</span>
+                </span>
+                {q.times_answered > 0 && (
+                  <span className="stat">
+                    <span className="stat-value">
+                      {Math.round((q.times_correct / q.times_answered) * 100)}%
+                    </span>
+                    <span className="stat-label">success rate</span>
+                  </span>
+                )}
+              </div>
               <button
-                className="btn btn-ghost delete-btn"
+                className="btn-delete"
                 onClick={(e) => handleDeleteQuestion(e, q.id)}
                 title="Delete question"
               >

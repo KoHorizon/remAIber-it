@@ -136,6 +136,9 @@ export function PracticeSession({
           <span className="practice-count">
             Question {currentIndex + 1} of {questions.length}
           </span>
+          {session.focus_on_weak && (
+            <span className="practice-mode">🎯 Focus on weak</span>
+          )}
         </div>
         <div className="practice-header-right">
           {timeRemaining !== null && (

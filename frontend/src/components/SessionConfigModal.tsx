@@ -3,7 +3,11 @@ import "./SessionConfigModal.css";
 
 type Props = {
   totalQuestions: number;
-  onStart: (config: { maxQuestions?: number; maxDurationMin?: number }) => void;
+  onStart: (config: {
+    maxQuestions?: number;
+    maxDurationMin?: number;
+    focusOnWeak?: boolean;
+  }) => void;
   onCancel: () => void;
 };
 
@@ -14,6 +18,7 @@ export function SessionConfigModal({
 }: Props) {
   const [useQuestionLimit, setUseQuestionLimit] = useState(false);
   const [useTimeLimit, setUseTimeLimit] = useState(false);
+  const [focusOnWeak, setFocusOnWeak] = useState(false);
   const [maxQuestions, setMaxQuestions] = useState(
     Math.min(20, totalQuestions),
   );
@@ -23,6 +28,7 @@ export function SessionConfigModal({
     onStart({
       maxQuestions: useQuestionLimit ? maxQuestions : undefined,
       maxDurationMin: useTimeLimit ? maxDurationMin : undefined,
+      focusOnWeak: focusOnWeak,
     });
   }
 
@@ -53,6 +59,29 @@ export function SessionConfigModal({
         </p>
 
         <div className="config-options">
+          {/* Focus on Weak */}
+          <div
+            className={`config-option ${focusOnWeak ? "config-option-active config-option-focus" : ""}`}
+          >
+            <div className="config-header">
+              <div className="config-label-group">
+                <span className="config-label">Focus on weak</span>
+                <span className="config-description">
+                  Prioritize questions with low mastery scores
+                </span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={focusOnWeak}
+                className={`toggle-switch ${focusOnWeak ? "toggle-switch-on" : ""}`}
+                onClick={() => setFocusOnWeak(!focusOnWeak)}
+              >
+                <span className="toggle-thumb" />
+              </button>
+            </div>
+          </div>
+
           {/* Question Limit */}
           <div
             className={`config-option ${useQuestionLimit ? "config-option-active" : ""}`}
@@ -151,9 +180,22 @@ export function SessionConfigModal({
         </div>
 
         <div className="config-summary">
-          {useQuestionLimit ? maxQuestions : totalQuestions} question
-          {(useQuestionLimit ? maxQuestions : totalQuestions) !== 1 ? "s" : ""}
-          {useTimeLimit ? ` · ${maxDurationMin} min` : " · No time limit"}
+          <span>
+            {useQuestionLimit ? maxQuestions : totalQuestions} question
+            {(useQuestionLimit ? maxQuestions : totalQuestions) !== 1
+              ? "s"
+              : ""}
+          </span>
+          <span className="config-summary-dot">·</span>
+          <span>
+            {useTimeLimit ? `${maxDurationMin} min` : "No time limit"}
+          </span>
+          {focusOnWeak && (
+            <>
+              <span className="config-summary-dot">·</span>
+              <span className="config-summary-focus">🎯 Weak focus</span>
+            </>
+          )}
         </div>
 
         <div className="modal-actions">

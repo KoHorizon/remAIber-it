@@ -8,6 +8,7 @@ import "./App.css";
 export type Category = {
   id: string;
   name: string;
+  mastery: number;
   banks?: Bank[];
 };
 
@@ -15,6 +16,7 @@ export type Bank = {
   id: string;
   subject: string;
   category_id?: string | null;
+  mastery: number;
   questions?: Question[];
 };
 
@@ -22,17 +24,22 @@ export type Question = {
   id: string;
   subject: string;
   expected_answer?: string;
+  mastery: number;
+  times_answered: number;
+  times_correct: number;
 };
 
 export type SessionConfig = {
   max_questions?: number;
   max_duration_min?: number;
+  focus_on_weak?: boolean;
 };
 
 export type Session = {
   id: string;
-  questions: Question[];
+  questions: { id: string; subject: string }[];
   max_duration_min?: number;
+  focus_on_weak?: boolean;
 };
 
 export type SessionResult = {
@@ -53,7 +60,7 @@ type View =
   | {
       type: "results";
       results: SessionResult;
-      questions: Question[];
+      questions: { id: string; subject: string }[];
       bankSubject: string;
     };
 
@@ -180,6 +187,7 @@ export const api = {
         bank_id: bankId,
         max_questions: config?.max_questions,
         max_duration_min: config?.max_duration_min,
+        focus_on_weak: config?.focus_on_weak || false,
       }),
     });
     if (!res.ok) throw new Error("Failed to create session");
@@ -218,7 +226,7 @@ function App() {
       setView({ type: "practice", session, bankSubject }),
     toResults: (
       results: SessionResult,
-      questions: Question[],
+      questions: { id: string; subject: string }[],
       bankSubject: string,
     ) => setView({ type: "results", results, questions, bankSubject }),
   };

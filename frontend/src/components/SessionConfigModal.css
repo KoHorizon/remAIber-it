@@ -39,6 +39,11 @@
     border-color: var(--primary-color, #22c55e);
 }
 
+.config-option-focus {
+    background: rgba(245, 158, 11, 0.05);
+    border-color: #f59e0b;
+}
+
 .config-header {
     display: flex;
     align-items: center;
@@ -49,6 +54,17 @@
     font-weight: 500;
     font-size: 0.9375rem;
     color: #f5f5f5;
+}
+
+.config-label-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.config-description {
+    font-size: 0.75rem;
+    color: #888;
 }
 
 /* Custom Toggle Switch */
@@ -62,6 +78,7 @@
     cursor: pointer;
     transition: background 0.2s ease;
     padding: 0;
+    flex-shrink: 0;
 }
 
 .toggle-switch:hover {
@@ -156,13 +173,26 @@
 }
 
 .config-summary {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
     color: #aaa;
     font-size: 0.875rem;
     padding: 0.875rem 1rem;
     background: #242424;
     border-radius: 8px;
     margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.config-summary-dot {
+    color: #555;
+}
+
+.config-summary-focus {
+    color: #f59e0b;
+    font-weight: 500;
 }
 
 .modal-actions {

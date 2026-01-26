@@ -80,6 +80,68 @@
     margin: -0.25rem -0.5rem;
 }
 
+/* Mastery Badge */
+.category-mastery {
+    margin-right: 0.5rem;
+}
+
+.mastery-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md);
+    min-width: 70px;
+}
+
+.mastery-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.mastery-label {
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.125rem;
+    opacity: 0.8;
+}
+
+/* Mastery Colors */
+.mastery-excellent {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.mastery-good {
+    background: rgba(34, 197, 94, 0.1);
+    color: #4ade80;
+}
+
+.mastery-fair {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.mastery-needs-work {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.mastery-none {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+}
+
+/* Mastery Pill (for bank cards) */
+.mastery-pill {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+}
+
 .category-actions {
     display: flex;
     gap: 0.25rem;
@@ -137,6 +199,12 @@
     margin-top: 2rem;
 }
 
+.uncategorized-banks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.75rem;
+}
+
 .section-title {
     margin-bottom: 1rem;
 }
@@ -153,6 +221,15 @@
     position: relative;
     padding: 1.25rem;
     animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.bank-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .bank-card-icon {
@@ -160,6 +237,22 @@
     color: var(--accent);
     margin-bottom: 0.75rem;
     opacity: 0.8;
+}
+
+.bank-icon {
+    font-size: 1.25rem;
+}
+
+.bank-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.bank-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .bank-card-title {
@@ -247,6 +340,82 @@
     margin-top: 1.5rem;
 }
 
+/* Delete Modal */
+.modal-delete {
+    text-align: center;
+}
+
+.delete-modal-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.delete-modal-content {
+    text-align: left;
+    margin: 1.5rem 0;
+}
+
+.delete-target {
+    text-align: center;
+    font-size: 1.125rem;
+    margin-bottom: 1rem;
+}
+
+.delete-warning {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+}
+
+.warning-text {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+}
+
+.warning-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.75rem 0;
+}
+
+.warning-list li {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    padding: 0.25rem 0;
+    padding-left: 1.25rem;
+    position: relative;
+}
+
+.warning-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0.25rem;
+    color: var(--error);
+}
+
+.warning-count {
+    font-weight: 600;
+    color: var(--error);
+}
+
+.warning-final {
+    font-size: 0.8125rem;
+    color: var(--error);
+    font-weight: 500;
+}
+
+.btn-danger {
+    background: var(--error);
+    color: white;
+    border: none;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;
@@ -288,5 +457,22 @@
 
     .category-banks {
         padding-left: 1rem;
+    }
+
+    .category-header {
+        flex-wrap: wrap;
+    }
+
+    .category-mastery {
+        order: 3;
+        width: 100%;
+        margin-top: 0.5rem;
+        margin-right: 0;
+    }
+
+    .mastery-badge {
+        flex-direction: row;
+        gap: 0.5rem;
+        justify-content: center;
     }
 }

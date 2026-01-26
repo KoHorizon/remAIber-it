@@ -57,7 +57,7 @@ func TestNewWithConfig_MaxQuestions(t *testing.T) {
 		MaxQuestions: &maxQ,
 	}
 
-	session := practicesession.NewWithConfig(bank, config)
+	session := practicesession.NewWithConfig(bank, config, nil)
 
 	if len(session.Questions) != 20 {
 		t.Errorf("expected 20 questions, got %d", len(session.Questions))
@@ -72,7 +72,7 @@ func TestNewWithConfig_MaxQuestionsGreaterThanAvailable(t *testing.T) {
 		MaxQuestions: &maxQ,
 	}
 
-	session := practicesession.NewWithConfig(bank, config)
+	session := practicesession.NewWithConfig(bank, config, nil)
 
 	// Should include all 5 questions since we only have 5
 	if len(session.Questions) != 5 {
@@ -88,13 +88,13 @@ func TestNewWithConfig_MaxDuration(t *testing.T) {
 		MaxDuration: &duration,
 	}
 
-	session := practicesession.NewWithConfig(bank, config)
+	session := practicesession.NewWithConfig(bank, config, nil)
 
 	if session.MaxDuration == nil {
 		t.Fatal("expected MaxDuration to be set")
 	}
 
-	if *session.MaxDuration != 10*time.Minute {
+	if *session.MaxDuration != 10 {
 		t.Errorf("expected 10 minutes, got %v", *session.MaxDuration)
 	}
 }
@@ -109,13 +109,13 @@ func TestNewWithConfig_CombinedConstraints(t *testing.T) {
 		MaxDuration:  &duration,
 	}
 
-	session := practicesession.NewWithConfig(bank, config)
+	session := practicesession.NewWithConfig(bank, config, nil)
 
 	if len(session.Questions) != 15 {
 		t.Errorf("expected 15 questions, got %d", len(session.Questions))
 	}
 
-	if session.MaxDuration == nil || *session.MaxDuration != 5*time.Minute {
+	if session.MaxDuration == nil || *session.MaxDuration != 5 {
 		t.Errorf("expected 5 minute duration, got %v", session.MaxDuration)
 	}
 }
@@ -130,12 +130,16 @@ func TestDefaultConfig(t *testing.T) {
 	if config.MaxDuration != nil {
 		t.Error("expected MaxDuration to be nil by default")
 	}
+
+	if config.FocusOnWeak != false {
+		t.Error("expected FocusOnWeak to be false by default")
+	}
 }
 
 func TestNewWithConfig_DefaultConfigBehavesLikeNew(t *testing.T) {
 	bank := createBankWithQuestions(10)
 
-	session := practicesession.NewWithConfig(bank, practicesession.DefaultConfig())
+	session := practicesession.NewWithConfig(bank, practicesession.DefaultConfig(), nil)
 
 	if len(session.Questions) != 10 {
 		t.Errorf("expected all 10 questions, got %d", len(session.Questions))
@@ -143,6 +147,54 @@ func TestNewWithConfig_DefaultConfigBehavesLikeNew(t *testing.T) {
 
 	if session.MaxDuration != nil {
 		t.Error("expected no duration limit with default config")
+	}
+}
+
+func TestNewWithConfig_FocusOnWeak(t *testing.T) {
+	bank := createBankWithQuestions(10)
+
+	config := practicesession.SessionConfig{
+		FocusOnWeak: true,
+	}
+
+	// Provide pre-ordered questions (simulating ordered by mastery)
+	orderedQuestions := make([]questionbank.Question, len(bank.Questions))
+	copy(orderedQuestions, bank.Questions)
+
+	session := practicesession.NewWithConfig(bank, config, orderedQuestions)
+
+	if !session.FocusOnWeak {
+		t.Error("expected FocusOnWeak to be true")
+	}
+
+	// When FocusOnWeak is true and orderedQuestions provided, order should be preserved
+	if !sameOrder(orderedQuestions, session.Questions) {
+		t.Error("expected questions to maintain provided order when FocusOnWeak is enabled")
+	}
+}
+
+func TestNewWithConfig_FocusOnWeakWithLimit(t *testing.T) {
+	bank := createBankWithQuestions(20)
+
+	maxQ := 5
+	config := practicesession.SessionConfig{
+		MaxQuestions: &maxQ,
+		FocusOnWeak:  true,
+	}
+
+	// Provide pre-ordered questions
+	orderedQuestions := make([]questionbank.Question, len(bank.Questions))
+	copy(orderedQuestions, bank.Questions)
+
+	session := practicesession.NewWithConfig(bank, config, orderedQuestions)
+
+	if len(session.Questions) != 5 {
+		t.Errorf("expected 5 questions, got %d", len(session.Questions))
+	}
+
+	// Should take the first 5 from the ordered list
+	if !sameOrder(orderedQuestions[:5], session.Questions) {
+		t.Error("expected first 5 questions from ordered list")
 	}
 }
 

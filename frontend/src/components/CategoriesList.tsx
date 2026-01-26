@@ -178,6 +178,14 @@ export function CategoriesList({ onSelectBank }: Props) {
     setEditCategoryName(category.name);
   }
 
+  function getMasteryColor(mastery: number): string {
+    if (mastery >= 80) return "mastery-excellent";
+    if (mastery >= 60) return "mastery-good";
+    if (mastery >= 40) return "mastery-fair";
+    if (mastery > 0) return "mastery-needs-work";
+    return "mastery-none";
+  }
+
   // Filter banks
   const uncategorizedBanks = banks.filter((b) => !b.category_id);
   const getBanksForCategory = (categoryId: string) =>
@@ -444,6 +452,14 @@ export function CategoriesList({ onSelectBank }: Props) {
                     {categoryBanks.length !== 1 ? "s" : ""}
                   </span>
                 </div>
+                <div className="category-mastery">
+                  <div
+                    className={`mastery-badge ${getMasteryColor(category.mastery)}`}
+                  >
+                    <span className="mastery-value">{category.mastery}%</span>
+                    <span className="mastery-label">mastery</span>
+                  </div>
+                </div>
                 <div className="category-actions">
                   <button
                     className="btn-icon"
@@ -473,8 +489,17 @@ export function CategoriesList({ onSelectBank }: Props) {
                         className="bank-card card card-interactive"
                         onClick={() => onSelectBank(bank.id)}
                       >
-                        <span className="bank-icon">📚</span>
-                        <span className="bank-name">{bank.subject}</span>
+                        <div className="bank-card-header">
+                          <span className="bank-icon">📚</span>
+                          <span className="bank-name">{bank.subject}</span>
+                        </div>
+                        <div className="bank-card-footer">
+                          <div
+                            className={`mastery-pill ${getMasteryColor(bank.mastery)}`}
+                          >
+                            {bank.mastery}% mastery
+                          </div>
+                        </div>
                         <button
                           className="btn-delete"
                           onClick={(e) => openDeleteBankModal(e, bank)}
@@ -503,8 +528,17 @@ export function CategoriesList({ onSelectBank }: Props) {
                 className="bank-card card card-interactive"
                 onClick={() => onSelectBank(bank.id)}
               >
-                <span className="bank-icon">📚</span>
-                <span className="bank-name">{bank.subject}</span>
+                <div className="bank-card-header">
+                  <span className="bank-icon">📚</span>
+                  <span className="bank-name">{bank.subject}</span>
+                </div>
+                <div className="bank-card-footer">
+                  <div
+                    className={`mastery-pill ${getMasteryColor(bank.mastery)}`}
+                  >
+                    {bank.mastery}% mastery
+                  </div>
+                </div>
                 <button
                   className="btn-delete"
                   onClick={(e) => openDeleteBankModal(e, bank)}

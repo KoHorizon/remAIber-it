@@ -47,6 +47,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /categories/{categoryID}", updateCategory)
 	mux.HandleFunc("DELETE /categories/{categoryID}", deleteCategory)
 	mux.HandleFunc("GET /categories/{categoryID}/banks", listBanksByCategory)
+	mux.HandleFunc("GET /categories/{categoryID}/stats", getCategoryStats)
 
 	// Banks
 	mux.HandleFunc("POST /banks", createBank)
@@ -54,6 +55,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /banks/{bankID}", getBank)
 	mux.HandleFunc("DELETE /banks/{bankID}", deleteBank)
 	mux.HandleFunc("PATCH /banks/{bankID}/category", updateBankCategory)
+	mux.HandleFunc("GET /banks/{bankID}/stats", getBankStats)
 
 	// Questions
 	mux.HandleFunc("POST /banks/{bankID}/questions", addQuestion)
@@ -76,8 +78,9 @@ type CreateCategoryRequest struct {
 }
 
 type CategoryResponse struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Mastery int    `json:"mastery"`
 }
 
 func createCategory(w http.ResponseWriter, r *http.Request) {
@@ -101,8 +104,9 @@ func createCategory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(CategoryResponse{
-		ID:   cat.ID,
-		Name: cat.Name,
+		ID:      cat.ID,
+		Name:    cat.Name,
+		Mastery: 0,
 	})
 }
 
@@ -116,9 +120,11 @@ func listCategories(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]CategoryResponse, len(categories))
 	for i, cat := range categories {
+		mastery, _ := db.GetCategoryMastery(cat.ID)
 		response[i] = CategoryResponse{
-			ID:   cat.ID,
-			Name: cat.Name,
+			ID:      cat.ID,
+			Name:    cat.Name,
+			Mastery: mastery,
 		}
 	}
 
@@ -128,15 +134,17 @@ func listCategories(w http.ResponseWriter, r *http.Request) {
 
 // GET /categories/{categoryID}
 type GetCategoryResponse struct {
-	ID    string         `json:"id"`
-	Name  string         `json:"name"`
-	Banks []BankResponse `json:"banks"`
+	ID      string         `json:"id"`
+	Name    string         `json:"name"`
+	Mastery int            `json:"mastery"`
+	Banks   []BankResponse `json:"banks"`
 }
 
 type BankResponse struct {
 	ID         string  `json:"id"`
 	Subject    string  `json:"subject"`
 	CategoryID *string `json:"category_id,omitempty"`
+	Mastery    int     `json:"mastery"`
 }
 
 func getCategory(w http.ResponseWriter, r *http.Request) {
@@ -160,18 +168,23 @@ func getCategory(w http.ResponseWriter, r *http.Request) {
 
 	bankResponses := make([]BankResponse, len(banks))
 	for i, bank := range banks {
+		mastery, _ := db.GetBankMastery(bank.ID)
 		bankResponses[i] = BankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
 			CategoryID: bank.CategoryID,
+			Mastery:    mastery,
 		}
 	}
 
+	categoryMastery, _ := db.GetCategoryMastery(categoryID)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(GetCategoryResponse{
-		ID:    cat.ID,
-		Name:  cat.Name,
-		Banks: bankResponses,
+		ID:      cat.ID,
+		Name:    cat.Name,
+		Mastery: categoryMastery,
+		Banks:   bankResponses,
 	})
 }
 
@@ -209,10 +222,13 @@ func updateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mastery, _ := db.GetCategoryMastery(categoryID)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(CategoryResponse{
-		ID:   cat.ID,
-		Name: cat.Name,
+		ID:      cat.ID,
+		Name:    cat.Name,
+		Mastery: mastery,
 	})
 }
 
@@ -252,15 +268,45 @@ func listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]BankResponse, len(banks))
 	for i, bank := range banks {
+		mastery, _ := db.GetBankMastery(bank.ID)
 		response[i] = BankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
 			CategoryID: bank.CategoryID,
+			Mastery:    mastery,
 		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// GET /categories/{categoryID}/stats
+type CategoryStatsResponse struct {
+	CategoryID string `json:"category_id"`
+	Mastery    int    `json:"mastery"`
+}
+
+func getCategoryStats(w http.ResponseWriter, r *http.Request) {
+	categoryID := r.PathValue("categoryID")
+
+	_, err := db.GetCategory(categoryID)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "category not found", http.StatusNotFound)
+		return
+	}
+
+	mastery, err := db.GetCategoryMastery(categoryID)
+	if err != nil {
+		http.Error(w, "failed to get stats", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(CategoryStatsResponse{
+		CategoryID: categoryID,
+		Mastery:    mastery,
+	})
 }
 
 // ============================================================================
@@ -277,9 +323,8 @@ type CreateBankResponse struct {
 	ID         string  `json:"id"`
 	Subject    string  `json:"subject"`
 	CategoryID *string `json:"category_id,omitempty"`
+	Mastery    int     `json:"mastery"`
 }
-
-// Fix for createBank in router.go - replace the existing createBank function with this:
 
 func createBank(w http.ResponseWriter, r *http.Request) {
 	var req CreateBankRequest
@@ -323,6 +368,7 @@ func createBank(w http.ResponseWriter, r *http.Request) {
 		ID:         bank.ID,
 		Subject:    bank.Subject,
 		CategoryID: bank.CategoryID,
+		Mastery:    0,
 	})
 }
 
@@ -336,10 +382,12 @@ func listBanks(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]CreateBankResponse, len(banks))
 	for i, bank := range banks {
+		mastery, _ := db.GetBankMastery(bank.ID)
 		response[i] = CreateBankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
 			CategoryID: bank.CategoryID,
+			Mastery:    mastery,
 		}
 	}
 
@@ -352,6 +400,7 @@ type GetBankResponse struct {
 	ID         string             `json:"id"`
 	Subject    string             `json:"subject"`
 	CategoryID *string            `json:"category_id,omitempty"`
+	Mastery    int                `json:"mastery"`
 	Questions  []QuestionResponse `json:"questions"`
 }
 
@@ -359,6 +408,9 @@ type QuestionResponse struct {
 	ID             string `json:"id"`
 	Subject        string `json:"subject"`
 	ExpectedAnswer string `json:"expected_answer"`
+	Mastery        int    `json:"mastery"`
+	TimesAnswered  int    `json:"times_answered"`
+	TimesCorrect   int    `json:"times_correct"`
 }
 
 func getBank(w http.ResponseWriter, r *http.Request) {
@@ -374,20 +426,42 @@ func getBank(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get stats for all questions in this bank
+	statsMap := make(map[string]*questionbank.QuestionStats)
+	stats, err := db.GetQuestionStatsByBank(bankID)
+	if err == nil {
+		for i := range stats {
+			statsMap[stats[i].QuestionID] = &stats[i]
+		}
+	}
+
 	questions := make([]QuestionResponse, len(bank.Questions))
 	for i, q := range bank.Questions {
+		qStats := statsMap[q.ID]
+		var mastery, timesAnswered, timesCorrect int
+		if qStats != nil {
+			mastery = qStats.Mastery
+			timesAnswered = qStats.TimesAnswered
+			timesCorrect = qStats.TimesCorrect
+		}
 		questions[i] = QuestionResponse{
 			ID:             q.ID,
 			Subject:        q.Subject,
 			ExpectedAnswer: q.ExpectedAnswer,
+			Mastery:        mastery,
+			TimesAnswered:  timesAnswered,
+			TimesCorrect:   timesCorrect,
 		}
 	}
+
+	bankMastery, _ := db.GetBankMastery(bankID)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(GetBankResponse{
 		ID:         bank.ID,
 		Subject:    bank.Subject,
 		CategoryID: bank.CategoryID,
+		Mastery:    bankMastery,
 		Questions:  questions,
 	})
 }
@@ -448,11 +522,69 @@ func updateBankCategory(w http.ResponseWriter, r *http.Request) {
 
 	// Return updated bank
 	bank, _ := db.GetBank(bankID)
+	mastery, _ := db.GetBankMastery(bankID)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(CreateBankResponse{
 		ID:         bank.ID,
 		Subject:    bank.Subject,
 		CategoryID: bank.CategoryID,
+		Mastery:    mastery,
+	})
+}
+
+// GET /banks/{bankID}/stats
+type BankStatsResponse struct {
+	BankID         string                  `json:"bank_id"`
+	Mastery        int                     `json:"mastery"`
+	TotalQuestions int                     `json:"total_questions"`
+	QuestionStats  []QuestionStatsResponse `json:"question_stats"`
+}
+
+type QuestionStatsResponse struct {
+	QuestionID    string `json:"question_id"`
+	TimesAnswered int    `json:"times_answered"`
+	TimesCorrect  int    `json:"times_correct"`
+	Mastery       int    `json:"mastery"`
+}
+
+func getBankStats(w http.ResponseWriter, r *http.Request) {
+	bankID := r.PathValue("bankID")
+
+	bank, err := db.GetBank(bankID)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "bank not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "failed to load bank", http.StatusInternalServerError)
+		return
+	}
+
+	stats, err := db.GetQuestionStatsByBank(bankID)
+	if err != nil {
+		http.Error(w, "failed to get stats", http.StatusInternalServerError)
+		return
+	}
+
+	questionStats := make([]QuestionStatsResponse, len(stats))
+	for i, s := range stats {
+		questionStats[i] = QuestionStatsResponse{
+			QuestionID:    s.QuestionID,
+			TimesAnswered: s.TimesAnswered,
+			TimesCorrect:  s.TimesCorrect,
+			Mastery:       s.Mastery,
+		}
+	}
+
+	mastery, _ := db.GetBankMastery(bankID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(BankStatsResponse{
+		BankID:         bankID,
+		Mastery:        mastery,
+		TotalQuestions: len(bank.Questions),
+		QuestionStats:  questionStats,
 	})
 }
 
@@ -470,6 +602,9 @@ type AddQuestionResponse struct {
 	ID             string `json:"id"`
 	Subject        string `json:"subject"`
 	ExpectedAnswer string `json:"expected_answer"`
+	Mastery        int    `json:"mastery"`
+	TimesAnswered  int    `json:"times_answered"`
+	TimesCorrect   int    `json:"times_correct"`
 }
 
 func addQuestion(w http.ResponseWriter, r *http.Request) {
@@ -504,6 +639,9 @@ func addQuestion(w http.ResponseWriter, r *http.Request) {
 		ID:             newQuestion.ID,
 		Subject:        newQuestion.Subject,
 		ExpectedAnswer: newQuestion.ExpectedAnswer,
+		Mastery:        0,
+		TimesAnswered:  0,
+		TimesCorrect:   0,
 	})
 }
 
@@ -533,6 +671,7 @@ type CreateSessionRequest struct {
 	BankID         string `json:"bank_id"`
 	MaxQuestions   *int   `json:"max_questions,omitempty"`    // optional: limit number of questions
 	MaxDurationMin *int   `json:"max_duration_min,omitempty"` // optional: time limit in minutes
+	FocusOnWeak    bool   `json:"focus_on_weak"`              // prioritize low mastery questions
 }
 
 type SessionQuestion struct {
@@ -543,7 +682,8 @@ type SessionQuestion struct {
 type CreateSessionResponse struct {
 	ID             string            `json:"id"`
 	Questions      []SessionQuestion `json:"questions"`
-	MaxDurationMin *int              `json:"max_duration_min,omitempty"` // echo back for frontend
+	MaxDurationMin *int              `json:"max_duration_min,omitempty"`
+	FocusOnWeak    bool              `json:"focus_on_weak"`
 }
 
 func createSession(w http.ResponseWriter, r *http.Request) {
@@ -576,7 +716,19 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 		config.MaxDuration = &duration
 	}
 
-	session := practicesession.NewWithConfig(bank, config)
+	config.FocusOnWeak = req.FocusOnWeak
+
+	// Get ordered questions if focus on weak is enabled
+	var orderedQuestions []questionbank.Question
+	if req.FocusOnWeak {
+		orderedQuestions, err = db.GetQuestionsOrderedByMastery(req.BankID, true) // ascending = lowest mastery first
+		if err != nil {
+			http.Error(w, "failed to get question order", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	session := practicesession.NewWithConfig(bank, config, orderedQuestions)
 	if err := db.SaveSession(session); err != nil {
 		http.Error(w, "failed to save session", http.StatusInternalServerError)
 		return
@@ -591,8 +743,9 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := CreateSessionResponse{
-		ID:        session.ID,
-		Questions: questions,
+		ID:          session.ID,
+		Questions:   questions,
+		FocusOnWeak: session.FocusOnWeak,
 	}
 
 	// Echo back duration if set (for frontend timer)

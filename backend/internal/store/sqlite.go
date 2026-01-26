@@ -59,6 +59,15 @@ CREATE TABLE IF NOT EXISTS grades (
     missed TEXT NOT NULL,
     FOREIGN KEY (session_id) REFERENCES sessions(id)
 );
+
+CREATE TABLE IF NOT EXISTS question_stats (
+    question_id TEXT PRIMARY KEY,
+    times_answered INTEGER NOT NULL DEFAULT 0,
+    times_correct INTEGER NOT NULL DEFAULT 0,
+    total_score INTEGER NOT NULL DEFAULT 0,
+    mastery INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
 `
 
 type SQLiteStore struct {
@@ -148,7 +157,20 @@ func (s *SQLiteStore) DeleteCategory(id string) error {
 	}
 	defer tx.Rollback()
 
-	// First, delete all questions belonging to banks in this category
+	// First, delete question stats for questions in banks of this category
+	_, err = tx.Exec(`
+		DELETE FROM question_stats 
+		WHERE question_id IN (
+			SELECT q.id FROM questions q
+			JOIN banks b ON q.bank_id = b.id
+			WHERE b.category_id = ?
+		)
+	`, id)
+	if err != nil {
+		return err
+	}
+
+	// Delete all questions belonging to banks in this category
 	_, err = tx.Exec(`
 		DELETE FROM questions 
 		WHERE bank_id IN (SELECT id FROM banks WHERE category_id = ?)
@@ -307,6 +329,15 @@ func (s *SQLiteStore) DeleteBank(id string) error {
 	}
 	defer tx.Rollback()
 
+	// Delete question stats for questions in this bank
+	_, err = tx.Exec(`
+		DELETE FROM question_stats 
+		WHERE question_id IN (SELECT id FROM questions WHERE bank_id = ?)
+	`, id)
+	if err != nil {
+		return err
+	}
+
 	_, err = tx.Exec("DELETE FROM questions WHERE bank_id = ?", id)
 	if err != nil {
 		return err
@@ -337,7 +368,19 @@ func (s *SQLiteStore) AddQuestion(bankID string, question questionbank.Question)
 }
 
 func (s *SQLiteStore) DeleteQuestion(id string) error {
-	result, err := s.db.Exec("DELETE FROM questions WHERE id = ?", id)
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Delete question stats first
+	_, err = tx.Exec("DELETE FROM question_stats WHERE question_id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	result, err := tx.Exec("DELETE FROM questions WHERE id = ?", id)
 	if err != nil {
 		return err
 	}
@@ -348,7 +391,8 @@ func (s *SQLiteStore) DeleteQuestion(id string) error {
 	if rowsAffected == 0 {
 		return ErrNotFound
 	}
-	return nil
+
+	return tx.Commit()
 }
 
 // ============================================================================
@@ -433,7 +477,12 @@ func (s *SQLiteStore) SaveGrade(sessionID string, questionID string, score int, 
 		"INSERT INTO grades (session_id, question_id, score, covered, missed) VALUES (?, ?, ?, ?, ?)",
 		sessionID, questionID, score, string(coveredJSON), string(missedJSON),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Update question statistics
+	return s.updateQuestionStats(questionID, score)
 }
 
 func (s *SQLiteStore) GetGrades(sessionID string) ([]StoredGrade, error) {
@@ -480,4 +529,154 @@ func (s *SQLiteStore) DoneWaitGroup(sessionID string) {
 	if wg, ok := s.gradeWg[sessionID]; ok {
 		wg.Done()
 	}
+}
+
+// ============================================================================
+// Question Statistics
+// ============================================================================
+
+func (s *SQLiteStore) updateQuestionStats(questionID string, score int) error {
+	// Check if stats exist
+	var exists bool
+	err := s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM question_stats WHERE question_id = ?)", questionID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	isCorrect := 0
+	if score >= 70 {
+		isCorrect = 1
+	}
+
+	if exists {
+		// Update existing stats
+		_, err = s.db.Exec(`
+			UPDATE question_stats 
+			SET times_answered = times_answered + 1,
+			    times_correct = times_correct + ?,
+			    total_score = total_score + ?,
+			    mastery = CAST(
+			        (CAST(total_score + ? AS REAL) / (times_answered + 1)) * 0.7 +
+			        (CAST(times_correct + ? AS REAL) / (times_answered + 1)) * 100 * 0.3
+			    AS INTEGER)
+			WHERE question_id = ?
+		`, isCorrect, score, score, isCorrect, questionID)
+	} else {
+		// Insert new stats
+		mastery := int(float64(score)*0.7 + float64(isCorrect)*100*0.3)
+		_, err = s.db.Exec(`
+			INSERT INTO question_stats (question_id, times_answered, times_correct, total_score, mastery)
+			VALUES (?, 1, ?, ?, ?)
+		`, questionID, isCorrect, score, mastery)
+	}
+
+	return err
+}
+
+func (s *SQLiteStore) GetQuestionStats(questionID string) (*questionbank.QuestionStats, error) {
+	var stats questionbank.QuestionStats
+	err := s.db.QueryRow(`
+		SELECT question_id, times_answered, times_correct, total_score, mastery
+		FROM question_stats WHERE question_id = ?
+	`, questionID).Scan(&stats.QuestionID, &stats.TimesAnswered, &stats.TimesCorrect, &stats.TotalScore, &stats.Mastery)
+
+	if err == sql.ErrNoRows {
+		// Return zero stats for unanswered questions
+		return &questionbank.QuestionStats{QuestionID: questionID}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &stats, nil
+}
+
+func (s *SQLiteStore) GetQuestionStatsByBank(bankID string) ([]questionbank.QuestionStats, error) {
+	rows, err := s.db.Query(`
+		SELECT q.id, COALESCE(qs.times_answered, 0), COALESCE(qs.times_correct, 0), 
+		       COALESCE(qs.total_score, 0), COALESCE(qs.mastery, 0)
+		FROM questions q
+		LEFT JOIN question_stats qs ON q.id = qs.question_id
+		WHERE q.bank_id = ?
+	`, bankID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []questionbank.QuestionStats
+	for rows.Next() {
+		var s questionbank.QuestionStats
+		if err := rows.Scan(&s.QuestionID, &s.TimesAnswered, &s.TimesCorrect, &s.TotalScore, &s.Mastery); err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, nil
+}
+
+func (s *SQLiteStore) GetBankMastery(bankID string) (int, error) {
+	var mastery sql.NullFloat64
+	err := s.db.QueryRow(`
+		SELECT AVG(COALESCE(qs.mastery, 0))
+		FROM questions q
+		LEFT JOIN question_stats qs ON q.id = qs.question_id
+		WHERE q.bank_id = ?
+	`, bankID).Scan(&mastery)
+
+	if err != nil {
+		return 0, err
+	}
+	if !mastery.Valid {
+		return 0, nil
+	}
+	return int(mastery.Float64), nil
+}
+
+func (s *SQLiteStore) GetCategoryMastery(categoryID string) (int, error) {
+	var mastery sql.NullFloat64
+	err := s.db.QueryRow(`
+		SELECT AVG(COALESCE(qs.mastery, 0))
+		FROM questions q
+		JOIN banks b ON q.bank_id = b.id
+		LEFT JOIN question_stats qs ON q.id = qs.question_id
+		WHERE b.category_id = ?
+	`, categoryID).Scan(&mastery)
+
+	if err != nil {
+		return 0, err
+	}
+	if !mastery.Valid {
+		return 0, nil
+	}
+	return int(mastery.Float64), nil
+}
+
+// GetQuestionsOrderedByMastery returns questions sorted by mastery (lowest first for weak focus)
+func (s *SQLiteStore) GetQuestionsOrderedByMastery(bankID string, ascending bool) ([]questionbank.Question, error) {
+	order := "ASC"
+	if !ascending {
+		order = "DESC"
+	}
+
+	rows, err := s.db.Query(`
+		SELECT q.id, q.subject, q.expected_answer, COALESCE(qs.mastery, 0) as mastery
+		FROM questions q
+		LEFT JOIN question_stats qs ON q.id = qs.question_id
+		WHERE q.bank_id = ?
+		ORDER BY mastery `+order, bankID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var questions []questionbank.Question
+	for rows.Next() {
+		var q questionbank.Question
+		var mastery int
+		if err := rows.Scan(&q.ID, &q.Subject, &q.ExpectedAnswer, &mastery); err != nil {
+			return nil, err
+		}
+		questions = append(questions, q)
+	}
+	return questions, nil
 }

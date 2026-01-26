@@ -1,9 +1,14 @@
-import { Question, SessionResult } from "../App";
+import { SessionResult } from "../App";
 import "./Results.css";
+
+type ResultQuestion = {
+  id: string;
+  subject: string;
+};
 
 type Props = {
   results: SessionResult;
-  questions: Question[];
+  questions: ResultQuestion[];
   bankSubject: string;
   onBack: () => void;
 };
