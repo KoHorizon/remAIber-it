@@ -194,6 +194,35 @@
     grid-column: 1 / -1;
 }
 
+/* Add Bank Button */
+.add-bank-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: transparent;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: all var(--transition);
+    min-height: 80px;
+}
+
+.add-bank-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+}
+
+.add-bank-icon {
+    font-size: 1.25rem;
+    font-weight: 300;
+}
+
 /* Uncategorized Section */
 .uncategorized-section {
     margin-top: 2rem;

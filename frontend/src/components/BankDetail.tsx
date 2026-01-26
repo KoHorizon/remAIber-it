@@ -15,9 +15,13 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [showSessionConfig, setShowSessionConfig] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
+    null,
+  );
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
 
   useEffect(() => {
@@ -68,22 +72,20 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
     }
   }
 
-  async function handleDeleteQuestion(e: React.MouseEvent, questionId: string) {
-    e.stopPropagation();
-    if (!confirm("Delete this question?")) return;
+  async function handleDeleteQuestion(questionId: string) {
+    if (isDeleting) return;
 
+    setIsDeleting(true);
     try {
       await api.deleteQuestion(bankId, questionId);
-      setBank((prev) =>
-        prev
-          ? {
-              ...prev,
-              questions: prev.questions?.filter((q) => q.id !== questionId),
-            }
-          : null,
-      );
+      // Refetch bank data to get updated mastery
+      const updatedBank = await api.getBank(bankId);
+      setBank(updatedBank);
     } catch (err) {
       console.error("Failed to delete question:", err);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(null);
     }
   }
 
@@ -266,6 +268,43 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowDeleteConfirm(null)}
+        >
+          <div
+            className="modal delete-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2>Delete Question</h2>
+            <p>
+              Are you sure you want to delete this question? This action cannot
+              be undone.
+            </p>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowDeleteConfirm(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => handleDeleteQuestion(showDeleteConfirm)}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Questions List */}
       {questions.length === 0 ? (
         <div className="empty-state">
@@ -319,7 +358,10 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
               </div>
               <button
                 className="btn-delete"
-                onClick={(e) => handleDeleteQuestion(e, q.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteConfirm(q.id);
+                }}
                 title="Delete question"
               >
                 ×

@@ -172,6 +172,12 @@ export function CategoriesList({ onSelectBank }: Props) {
     }
   }
 
+  function openCreateBankForCategory(e: React.MouseEvent, categoryId: string) {
+    e.stopPropagation();
+    setNewBankCategoryId(categoryId);
+    setShowCreateBank(true);
+  }
+
   function startEditCategory(e: React.MouseEvent, category: Category) {
     e.stopPropagation();
     setEditingCategoryId(category.id);
@@ -217,12 +223,6 @@ export function CategoriesList({ onSelectBank }: Props) {
               onClick={() => setShowCreateCategory(true)}
             >
               + Category
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => setShowCreateBank(true)}
-            >
-              + Bank
             </button>
           </div>
         </div>
@@ -288,28 +288,6 @@ export function CategoriesList({ onSelectBank }: Props) {
                 onChange={(e) => setNewBankSubject(e.target.value)}
                 autoFocus
               />
-
-              <label className="input-label" htmlFor="bank-category">
-                Category
-              </label>
-              <select
-                id="bank-category"
-                className="input"
-                value={newBankCategoryId || ""}
-                onChange={(e) =>
-                  setNewBankCategoryId(e.target.value || undefined)
-                }
-                required
-              >
-                <option value="" disabled>
-                  Select a category
-                </option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
 
               <div className="modal-actions">
                 <button
@@ -480,36 +458,39 @@ export function CategoriesList({ onSelectBank }: Props) {
 
               {isExpanded && (
                 <div className="category-banks">
-                  {categoryBanks.length === 0 ? (
-                    <p className="empty-category">No banks in this category</p>
-                  ) : (
-                    categoryBanks.map((bank) => (
-                      <div
-                        key={bank.id}
-                        className="bank-card card card-interactive"
-                        onClick={() => onSelectBank(bank.id)}
-                      >
-                        <div className="bank-card-header">
-                          <span className="bank-icon">📚</span>
-                          <span className="bank-name">{bank.subject}</span>
-                        </div>
-                        <div className="bank-card-footer">
-                          <div
-                            className={`mastery-pill ${getMasteryColor(bank.mastery)}`}
-                          >
-                            {bank.mastery}% mastery
-                          </div>
-                        </div>
-                        <button
-                          className="btn-delete"
-                          onClick={(e) => openDeleteBankModal(e, bank)}
-                          title="Delete bank"
-                        >
-                          &times;
-                        </button>
+                  {categoryBanks.map((bank) => (
+                    <div
+                      key={bank.id}
+                      className="bank-card card card-interactive"
+                      onClick={() => onSelectBank(bank.id)}
+                    >
+                      <div className="bank-card-header">
+                        <span className="bank-icon">📚</span>
+                        <span className="bank-name">{bank.subject}</span>
                       </div>
-                    ))
-                  )}
+                      <div className="bank-card-footer">
+                        <div
+                          className={`mastery-pill ${getMasteryColor(bank.mastery)}`}
+                        >
+                          {bank.mastery}% mastery
+                        </div>
+                      </div>
+                      <button
+                        className="btn-delete"
+                        onClick={(e) => openDeleteBankModal(e, bank)}
+                        title="Delete bank"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    className="add-bank-btn"
+                    onClick={(e) => openCreateBankForCategory(e, category.id)}
+                  >
+                    <span className="add-bank-icon">+</span>
+                    <span>Add Bank</span>
+                  </button>
                 </div>
               )}
             </div>

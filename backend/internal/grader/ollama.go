@@ -103,10 +103,10 @@ OUTPUT FORMAT:
 - Summarize each point concisely
 
 Example output format:
-{"score": 50, "covered": ["périmètre SMSI flou", "analyse de risques"], "missed": ["pilotage insuffisant", "cycle d'amélioration", "revues de direction"]}
+{"covered": ["périmètre SMSI flou", "analyse de risques"], "missed": ["pilotage insuffisant", "cycle d'amélioration"]}
 
 Respond with valid JSON only:
-{"score": <0-100>, "covered": [...], "missed": [...]}`,
+{"covered": [...], "missed": [...]}`,
 		question, expectedAnswer, userAnswer)
 
 	reqBody := LLMRequest{
@@ -152,7 +152,7 @@ Respond with valid JSON only:
 		score = (len(gradeResult.Covered) * 100) / total
 	}
 
-	// Return final result with calculated score
+	// Return final result
 	finalResult := map[string]interface{}{
 		"score":   score,
 		"covered": gradeResult.Covered,

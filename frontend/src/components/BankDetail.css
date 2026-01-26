@@ -291,6 +291,22 @@
     min-height: 300px;
 }
 
+/* Delete Confirmation Modal */
+.delete-confirm-modal {
+    max-width: 400px;
+}
+
+.delete-confirm-modal h2 {
+    color: var(--error);
+    margin-bottom: 1rem;
+}
+
+.delete-confirm-modal p {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
 /* Mobile */
 @media (max-width: 640px) {
     .header-actions {
