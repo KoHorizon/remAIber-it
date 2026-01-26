@@ -6,25 +6,32 @@ type QuestionStats struct {
 	TimesAnswered int
 	TimesCorrect  int // Score >= 70 considered correct
 	TotalScore    int // Sum of all scores
+	LatestScore   int // Most recent score
 	Mastery       int // Calculated mastery level (0-100)
 }
 
-// CalculateMastery computes mastery based on answer history
-// Mastery = (average score * 0.7) + (consistency bonus * 0.3)
+// CalculateMastery computes mastery based on Option 3 formula:
+// mastery = (latest_score * 0.6) + (historical_average * 0.4)
 func (qs *QuestionStats) CalculateMastery() int {
 	if qs.TimesAnswered == 0 {
 		return 0
 	}
 
-	// Average score component (70% weight)
-	avgScore := float64(qs.TotalScore) / float64(qs.TimesAnswered)
+	if qs.TimesAnswered == 1 {
+		// First attempt - mastery equals the score
+		return qs.LatestScore
+	}
 
-	// Consistency component (30% weight) - ratio of correct answers
-	consistency := float64(qs.TimesCorrect) / float64(qs.TimesAnswered) * 100
+	// Historical average (excluding latest)
+	historicalAvg := float64(qs.TotalScore-qs.LatestScore) / float64(qs.TimesAnswered-1)
 
-	mastery := int(avgScore*0.7 + consistency*0.3)
+	// Option 3: latest * 0.6 + historical_avg * 0.4
+	mastery := int(float64(qs.LatestScore)*0.6 + historicalAvg*0.4)
 	if mastery > 100 {
 		mastery = 100
+	}
+	if mastery < 0 {
+		mastery = 0
 	}
 	return mastery
 }

@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { SessionResult } from "../App";
 import "./Results.css";
 
 type ResultQuestion = {
   id: string;
   subject: string;
+  expected_answer?: string;
 };
 
 type Props = {
@@ -14,11 +16,27 @@ type Props = {
 };
 
 export function Results({ results, questions, bankSubject, onBack }: Props) {
+  const [expandedAnswers, setExpandedAnswers] = useState<Set<number>>(
+    new Set(),
+  );
+
   // Handle edge case where no questions were answered (timer ran out)
   const hasAnswers = results.max_score > 0;
   const percentage = hasAnswers
     ? Math.round((results.total_score / results.max_score) * 100)
     : 0;
+
+  const toggleAnswer = (index: number) => {
+    setExpandedAnswers((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
 
   const getScoreClass = () => {
     if (!hasAnswers) return "score-poor";
@@ -69,6 +87,10 @@ export function Results({ results, questions, bankSubject, onBack }: Props) {
             {results.results.map((result, i) => {
               const question = questions[i];
               const questionScore = Math.round(result.score);
+              const isExpanded = expandedAnswers.has(i);
+              const hasExpectedAnswer = question?.expected_answer;
+              const hasUserAnswer =
+                result.user_answer && result.user_answer.trim() !== "";
 
               return (
                 <div
@@ -86,6 +108,56 @@ export function Results({ results, questions, bankSubject, onBack }: Props) {
                   </div>
 
                   <p className="breakdown-question">{question?.subject}</p>
+
+                  {/* Answer Comparison Dropdown */}
+                  {(hasExpectedAnswer || hasUserAnswer) && (
+                    <div className="answer-comparison-section">
+                      <button
+                        className="answer-comparison-toggle"
+                        onClick={() => toggleAnswer(i)}
+                        aria-expanded={isExpanded}
+                      >
+                        <span>
+                          {isExpanded ? "Hide answers" : "Show answers"}
+                        </span>
+                        <span
+                          className={`toggle-icon ${isExpanded ? "expanded" : ""}`}
+                        >
+                          ▼
+                        </span>
+                      </button>
+                      {isExpanded && (
+                        <div className="answer-comparison-content">
+                          {hasUserAnswer && (
+                            <div className="answer-block given-answer">
+                              <span className="answer-label">Your answer</span>
+                              <div className="answer-text">
+                                {result.user_answer}
+                              </div>
+                            </div>
+                          )}
+                          {!hasUserAnswer && (
+                            <div className="answer-block given-answer not-answered">
+                              <span className="answer-label">Your answer</span>
+                              <div className="answer-text empty">
+                                Not answered
+                              </div>
+                            </div>
+                          )}
+                          {hasExpectedAnswer && (
+                            <div className="answer-block expected-answer">
+                              <span className="answer-label">
+                                Expected answer
+                              </span>
+                              <div className="answer-text">
+                                {question.expected_answer}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="breakdown-feedback">
                     {result.covered.length > 0 && (

@@ -29,6 +29,12 @@ export type Question = {
   times_correct: number;
 };
 
+export type SessionQuestion = {
+  id: string;
+  subject: string;
+  expected_answer?: string;
+};
+
 export type SessionConfig = {
   max_questions?: number;
   max_duration_min?: number;
@@ -37,7 +43,7 @@ export type SessionConfig = {
 
 export type Session = {
   id: string;
-  questions: { id: string; subject: string }[];
+  questions: SessionQuestion[];
   max_duration_min?: number;
   focus_on_weak?: boolean;
 };
@@ -50,6 +56,7 @@ export type SessionResult = {
     score: number;
     covered: string[];
     missed: string[];
+    user_answer: string;
   }[];
 };
 
@@ -60,7 +67,7 @@ type View =
   | {
       type: "results";
       results: SessionResult;
-      questions: { id: string; subject: string }[];
+      questions: SessionQuestion[];
       bankSubject: string;
     };
 
@@ -226,7 +233,7 @@ function App() {
       setView({ type: "practice", session, bankSubject }),
     toResults: (
       results: SessionResult,
-      questions: { id: string; subject: string }[],
+      questions: SessionQuestion[],
       bankSubject: string,
     ) => setView({ type: "results", results, questions, bankSubject }),
   };

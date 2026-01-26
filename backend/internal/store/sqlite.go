@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS grades (
     score INTEGER NOT NULL,
     covered TEXT NOT NULL,
     missed TEXT NOT NULL,
+    user_answer TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (session_id) REFERENCES sessions(id)
 );
 
@@ -65,6 +66,7 @@ CREATE TABLE IF NOT EXISTS question_stats (
     times_answered INTEGER NOT NULL DEFAULT 0,
     times_correct INTEGER NOT NULL DEFAULT 0,
     total_score INTEGER NOT NULL DEFAULT 0,
+    latest_score INTEGER NOT NULL DEFAULT 0,
     mastery INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
@@ -469,13 +471,13 @@ func (s *SQLiteStore) GetSession(id string) (*practicesession.PracticeSession, e
 // Grades
 // ============================================================================
 
-func (s *SQLiteStore) SaveGrade(sessionID string, questionID string, score int, covered, missed []string) error {
+func (s *SQLiteStore) SaveGrade(sessionID string, questionID string, score int, covered, missed []string, userAnswer string) error {
 	coveredJSON, _ := json.Marshal(covered)
 	missedJSON, _ := json.Marshal(missed)
 
 	_, err := s.db.Exec(
-		"INSERT INTO grades (session_id, question_id, score, covered, missed) VALUES (?, ?, ?, ?, ?)",
-		sessionID, questionID, score, string(coveredJSON), string(missedJSON),
+		"INSERT INTO grades (session_id, question_id, score, covered, missed, user_answer) VALUES (?, ?, ?, ?, ?, ?)",
+		sessionID, questionID, score, string(coveredJSON), string(missedJSON), userAnswer,
 	)
 	if err != nil {
 		return err
@@ -487,7 +489,7 @@ func (s *SQLiteStore) SaveGrade(sessionID string, questionID string, score int, 
 
 func (s *SQLiteStore) GetGrades(sessionID string) ([]StoredGrade, error) {
 	rows, err := s.db.Query(
-		"SELECT question_id, score, covered, missed FROM grades WHERE session_id = ?",
+		"SELECT question_id, score, covered, missed, user_answer FROM grades WHERE session_id = ?",
 		sessionID,
 	)
 	if err != nil {
@@ -499,7 +501,7 @@ func (s *SQLiteStore) GetGrades(sessionID string) ([]StoredGrade, error) {
 	for rows.Next() {
 		var g StoredGrade
 		var coveredJSON, missedJSON string
-		if err := rows.Scan(&g.QuestionID, &g.Score, &coveredJSON, &missedJSON); err != nil {
+		if err := rows.Scan(&g.QuestionID, &g.Score, &coveredJSON, &missedJSON, &g.UserAnswer); err != nil {
 			return nil, err
 		}
 		json.Unmarshal([]byte(coveredJSON), &g.Covered)
@@ -550,24 +552,26 @@ func (s *SQLiteStore) updateQuestionStats(questionID string, score int) error {
 
 	if exists {
 		// Update existing stats
+		// Mastery formula (Option 3): latest_score * 0.6 + historical_average * 0.4
+		// historical_average = total_score / times_answered (before adding new score)
 		_, err = s.db.Exec(`
 			UPDATE question_stats 
 			SET times_answered = times_answered + 1,
 			    times_correct = times_correct + ?,
 			    total_score = total_score + ?,
+			    latest_score = ?,
 			    mastery = CAST(
-			        (CAST(total_score + ? AS REAL) / (times_answered + 1)) * 0.7 +
-			        (CAST(times_correct + ? AS REAL) / (times_answered + 1)) * 100 * 0.3
+			        ? * 0.6 + 
+			        (CAST(total_score AS REAL) / times_answered) * 0.4
 			    AS INTEGER)
 			WHERE question_id = ?
-		`, isCorrect, score, score, isCorrect, questionID)
+		`, isCorrect, score, score, score, questionID)
 	} else {
-		// Insert new stats
-		mastery := int(float64(score)*0.7 + float64(isCorrect)*100*0.3)
+		// Insert new stats - first attempt, so mastery = latest score
 		_, err = s.db.Exec(`
-			INSERT INTO question_stats (question_id, times_answered, times_correct, total_score, mastery)
-			VALUES (?, 1, ?, ?, ?)
-		`, questionID, isCorrect, score, mastery)
+			INSERT INTO question_stats (question_id, times_answered, times_correct, total_score, latest_score, mastery)
+			VALUES (?, 1, ?, ?, ?, ?)
+		`, questionID, isCorrect, score, score, score)
 	}
 
 	return err
@@ -576,9 +580,9 @@ func (s *SQLiteStore) updateQuestionStats(questionID string, score int) error {
 func (s *SQLiteStore) GetQuestionStats(questionID string) (*questionbank.QuestionStats, error) {
 	var stats questionbank.QuestionStats
 	err := s.db.QueryRow(`
-		SELECT question_id, times_answered, times_correct, total_score, mastery
+		SELECT question_id, times_answered, times_correct, total_score, latest_score, mastery
 		FROM question_stats WHERE question_id = ?
-	`, questionID).Scan(&stats.QuestionID, &stats.TimesAnswered, &stats.TimesCorrect, &stats.TotalScore, &stats.Mastery)
+	`, questionID).Scan(&stats.QuestionID, &stats.TimesAnswered, &stats.TimesCorrect, &stats.TotalScore, &stats.LatestScore, &stats.Mastery)
 
 	if err == sql.ErrNoRows {
 		// Return zero stats for unanswered questions
@@ -593,7 +597,7 @@ func (s *SQLiteStore) GetQuestionStats(questionID string) (*questionbank.Questio
 func (s *SQLiteStore) GetQuestionStatsByBank(bankID string) ([]questionbank.QuestionStats, error) {
 	rows, err := s.db.Query(`
 		SELECT q.id, COALESCE(qs.times_answered, 0), COALESCE(qs.times_correct, 0), 
-		       COALESCE(qs.total_score, 0), COALESCE(qs.mastery, 0)
+		       COALESCE(qs.total_score, 0), COALESCE(qs.latest_score, 0), COALESCE(qs.mastery, 0)
 		FROM questions q
 		LEFT JOIN question_stats qs ON q.id = qs.question_id
 		WHERE q.bank_id = ?
@@ -606,7 +610,7 @@ func (s *SQLiteStore) GetQuestionStatsByBank(bankID string) ([]questionbank.Ques
 	var stats []questionbank.QuestionStats
 	for rows.Next() {
 		var s questionbank.QuestionStats
-		if err := rows.Scan(&s.QuestionID, &s.TimesAnswered, &s.TimesCorrect, &s.TotalScore, &s.Mastery); err != nil {
+		if err := rows.Scan(&s.QuestionID, &s.TimesAnswered, &s.TimesCorrect, &s.TotalScore, &s.LatestScore, &s.Mastery); err != nil {
 			return nil, err
 		}
 		stats = append(stats, s)

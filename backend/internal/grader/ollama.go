@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func getLLMURL() string {
@@ -14,6 +15,24 @@ func getLLMURL() string {
 		return "http://localhost:1234"
 	}
 	return url
+}
+
+func getLLMModel() string {
+	model := os.Getenv("LLM_MODEL")
+	if model == "" {
+		return "qwen3-8b"
+	}
+	return model
+}
+
+// extractJSON finds and returns the JSON object from a string
+func extractJSON(s string) string {
+	start := strings.Index(s, "{")
+	end := strings.LastIndex(s, "}")
+	if start != -1 && end != -1 && end > start {
+		return s[start : end+1]
+	}
+	return s
 }
 
 type Message struct {
@@ -42,7 +61,7 @@ type GradeResult struct {
 
 // GradeAnswer asks the LLM to identify covered/missed facts, then calculates score server-side
 func GradeAnswer(question, expectedAnswer, userAnswer string) (string, error) {
-	prompt := fmt.Sprintf(`You are grading a recall exercise. The user must demonstrate they remember the correct information.
+	prompt := fmt.Sprintf(`You are grading a recall exercise. The user must demonstrate they remember the correct information. /no_think
 
 QUESTION:
 %s
@@ -91,7 +110,7 @@ Respond with valid JSON only:
 		question, expectedAnswer, userAnswer)
 
 	reqBody := LLMRequest{
-		Model: "qwen3-4b-2507",
+		Model: getLLMModel(),
 		Messages: []Message{
 			{Role: "user", Content: prompt},
 		},
@@ -116,9 +135,12 @@ Respond with valid JSON only:
 
 	rawContent := llmResp.Choices[0].Message.Content
 
+	// Extract JSON from response (handles <think> tags, etc.)
+	cleanContent := extractJSON(rawContent)
+
 	// Parse the LLM response to extract covered/missed
 	var gradeResult GradeResult
-	if err := json.Unmarshal([]byte(rawContent), &gradeResult); err != nil {
+	if err := json.Unmarshal([]byte(cleanContent), &gradeResult); err != nil {
 		// If parsing fails, return raw content and let caller handle it
 		return rawContent, nil
 	}

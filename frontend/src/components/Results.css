@@ -87,7 +87,7 @@
     font-size: 0.9375rem;
     padding: 2rem 1rem;
     background: var(--bg-elevated);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
 }
 
 .breakdown-list {
@@ -139,6 +139,102 @@
     line-height: 1.5;
 }
 
+/* Answer Comparison Dropdown */
+.answer-comparison-section {
+    margin-bottom: 1rem;
+}
+
+.answer-comparison-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.answer-comparison-toggle:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+}
+
+.toggle-icon {
+    font-size: 0.625rem;
+    transition: transform 0.2s ease;
+}
+
+.toggle-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.answer-comparison-content {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.answer-block {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+}
+
+.answer-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.answer-text {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.given-answer {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+}
+
+.given-answer .answer-label {
+    color: var(--text-muted);
+}
+
+.given-answer .answer-text {
+    color: var(--text-secondary);
+}
+
+.given-answer.not-answered .answer-text.empty {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.expected-answer {
+    background: rgba(34, 197, 94, 0.05);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.expected-answer .answer-label {
+    color: var(--accent);
+}
+
+.expected-answer .answer-text {
+    color: var(--text-secondary);
+}
+
+/* Feedback Section */
 .breakdown-feedback {
     display: flex;
     flex-direction: column;

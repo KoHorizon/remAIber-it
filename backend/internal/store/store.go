@@ -11,4 +11,5 @@ type StoredGrade struct {
 	Score      int
 	Covered    []string
 	Missed     []string
+	UserAnswer string
 }

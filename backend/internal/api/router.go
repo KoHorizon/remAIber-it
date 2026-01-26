@@ -34,9 +34,10 @@ type GradeResult struct {
 }
 
 type GradeDetails struct {
-	Score   int      `json:"score"`
-	Covered []string `json:"covered"`
-	Missed  []string `json:"missed"`
+	Score      int      `json:"score"`
+	Covered    []string `json:"covered"`
+	Missed     []string `json:"missed"`
+	UserAnswer string   `json:"user_answer"`
 }
 
 func RegisterRoutes(mux *http.ServeMux) {
@@ -675,8 +676,9 @@ type CreateSessionRequest struct {
 }
 
 type SessionQuestion struct {
-	ID      string `json:"id"`
-	Subject string `json:"subject"`
+	ID             string `json:"id"`
+	Subject        string `json:"subject"`
+	ExpectedAnswer string `json:"expected_answer"`
 }
 
 type CreateSessionResponse struct {
@@ -737,8 +739,9 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 	questions := make([]SessionQuestion, len(session.Questions))
 	for i, q := range session.Questions {
 		questions[i] = SessionQuestion{
-			ID:      q.ID,
-			Subject: q.Subject,
+			ID:             q.ID,
+			Subject:        q.Subject,
+			ExpectedAnswer: q.ExpectedAnswer,
 		}
 	}
 
@@ -771,8 +774,9 @@ func getSession(w http.ResponseWriter, r *http.Request) {
 	questions := make([]SessionQuestion, len(session.Questions))
 	for i, q := range session.Questions {
 		questions[i] = SessionQuestion{
-			ID:      q.ID,
-			Subject: q.Subject,
+			ID:             q.ID,
+			Subject:        q.Subject,
+			ExpectedAnswer: q.ExpectedAnswer,
 		}
 	}
 
@@ -843,7 +847,7 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		db.SaveGrade(sessionID, q.ID, result.Score, result.Covered, result.Missed)
+		db.SaveGrade(sessionID, q.ID, result.Score, result.Covered, result.Missed, answer)
 	}(*question, req.Answer)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -896,17 +900,19 @@ func completeSession(w http.ResponseWriter, r *http.Request) {
 		if grade, answered := gradedQuestions[q.ID]; answered {
 			// Question was answered
 			results[i] = GradeDetails{
-				Score:   grade.Score,
-				Covered: grade.Covered,
-				Missed:  grade.Missed,
+				Score:      grade.Score,
+				Covered:    grade.Covered,
+				Missed:     grade.Missed,
+				UserAnswer: grade.UserAnswer,
 			}
 			totalScore += grade.Score
 		} else {
 			// Question was NOT answered - score is 0
 			results[i] = GradeDetails{
-				Score:   0,
-				Covered: []string{},
-				Missed:  []string{"Not answered"},
+				Score:      0,
+				Covered:    []string{},
+				Missed:     []string{"Not answered"},
+				UserAnswer: "",
 			}
 		}
 	}
