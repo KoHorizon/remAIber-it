@@ -200,6 +200,23 @@ export function CategoriesList({ onSelectBank }: Props) {
     return "mastery-none";
   }
 
+  function getBankTypeBadge(bank: Bank): {
+    icon: string;
+    label: string;
+    className: string;
+  } {
+    if (bank.bank_type === "code") {
+      const langLabel = bank.language
+        ? bank.language.charAt(0).toUpperCase() + bank.language.slice(1)
+        : "Code";
+      return { icon: "💻", label: langLabel, className: "badge-code" };
+    }
+    if (bank.bank_type === "cli") {
+      return { icon: "⌨️", label: "CLI", className: "badge-cli" };
+    }
+    return { icon: "📝", label: "Theory", className: "badge-theory" };
+  }
+
   // Filter banks
   const uncategorizedBanks = banks.filter((b) => !b.category_id);
   const getBanksForCategory = (categoryId: string) =>
@@ -533,32 +550,42 @@ export function CategoriesList({ onSelectBank }: Props) {
 
               {isExpanded && (
                 <div className="category-banks">
-                  {categoryBanks.map((bank) => (
-                    <div
-                      key={bank.id}
-                      className="bank-card card card-interactive"
-                      onClick={() => onSelectBank(bank.id)}
-                    >
-                      <div className="bank-card-header">
-                        <span className="bank-icon">📚</span>
-                        <span className="bank-name">{bank.subject}</span>
-                      </div>
-                      <div className="bank-card-footer">
-                        <div
-                          className={`mastery-pill ${getMasteryColor(bank.mastery)}`}
-                        >
-                          {bank.mastery}% mastery
-                        </div>
-                      </div>
-                      <button
-                        className="btn-delete"
-                        onClick={(e) => openDeleteBankModal(e, bank)}
-                        title="Delete bank"
+                  {categoryBanks.map((bank) => {
+                    const typeBadge = getBankTypeBadge(bank);
+                    return (
+                      <div
+                        key={bank.id}
+                        className="bank-card card card-interactive"
+                        onClick={() => onSelectBank(bank.id)}
                       >
-                        &times;
-                      </button>
-                    </div>
-                  ))}
+                        <div className="bank-card-header">
+                          <span className="bank-name">{bank.subject}</span>
+                        </div>
+                        <div className="bank-card-footer">
+                          <div
+                            className={`mastery-pill ${getMasteryColor(bank.mastery)}`}
+                          >
+                            {bank.mastery}% mastery
+                          </div>
+                          <span
+                            className={`bank-type-badge ${typeBadge.className}`}
+                          >
+                            <span className="badge-icon">{typeBadge.icon}</span>
+                            <span className="badge-label">
+                              {typeBadge.label}
+                            </span>
+                          </span>
+                        </div>
+                        <button
+                          className="btn-delete"
+                          onClick={(e) => openDeleteBankModal(e, bank)}
+                          title="Delete bank"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    );
+                  })}
                   <button
                     className="add-bank-btn"
                     onClick={(e) => openCreateBankForCategory(e, category.id)}
@@ -578,32 +605,38 @@ export function CategoriesList({ onSelectBank }: Props) {
         <div className="uncategorized-section">
           <h2 className="section-title">Uncategorized</h2>
           <div className="uncategorized-banks">
-            {uncategorizedBanks.map((bank) => (
-              <div
-                key={bank.id}
-                className="bank-card card card-interactive"
-                onClick={() => onSelectBank(bank.id)}
-              >
-                <div className="bank-card-header">
-                  <span className="bank-icon">📚</span>
-                  <span className="bank-name">{bank.subject}</span>
-                </div>
-                <div className="bank-card-footer">
-                  <div
-                    className={`mastery-pill ${getMasteryColor(bank.mastery)}`}
-                  >
-                    {bank.mastery}% mastery
-                  </div>
-                </div>
-                <button
-                  className="btn-delete"
-                  onClick={(e) => openDeleteBankModal(e, bank)}
-                  title="Delete bank"
+            {uncategorizedBanks.map((bank) => {
+              const typeBadge = getBankTypeBadge(bank);
+              return (
+                <div
+                  key={bank.id}
+                  className="bank-card card card-interactive"
+                  onClick={() => onSelectBank(bank.id)}
                 >
-                  &times;
-                </button>
-              </div>
-            ))}
+                  <div className="bank-card-header">
+                    <span className="bank-name">{bank.subject}</span>
+                  </div>
+                  <div className="bank-card-footer">
+                    <div
+                      className={`mastery-pill ${getMasteryColor(bank.mastery)}`}
+                    >
+                      {bank.mastery}% mastery
+                    </div>
+                    <span className={`bank-type-badge ${typeBadge.className}`}>
+                      <span className="badge-icon">{typeBadge.icon}</span>
+                      <span className="badge-label">{typeBadge.label}</span>
+                    </span>
+                  </div>
+                  <button
+                    className="btn-delete"
+                    onClick={(e) => openDeleteBankModal(e, bank)}
+                    title="Delete bank"
+                  >
+                    &times;
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

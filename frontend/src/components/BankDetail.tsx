@@ -191,6 +191,23 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
 
   const questions = bank.questions || [];
   const categoryName = getCategoryName();
+  const currentBank = bank; // TypeScript narrowing helper
+
+  function getBankTypeBadge() {
+    if (currentBank.bank_type === "code") {
+      const langLabel = currentBank.language
+        ? currentBank.language.charAt(0).toUpperCase() +
+          currentBank.language.slice(1)
+        : "Code";
+      return { icon: "💻", label: langLabel, className: "badge-code" };
+    }
+    if (currentBank.bank_type === "cli") {
+      return { icon: "⌨️", label: "CLI", className: "badge-cli" };
+    }
+    return { icon: "📝", label: "Theory", className: "badge-theory" };
+  }
+
+  const typeBadge = getBankTypeBadge();
 
   return (
     <div className="bank-detail animate-fade-in">
@@ -215,6 +232,10 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
               <span className="mastery-value">{bank.mastery}%</span>
               <span className="mastery-label">overall mastery</span>
             </div>
+            <span className={`bank-type-badge ${typeBadge.className}`}>
+              <span className="badge-icon">{typeBadge.icon}</span>
+              <span className="badge-label">{typeBadge.label}</span>
+            </span>
           </div>
         </div>
         <div className="header-actions">
