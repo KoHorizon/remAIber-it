@@ -1,5 +1,12 @@
-import { useState, useEffect } from "react";
-import { api, Category, Bank, BankType } from "../App";
+import { useState, useEffect, useRef } from "react";
+import {
+  api,
+  Category,
+  Bank,
+  BankType,
+  ExportData,
+  ImportResult,
+} from "../App";
 import "./CategoriesList.css";
 
 type Props = {
@@ -40,6 +47,12 @@ export function CategoriesList({ onSelectBank }: Props) {
     bankCount?: number;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Import/Export state
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadData();
@@ -217,6 +230,57 @@ export function CategoriesList({ onSelectBank }: Props) {
     return { icon: "📝", label: "Theory", className: "badge-theory" };
   }
 
+  // Export/Import handlers
+  async function handleExport() {
+    setIsExporting(true);
+    try {
+      const data = await api.exportAll();
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `remaimber-export-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to export:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  function handleImportClick() {
+    fileInputRef.current?.click();
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      const data: ExportData = JSON.parse(text);
+      const result = await api.importAll(data);
+      setImportResult(result);
+      // Reload data
+      await loadData();
+    } catch (err) {
+      console.error("Failed to import:", err);
+      alert("Failed to import file. Please check the file format.");
+    } finally {
+      setIsImporting(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
   // Filter banks
   const uncategorizedBanks = banks.filter((b) => !b.category_id);
   const getBanksForCategory = (categoryId: string) =>
@@ -232,6 +296,52 @@ export function CategoriesList({ onSelectBank }: Props) {
 
   return (
     <div className="categories-list animate-fade-in">
+      {/* Hidden file input for import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImportFile}
+        accept=".json"
+        style={{ display: "none" }}
+      />
+
+      {/* Import Result Modal */}
+      {importResult && (
+        <div className="modal-overlay" onClick={() => setImportResult(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>✅ Import Complete</h2>
+            <div className="import-result">
+              <div className="import-stat">
+                <span className="import-stat-value">
+                  {importResult.categories_created}
+                </span>
+                <span className="import-stat-label">Categories</span>
+              </div>
+              <div className="import-stat">
+                <span className="import-stat-value">
+                  {importResult.banks_created}
+                </span>
+                <span className="import-stat-label">Banks</span>
+              </div>
+              <div className="import-stat">
+                <span className="import-stat-value">
+                  {importResult.questions_created}
+                </span>
+                <span className="import-stat-label">Questions</span>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button
+                className="btn btn-primary"
+                onClick={() => setImportResult(null)}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="page-header">
         <div className="page-header-row">
           <div>
@@ -243,6 +353,24 @@ export function CategoriesList({ onSelectBank }: Props) {
             </p>
           </div>
           <div className="header-actions">
+            <button
+              className="btn btn-ghost"
+              onClick={handleImportClick}
+              disabled={isImporting}
+              title="Import from file"
+            >
+              {isImporting ? "Importing..." : "Import"}
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={handleExport}
+              disabled={
+                isExporting || (categories.length === 0 && banks.length === 0)
+              }
+              title="Export all data"
+            >
+              {isExporting ? "Exporting..." : "Export"}
+            </button>
             <button
               className="btn btn-secondary"
               onClick={() => setShowCreateCategory(true)}

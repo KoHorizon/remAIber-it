@@ -68,6 +68,10 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /sessions/{sessionID}", getSession)
 	mux.HandleFunc("POST /sessions/{sessionID}/answers", submitAnswer)
 	mux.HandleFunc("POST /sessions/{sessionID}/complete", completeSession)
+
+	// Export/Import
+	mux.HandleFunc("GET /export", exportAll)
+	mux.HandleFunc("POST /import", importAll)
 }
 
 // ============================================================================
@@ -1011,4 +1015,154 @@ func completeSession(w http.ResponseWriter, r *http.Request) {
 		MaxScore:   maxScore,
 		Results:    results,
 	})
+}
+
+// ============================================================================
+// Export/Import
+// ============================================================================
+
+type ExportQuestion struct {
+	Subject        string `json:"subject"`
+	ExpectedAnswer string `json:"expected_answer"`
+}
+
+type ExportBank struct {
+	Subject       string           `json:"subject"`
+	GradingPrompt *string          `json:"grading_prompt,omitempty"`
+	BankType      string           `json:"bank_type"`
+	Language      *string          `json:"language,omitempty"`
+	Questions     []ExportQuestion `json:"questions"`
+}
+
+type ExportCategory struct {
+	Name  string       `json:"name"`
+	Banks []ExportBank `json:"banks"`
+}
+
+type ExportData struct {
+	Version    string           `json:"version"`
+	ExportedAt string           `json:"exported_at"`
+	Categories []ExportCategory `json:"categories"`
+}
+
+// GET /export
+func exportAll(w http.ResponseWriter, r *http.Request) {
+	categories, err := db.ListCategories()
+	if err != nil {
+		http.Error(w, "failed to load categories", http.StatusInternalServerError)
+		return
+	}
+
+	exportData := ExportData{
+		Version:    "1.0",
+		ExportedAt: time.Now().UTC().Format(time.RFC3339),
+		Categories: make([]ExportCategory, 0),
+	}
+
+	for _, cat := range categories {
+		banks, err := db.ListBanksByCategory(cat.ID)
+		if err != nil {
+			continue
+		}
+
+		exportCat := ExportCategory{
+			Name:  cat.Name,
+			Banks: make([]ExportBank, 0),
+		}
+
+		for _, bank := range banks {
+			// Get full bank with questions
+			fullBank, err := db.GetBank(bank.ID)
+			if err != nil {
+				continue
+			}
+
+			exportBank := ExportBank{
+				Subject:       fullBank.Subject,
+				GradingPrompt: fullBank.GradingPrompt,
+				BankType:      string(fullBank.BankType),
+				Language:      fullBank.Language,
+				Questions:     make([]ExportQuestion, len(fullBank.Questions)),
+			}
+
+			for i, q := range fullBank.Questions {
+				exportBank.Questions[i] = ExportQuestion{
+					Subject:        q.Subject,
+					ExpectedAnswer: q.ExpectedAnswer,
+				}
+			}
+
+			exportCat.Banks = append(exportCat.Banks, exportBank)
+		}
+
+		exportData.Categories = append(exportData.Categories, exportCat)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", "attachment; filename=remaimber-export.json")
+	json.NewEncoder(w).Encode(exportData)
+}
+
+type ImportResult struct {
+	CategoriesCreated int `json:"categories_created"`
+	BanksCreated      int `json:"banks_created"`
+	QuestionsCreated  int `json:"questions_created"`
+}
+
+// POST /import
+func importAll(w http.ResponseWriter, r *http.Request) {
+	var importData ExportData
+	if err := json.NewDecoder(r.Body).Decode(&importData); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	result := ImportResult{}
+
+	for _, cat := range importData.Categories {
+		// Create category
+		newCat := category.New(cat.Name)
+		if err := db.SaveCategory(newCat); err != nil {
+			log.Printf("failed to create category %s: %v", cat.Name, err)
+			continue
+		}
+		result.CategoriesCreated++
+
+		for _, bank := range cat.Banks {
+			// Create bank
+			bankType := questionbank.BankType(bank.BankType)
+			if bankType == "" {
+				bankType = questionbank.BankTypeTheory
+			}
+
+			newBank := questionbank.NewWithOptions(bank.Subject, &newCat.ID, bankType, bank.Language)
+			if bank.GradingPrompt != nil {
+				newBank.SetGradingPrompt(bank.GradingPrompt)
+			}
+
+			if err := db.SaveBank(newBank); err != nil {
+				log.Printf("failed to create bank %s: %v", bank.Subject, err)
+				continue
+			}
+			result.BanksCreated++
+
+			// Add questions
+			for _, q := range bank.Questions {
+				if err := newBank.AddQuestions(q.Subject, q.ExpectedAnswer); err != nil {
+					log.Printf("failed to add question: %v", err)
+					continue
+				}
+				newQuestion := newBank.Questions[len(newBank.Questions)-1]
+				if err := db.AddQuestion(newBank.ID, newQuestion); err != nil {
+					log.Printf("failed to save question: %v", err)
+					continue
+				}
+				result.QuestionsCreated++
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(result)
 }

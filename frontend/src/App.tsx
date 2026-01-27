@@ -65,6 +65,37 @@ export type SessionResult = {
   }[];
 };
 
+// Export/Import types
+export type ExportQuestion = {
+  subject: string;
+  expected_answer: string;
+};
+
+export type ExportBank = {
+  subject: string;
+  grading_prompt?: string | null;
+  bank_type: string;
+  language?: string | null;
+  questions: ExportQuestion[];
+};
+
+export type ExportCategory = {
+  name: string;
+  banks: ExportBank[];
+};
+
+export type ExportData = {
+  version: string;
+  exported_at: string;
+  categories: ExportCategory[];
+};
+
+export type ImportResult = {
+  categories_created: number;
+  banks_created: number;
+  questions_created: number;
+};
+
 type View =
   | { type: "home" }
   | { type: "bank"; bankId: string }
@@ -253,6 +284,23 @@ export const api = {
       method: "POST",
     });
     if (!res.ok) throw new Error("Failed to complete session");
+    return res.json();
+  },
+
+  // Export/Import
+  async exportAll(): Promise<ExportData> {
+    const res = await fetch(`${API_BASE}/export`);
+    if (!res.ok) throw new Error("Failed to export data");
+    return res.json();
+  },
+
+  async importAll(data: ExportData): Promise<ImportResult> {
+    const res = await fetch(`${API_BASE}/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to import data");
     return res.json();
   },
 };
