@@ -935,19 +935,21 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the bank to retrieve custom grading prompt
+	// Get the bank to retrieve custom grading prompt and bank type
 	bank, _ := db.GetBank(session.QuestionBankId)
 	var gradingPrompt *string
+	var bankType string = "theory" // default
 	if bank != nil {
 		gradingPrompt = bank.GradingPrompt
+		bankType = string(bank.BankType)
 	}
 
 	// Grade asynchronously
 	db.AddToWaitGroup(sessionID)
-	go func(q questionbank.Question, answer string, customPrompt *string) {
+	go func(q questionbank.Question, answer string, customPrompt *string, bType string) {
 		defer db.DoneWaitGroup(sessionID)
 
-		response, err := ollama.GradeAnswer(q.Subject, q.ExpectedAnswer, answer, customPrompt)
+		response, err := ollama.GradeAnswer(q.Subject, q.ExpectedAnswer, answer, customPrompt, bType)
 		if err != nil {
 			log.Printf("grading error: %v", err)
 			return
@@ -964,7 +966,7 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 		}
 
 		db.SaveGrade(sessionID, q.ID, result.Score, result.Covered, result.Missed, answer)
-	}(*question, req.Answer, gradingPrompt)
+	}(*question, req.Answer, gradingPrompt, bankType)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(SubmitAnswerResponse{
