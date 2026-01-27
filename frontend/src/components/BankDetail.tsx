@@ -420,14 +420,14 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
    - Use your knowledge to verify the code would compile/run
 
 3. KEY ELEMENTS to check:
+   - Use the expected answer as the general basis.
    - Correct language constructs (struct, class, function, etc.)
    - Proper return types and error handling
    - Required validations/checks are present
    - Correct use of language idioms
+   - If there is no import, don't count it as wrong
 
 4. PARTIAL CREDIT for:
-   - Missing error handling
-   - Missing validations
    - Incomplete implementation
    - Minor syntax errors that show understanding
 
