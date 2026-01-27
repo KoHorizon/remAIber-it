@@ -307,6 +307,56 @@
     line-height: 1.5;
 }
 
+/* Grading Settings Modal */
+.grading-settings-modal {
+    max-width: 600px;
+}
+
+.grading-settings-description {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.grading-textarea {
+    min-height: 200px;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+.grading-templates {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.templates-label {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}
+
+.template-btn {
+    padding: 0.375rem 0.75rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.template-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
 /* Mobile */
 @media (max-width: 640px) {
     .header-actions {

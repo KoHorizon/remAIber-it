@@ -18,10 +18,13 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
     null,
   );
+  const [showGradingSettings, setShowGradingSettings] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
+  const [gradingPrompt, setGradingPrompt] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingPrompt, setIsSavingPrompt] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
 
   useEffect(() => {
@@ -113,6 +116,27 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
     }
   }
 
+  function openGradingSettings() {
+    setGradingPrompt(bank?.grading_prompt || "");
+    setShowGradingSettings(true);
+  }
+
+  async function handleSaveGradingPrompt() {
+    if (!bank || isSavingPrompt) return;
+
+    setIsSavingPrompt(true);
+    try {
+      const trimmed = gradingPrompt.trim();
+      await api.updateBankGradingPrompt(bankId, trimmed || null);
+      setBank({ ...bank, grading_prompt: trimmed || null });
+      setShowGradingSettings(false);
+    } catch (err) {
+      console.error("Failed to save grading prompt:", err);
+    } finally {
+      setIsSavingPrompt(false);
+    }
+  }
+
   function getCategoryName(): string | null {
     if (!bank?.category_id) return null;
     const category = categories.find((c) => c.id === bank.category_id);
@@ -183,6 +207,13 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
           </div>
         </div>
         <div className="header-actions">
+          <button
+            className="btn btn-ghost"
+            onClick={openGradingSettings}
+            title="Grading Settings"
+          >
+            ⚙️ Grading
+          </button>
           <button
             className="btn btn-secondary"
             onClick={() => setShowAddQuestion(true)}
@@ -299,6 +330,148 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
                 disabled={isDeleting}
               >
                 {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grading Settings Modal */}
+      {showGradingSettings && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowGradingSettings(false)}
+        >
+          <div
+            className="modal grading-settings-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2>Grading Settings</h2>
+            <p className="grading-settings-description">
+              Customize how answers are graded for this bank. Leave empty to use
+              default concept-based grading.
+            </p>
+
+            <label className="input-label" htmlFor="grading-prompt">
+              Custom Grading Rules
+            </label>
+            <textarea
+              id="grading-prompt"
+              className="input textarea grading-textarea"
+              placeholder={`Example for CLI commands:
+
+GRADING RULES:
+1. EXACT SYNTAX required - command must match character-for-character
+2. Flag order does not matter
+3. Typos = wrong (e.g., "git comit" is wrong)
+4. Missing flags = partial credit`}
+              value={gradingPrompt}
+              onChange={(e) => setGradingPrompt(e.target.value)}
+              rows={12}
+            />
+
+            <div className="grading-templates">
+              <span className="templates-label">Templates:</span>
+              <button
+                type="button"
+                className="template-btn"
+                onClick={() =>
+                  setGradingPrompt(`GRADING RULES FOR CODE SYNTAX:
+
+1. STRUCTURE over exact wording
+   - The code pattern/structure must match the expected answer
+   - Variable names can differ (user vs u, email vs e)
+   - Formatting/whitespace doesn't matter
+
+2. FUNCTIONALITY is key
+   - The code must be syntactically valid for the language
+   - The logic must achieve the same result as expected
+   - Use your knowledge to verify the code would compile/run
+
+3. KEY ELEMENTS to check:
+   - Correct language constructs (struct, class, function, etc.)
+   - Proper return types and error handling
+   - Required validations/checks are present
+   - Correct use of language idioms
+
+4. PARTIAL CREDIT for:
+   - Incomplete implementation
+   - Minor syntax errors that show understanding
+   - Not importing packages in the user answer is not wrong. Do not count this as missed.
+
+5. WRONG if:
+   - Completely different approach/pattern
+   - Would not compile/run
+   - Missing core functionality`)
+                }
+              >
+                Code Syntax
+              </button>
+              <button
+                type="button"
+                className="template-btn"
+                onClick={() =>
+                  setGradingPrompt(`GRADING RULES:
+1. EXACT SYNTAX required - command must match character-for-character
+2. Flag order does not matter (e.g., "-a -m" = "-m -a")
+3. Typos = wrong (e.g., "git comit" instead of "git commit")
+4. Missing flags or arguments = partial credit
+5. Extra unnecessary flags = still correct if core command is right`)
+                }
+              >
+                CLI Commands
+              </button>
+              <button
+                type="button"
+                className="template-btn"
+                onClick={() =>
+                  setGradingPrompt(`GRADING RULES:
+1. Keywords must match exactly (SELECT, FROM, WHERE, etc.)
+2. Table and column names must be correct
+3. Whitespace and formatting don't matter
+4. Case insensitive for SQL keywords
+5. Missing clauses = partial credit`)
+                }
+              >
+                SQL Queries
+              </button>
+              <button
+                type="button"
+                className="template-btn"
+                onClick={() =>
+                  setGradingPrompt(`GRADING RULES:
+1. Character-perfect match required
+2. No partial credit - either correct or wrong
+3. Escape sequences must be exact
+4. Flags must be in correct position`)
+                }
+              >
+                Regex / Exact Match
+              </button>
+              <button
+                type="button"
+                className="template-btn"
+                onClick={() => setGradingPrompt("")}
+              >
+                Default (Concepts)
+              </button>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowGradingSettings(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSaveGradingPrompt}
+                disabled={isSavingPrompt}
+              >
+                {isSavingPrompt ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

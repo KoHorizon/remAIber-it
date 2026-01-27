@@ -59,20 +59,8 @@ type GradeResult struct {
 	Missed  []string `json:"missed"`
 }
 
-// GradeAnswer asks the LLM to identify covered/missed facts, then calculates score server-side
-func GradeAnswer(question, expectedAnswer, userAnswer string) (string, error) {
-	prompt := fmt.Sprintf(`You are grading a recall exercise. The user must demonstrate they remember the correct information. /no_think
-
-QUESTION:
-%s
-
-EXPECTED ANSWER:
-%s
-
-USER'S ANSWER:
-%s
-
-GRADING RULES:
+// DefaultGradingRules is the default grading prompt for concept-based recall
+const DefaultGradingRules = `GRADING RULES:
 
 1. WRONG FACTS = 0%% for that fact
    - Wrong dates, numbers, names, or values are incorrect, not "close enough"
@@ -94,7 +82,28 @@ GRADING RULES:
 5. COUNT ALL DISTINCT POINTS in expected answer
    - Main categories AND their sub-items count separately
    - Example: "pilotage insuffisant (objectifs, indicateurs, revues)" = 4 points
-   - If user says "pilotage insuffisant" without details, they get 1/4 points for that section
+   - If user says "pilotage insuffisant" without details, they get 1/4 points for that section`
+
+// GradeAnswer asks the LLM to identify covered/missed facts, then calculates score server-side
+// If customPrompt is provided and not empty, it replaces the default grading rules
+func GradeAnswer(question, expectedAnswer, userAnswer string, customPrompt *string) (string, error) {
+	gradingRules := DefaultGradingRules
+	if customPrompt != nil && *customPrompt != "" {
+		gradingRules = *customPrompt
+	}
+
+	prompt := fmt.Sprintf(`You are grading a recall exercise. The user must demonstrate they remember the correct information. /no_think
+
+QUESTION:
+%s
+
+EXPECTED ANSWER:
+%s
+
+USER'S ANSWER:
+%s
+
+%s
 
 OUTPUT FORMAT:
 - "covered": list key concepts the user got right (short phrases, 2-5 words each)
@@ -103,11 +112,11 @@ OUTPUT FORMAT:
 - Summarize each point concisely
 
 Example output format:
-{"covered": ["périmètre SMSI flou", "analyse de risques"], "missed": ["pilotage insuffisant", "cycle d'amélioration"]}
+{"covered": ["concept1", "concept2"], "missed": ["concept3", "concept4"]}
 
 Respond with valid JSON only:
 {"covered": [...], "missed": [...]}`,
-		question, expectedAnswer, userAnswer)
+		question, expectedAnswer, userAnswer, gradingRules)
 
 	reqBody := LLMRequest{
 		Model: getLLMModel(),

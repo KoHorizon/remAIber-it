@@ -16,6 +16,7 @@ export type Bank = {
   id: string;
   subject: string;
   category_id?: string | null;
+  grading_prompt?: string | null;
   mastery: number;
   questions?: Question[];
 };
@@ -147,6 +148,19 @@ export const api = {
       body: JSON.stringify({ category_id: categoryId }),
     });
     if (!res.ok) throw new Error("Failed to update bank category");
+    return res.json();
+  },
+
+  async updateBankGradingPrompt(
+    bankId: string,
+    gradingPrompt: string | null,
+  ): Promise<Bank> {
+    const res = await fetch(`${API_BASE}/banks/${bankId}/grading-prompt`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ grading_prompt: gradingPrompt }),
+    });
+    if (!res.ok) throw new Error("Failed to update grading prompt");
     return res.json();
   },
 

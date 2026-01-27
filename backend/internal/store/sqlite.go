@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS banks (
     id TEXT PRIMARY KEY,
     subject TEXT NOT NULL,
     category_id TEXT,
+    grading_prompt TEXT,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 );
 
@@ -209,15 +210,16 @@ func (s *SQLiteStore) DeleteCategory(id string) error {
 // ============================================================================
 
 func (s *SQLiteStore) SaveBank(bank *questionbank.QuestionBank) error {
-	_, err := s.db.Exec("INSERT INTO banks (id, subject, category_id) VALUES (?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID)
+	_, err := s.db.Exec("INSERT INTO banks (id, subject, category_id, grading_prompt) VALUES (?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.GradingPrompt)
 	return err
 }
 
 func (s *SQLiteStore) GetBank(id string) (*questionbank.QuestionBank, error) {
 	var bank questionbank.QuestionBank
 	var categoryID sql.NullString
+	var gradingPrompt sql.NullString
 
-	err := s.db.QueryRow("SELECT id, subject, category_id FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID)
+	err := s.db.QueryRow("SELECT id, subject, category_id, grading_prompt FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -227,6 +229,9 @@ func (s *SQLiteStore) GetBank(id string) (*questionbank.QuestionBank, error) {
 
 	if categoryID.Valid {
 		bank.CategoryID = &categoryID.String
+	}
+	if gradingPrompt.Valid {
+		bank.GradingPrompt = &gradingPrompt.String
 	}
 
 	rows, err := s.db.Query("SELECT id, subject, expected_answer FROM questions WHERE bank_id = ?", id)
@@ -247,7 +252,7 @@ func (s *SQLiteStore) GetBank(id string) (*questionbank.QuestionBank, error) {
 }
 
 func (s *SQLiteStore) ListBanks() ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.Query("SELECT id, subject, category_id FROM banks")
+	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt FROM banks")
 	if err != nil {
 		return nil, err
 	}
@@ -257,11 +262,15 @@ func (s *SQLiteStore) ListBanks() ([]*questionbank.QuestionBank, error) {
 	for rows.Next() {
 		var bank questionbank.QuestionBank
 		var categoryID sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID); err != nil {
+		var gradingPrompt sql.NullString
+		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt); err != nil {
 			return nil, err
 		}
 		if categoryID.Valid {
 			bank.CategoryID = &categoryID.String
+		}
+		if gradingPrompt.Valid {
+			bank.GradingPrompt = &gradingPrompt.String
 		}
 		banks = append(banks, &bank)
 	}
@@ -269,7 +278,7 @@ func (s *SQLiteStore) ListBanks() ([]*questionbank.QuestionBank, error) {
 }
 
 func (s *SQLiteStore) ListBanksByCategory(categoryID string) ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.Query("SELECT id, subject, category_id FROM banks WHERE category_id = ?", categoryID)
+	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt FROM banks WHERE category_id = ?", categoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -279,11 +288,15 @@ func (s *SQLiteStore) ListBanksByCategory(categoryID string) ([]*questionbank.Qu
 	for rows.Next() {
 		var bank questionbank.QuestionBank
 		var catID sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &catID); err != nil {
+		var gradingPrompt sql.NullString
+		if err := rows.Scan(&bank.ID, &bank.Subject, &catID, &gradingPrompt); err != nil {
 			return nil, err
 		}
 		if catID.Valid {
 			bank.CategoryID = &catID.String
+		}
+		if gradingPrompt.Valid {
+			bank.GradingPrompt = &gradingPrompt.String
 		}
 		banks = append(banks, &bank)
 	}
@@ -291,7 +304,7 @@ func (s *SQLiteStore) ListBanksByCategory(categoryID string) ([]*questionbank.Qu
 }
 
 func (s *SQLiteStore) ListUncategorizedBanks() ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.Query("SELECT id, subject, category_id FROM banks WHERE category_id IS NULL")
+	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt FROM banks WHERE category_id IS NULL")
 	if err != nil {
 		return nil, err
 	}
@@ -301,8 +314,12 @@ func (s *SQLiteStore) ListUncategorizedBanks() ([]*questionbank.QuestionBank, er
 	for rows.Next() {
 		var bank questionbank.QuestionBank
 		var categoryID sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID); err != nil {
+		var gradingPrompt sql.NullString
+		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt); err != nil {
 			return nil, err
+		}
+		if gradingPrompt.Valid {
+			bank.GradingPrompt = &gradingPrompt.String
 		}
 		banks = append(banks, &bank)
 	}
@@ -311,6 +328,21 @@ func (s *SQLiteStore) ListUncategorizedBanks() ([]*questionbank.QuestionBank, er
 
 func (s *SQLiteStore) UpdateBankCategory(bankID string, categoryID *string) error {
 	result, err := s.db.Exec("UPDATE banks SET category_id = ? WHERE id = ?", categoryID, bankID)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *SQLiteStore) UpdateBankGradingPrompt(bankID string, gradingPrompt *string) error {
+	result, err := s.db.Exec("UPDATE banks SET grading_prompt = ? WHERE id = ?", gradingPrompt, bankID)
 	if err != nil {
 		return err
 	}

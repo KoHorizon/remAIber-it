@@ -56,6 +56,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /banks/{bankID}", getBank)
 	mux.HandleFunc("DELETE /banks/{bankID}", deleteBank)
 	mux.HandleFunc("PATCH /banks/{bankID}/category", updateBankCategory)
+	mux.HandleFunc("PUT /banks/{bankID}/grading-prompt", updateBankGradingPrompt)
 	mux.HandleFunc("GET /banks/{bankID}/stats", getBankStats)
 
 	// Questions
@@ -398,11 +399,12 @@ func listBanks(w http.ResponseWriter, r *http.Request) {
 
 // GET /banks/{bankID}
 type GetBankResponse struct {
-	ID         string             `json:"id"`
-	Subject    string             `json:"subject"`
-	CategoryID *string            `json:"category_id,omitempty"`
-	Mastery    int                `json:"mastery"`
-	Questions  []QuestionResponse `json:"questions"`
+	ID            string             `json:"id"`
+	Subject       string             `json:"subject"`
+	CategoryID    *string            `json:"category_id,omitempty"`
+	GradingPrompt *string            `json:"grading_prompt,omitempty"`
+	Mastery       int                `json:"mastery"`
+	Questions     []QuestionResponse `json:"questions"`
 }
 
 type QuestionResponse struct {
@@ -459,11 +461,12 @@ func getBank(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(GetBankResponse{
-		ID:         bank.ID,
-		Subject:    bank.Subject,
-		CategoryID: bank.CategoryID,
-		Mastery:    bankMastery,
-		Questions:  questions,
+		ID:            bank.ID,
+		Subject:       bank.Subject,
+		CategoryID:    bank.CategoryID,
+		GradingPrompt: bank.GradingPrompt,
+		Mastery:       bankMastery,
+		Questions:     questions,
 	})
 }
 
@@ -531,6 +534,51 @@ func updateBankCategory(w http.ResponseWriter, r *http.Request) {
 		Subject:    bank.Subject,
 		CategoryID: bank.CategoryID,
 		Mastery:    mastery,
+	})
+}
+
+// PUT /banks/{bankID}/grading-prompt
+type UpdateGradingPromptRequest struct {
+	GradingPrompt *string `json:"grading_prompt"`
+}
+
+func updateBankGradingPrompt(w http.ResponseWriter, r *http.Request) {
+	bankID := r.PathValue("bankID")
+
+	var req UpdateGradingPromptRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	// Allow empty string to clear the prompt (set to nil)
+	var promptToSave *string
+	if req.GradingPrompt != nil && *req.GradingPrompt != "" {
+		promptToSave = req.GradingPrompt
+	}
+
+	err := db.UpdateBankGradingPrompt(bankID, promptToSave)
+	if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "bank not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "failed to update grading prompt", http.StatusInternalServerError)
+		return
+	}
+
+	// Return updated bank
+	bank, _ := db.GetBank(bankID)
+	mastery, _ := db.GetBankMastery(bankID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(GetBankResponse{
+		ID:            bank.ID,
+		Subject:       bank.Subject,
+		CategoryID:    bank.CategoryID,
+		GradingPrompt: bank.GradingPrompt,
+		Mastery:       mastery,
+		Questions:     nil,
 	})
 }
 
@@ -826,12 +874,19 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get the bank to retrieve custom grading prompt
+	bank, _ := db.GetBank(session.QuestionBankId)
+	var gradingPrompt *string
+	if bank != nil {
+		gradingPrompt = bank.GradingPrompt
+	}
+
 	// Grade asynchronously
 	db.AddToWaitGroup(sessionID)
-	go func(q questionbank.Question, answer string) {
+	go func(q questionbank.Question, answer string, customPrompt *string) {
 		defer db.DoneWaitGroup(sessionID)
 
-		response, err := ollama.GradeAnswer(q.Subject, q.ExpectedAnswer, answer)
+		response, err := ollama.GradeAnswer(q.Subject, q.ExpectedAnswer, answer, customPrompt)
 		if err != nil {
 			log.Printf("grading error: %v", err)
 			return
@@ -848,7 +903,7 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 		}
 
 		db.SaveGrade(sessionID, q.ID, result.Score, result.Covered, result.Missed, answer)
-	}(*question, req.Answer)
+	}(*question, req.Answer, gradingPrompt)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(SubmitAnswerResponse{
