@@ -750,10 +750,11 @@ func deleteQuestion(w http.ResponseWriter, r *http.Request) {
 
 // POST /sessions
 type CreateSessionRequest struct {
-	BankID         string `json:"bank_id"`
-	MaxQuestions   *int   `json:"max_questions,omitempty"`    // optional: limit number of questions
-	MaxDurationMin *int   `json:"max_duration_min,omitempty"` // optional: time limit in minutes
-	FocusOnWeak    bool   `json:"focus_on_weak"`              // prioritize low mastery questions
+	BankID         string   `json:"bank_id"`
+	MaxQuestions   *int     `json:"max_questions,omitempty"`    // optional: limit number of questions
+	MaxDurationMin *int     `json:"max_duration_min,omitempty"` // optional: time limit in minutes
+	FocusOnWeak    bool     `json:"focus_on_weak"`              // prioritize low mastery questions
+	QuestionIDs    []string `json:"question_ids,omitempty"`     // optional: specific questions for retry
 }
 
 type SessionQuestion struct {
@@ -801,17 +802,44 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 
 	config.FocusOnWeak = req.FocusOnWeak
 
-	// Get ordered questions if focus on weak is enabled
-	var orderedQuestions []questionbank.Question
-	if req.FocusOnWeak {
-		orderedQuestions, err = db.GetQuestionsOrderedByMastery(req.BankID, true) // ascending = lowest mastery first
-		if err != nil {
-			http.Error(w, "failed to get question order", http.StatusInternalServerError)
+	var session *practicesession.PracticeSession
+
+	// If specific question IDs provided (retry), use those exact questions in order
+	if len(req.QuestionIDs) > 0 {
+		// Build a map for quick lookup
+		questionMap := make(map[string]questionbank.Question)
+		for _, q := range bank.Questions {
+			questionMap[q.ID] = q
+		}
+
+		// Get questions in the specified order
+		var specificQuestions []questionbank.Question
+		for _, qid := range req.QuestionIDs {
+			if q, ok := questionMap[qid]; ok {
+				specificQuestions = append(specificQuestions, q)
+			}
+		}
+
+		if len(specificQuestions) == 0 {
+			http.Error(w, "no valid questions found", http.StatusBadRequest)
 			return
 		}
+
+		session = practicesession.NewWithSpecificQuestions(bank, specificQuestions, config)
+	} else {
+		// Get ordered questions if focus on weak is enabled
+		var orderedQuestions []questionbank.Question
+		if req.FocusOnWeak {
+			orderedQuestions, err = db.GetQuestionsOrderedByMastery(req.BankID, true) // ascending = lowest mastery first
+			if err != nil {
+				http.Error(w, "failed to get question order", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		session = practicesession.NewWithConfig(bank, config, orderedQuestions)
 	}
 
-	session := practicesession.NewWithConfig(bank, config, orderedQuestions)
 	if err := db.SaveSession(session); err != nil {
 		http.Error(w, "failed to save session", http.StatusInternalServerError)
 		return

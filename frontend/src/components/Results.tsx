@@ -13,9 +13,16 @@ type Props = {
   questions: ResultQuestion[];
   bankSubject: string;
   onBack: () => void;
+  onRetry: () => void;
 };
 
-export function Results({ results, questions, bankSubject, onBack }: Props) {
+export function Results({
+  results,
+  questions,
+  bankSubject,
+  onBack,
+  onRetry,
+}: Props) {
   const [expandedAnswers, setExpandedAnswers] = useState<Set<number>>(
     new Set(),
   );
@@ -194,8 +201,11 @@ export function Results({ results, questions, bankSubject, onBack }: Props) {
       </div>
 
       <div className="results-actions">
-        <button className="btn btn-primary" onClick={onBack}>
+        <button className="btn btn-secondary" onClick={onBack}>
           Back to Home
+        </button>
+        <button className="btn btn-primary" onClick={onRetry}>
+          Retry Same Questions
         </button>
       </div>
     </div>

@@ -57,6 +57,24 @@ func NewWithConfig(bank *questionbank.QuestionBank, config SessionConfig, ordere
 	}
 }
 
+// NewWithSpecificQuestions creates a practice session with specific questions in the given order.
+// Used for retry functionality.
+func NewWithSpecificQuestions(bank *questionbank.QuestionBank, questions []questionbank.Question, config SessionConfig) *PracticeSession {
+	var maxDurationMin *int
+	if config.MaxDuration != nil {
+		mins := int(config.MaxDuration.Minutes())
+		maxDurationMin = &mins
+	}
+
+	return &PracticeSession{
+		ID:             id.GenerateID(),
+		QuestionBankId: bank.ID,
+		Questions:      questions,
+		MaxDuration:    maxDurationMin,
+		FocusOnWeak:    false, // Retry doesn't use focus on weak
+	}
+}
+
 // shuffleQuestions returns a new slice with questions in random order.
 func shuffleQuestions(questions []questionbank.Question) []questionbank.Question {
 	shuffled := make([]questionbank.Question, len(questions))

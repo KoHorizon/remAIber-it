@@ -44,6 +44,7 @@ export type SessionConfig = {
   max_questions?: number;
   max_duration_min?: number;
   focus_on_weak?: boolean;
+  question_ids?: string[]; // For retry functionality
 };
 
 export type Session = {
@@ -102,6 +103,7 @@ type View =
   | {
       type: "practice";
       session: Session;
+      bankId: string;
       bankSubject: string;
       bankType: BankType;
       bankLanguage?: string | null;
@@ -110,7 +112,10 @@ type View =
       type: "results";
       results: SessionResult;
       questions: SessionQuestion[];
+      bankId: string;
       bankSubject: string;
+      bankType: BankType;
+      bankLanguage?: string | null;
     };
 
 const API_BASE = "http://localhost:8080";
@@ -260,6 +265,7 @@ export const api = {
         max_questions: config?.max_questions,
         max_duration_min: config?.max_duration_min,
         focus_on_weak: config?.focus_on_weak || false,
+        question_ids: config?.question_ids,
       }),
     });
     if (!res.ok) throw new Error("Failed to create session");
@@ -313,6 +319,7 @@ function App() {
     toBank: (bankId: string) => setView({ type: "bank", bankId }),
     toPractice: (
       session: Session,
+      bankId: string,
       bankSubject: string,
       bankType: BankType,
       bankLanguage?: string | null,
@@ -320,6 +327,7 @@ function App() {
       setView({
         type: "practice",
         session,
+        bankId,
         bankSubject,
         bankType,
         bankLanguage,
@@ -327,9 +335,38 @@ function App() {
     toResults: (
       results: SessionResult,
       questions: SessionQuestion[],
+      bankId: string,
       bankSubject: string,
-    ) => setView({ type: "results", results, questions, bankSubject }),
+      bankType: BankType,
+      bankLanguage?: string | null,
+    ) =>
+      setView({
+        type: "results",
+        results,
+        questions,
+        bankId,
+        bankSubject,
+        bankType,
+        bankLanguage,
+      }),
   };
+
+  async function handleRetry(
+    bankId: string,
+    questionIds: string[],
+    bankSubject: string,
+    bankType: BankType,
+    bankLanguage?: string | null,
+  ) {
+    try {
+      const session = await api.createSession(bankId, {
+        question_ids: questionIds,
+      });
+      navigate.toPractice(session, bankId, bankSubject, bankType, bankLanguage);
+    } catch (err) {
+      console.error("Failed to create retry session:", err);
+    }
+  }
 
   return (
     <div className="app">
@@ -361,7 +398,10 @@ function App() {
               navigate.toResults(
                 results,
                 view.session.questions,
+                view.bankId,
                 view.bankSubject,
+                view.bankType,
+                view.bankLanguage,
               )
             }
             onCancel={navigate.toHome}
@@ -373,6 +413,15 @@ function App() {
             questions={view.questions}
             bankSubject={view.bankSubject}
             onBack={navigate.toHome}
+            onRetry={() =>
+              handleRetry(
+                view.bankId,
+                view.questions.map((q) => q.id),
+                view.bankSubject,
+                view.bankType,
+                view.bankLanguage,
+              )
+            }
           />
         )}
       </main>

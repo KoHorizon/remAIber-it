@@ -11,6 +11,7 @@ type Props = {
   onBack: () => void;
   onStartPractice: (
     session: Session,
+    bankId: string,
     bankSubject: string,
     bankType: BankType,
     bankLanguage?: string | null,
@@ -119,7 +120,13 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
         max_duration_min: config.maxDurationMin,
         focus_on_weak: config.focusOnWeak,
       });
-      onStartPractice(session, bank.subject, bank.bank_type, bank.language);
+      onStartPractice(
+        session,
+        bankId,
+        bank.subject,
+        bank.bank_type,
+        bank.language,
+      );
     } catch (err) {
       console.error("Failed to start session:", err);
     } finally {

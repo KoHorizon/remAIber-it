@@ -292,6 +292,7 @@
 .results-actions {
     display: flex;
     justify-content: center;
+    gap: 1rem;
     padding-top: 1rem;
 }
 
