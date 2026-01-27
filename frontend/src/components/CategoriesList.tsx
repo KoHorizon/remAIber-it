@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, Category, Bank } from "../App";
+import { api, Category, Bank, BankType } from "../App";
 import "./CategoriesList.css";
 
 type Props = {
@@ -22,6 +22,8 @@ export function CategoriesList({ onSelectBank }: Props) {
   const [newBankCategoryId, setNewBankCategoryId] = useState<
     string | undefined
   >(undefined);
+  const [newBankType, setNewBankType] = useState<BankType>("theory");
+  const [newBankLanguage, setNewBankLanguage] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   // Edit category state
@@ -160,10 +162,14 @@ export function CategoriesList({ onSelectBank }: Props) {
       const bank = await api.createBank(
         newBankSubject.trim(),
         newBankCategoryId,
+        newBankType,
+        newBankType === "code" ? newBankLanguage || undefined : undefined,
       );
       setBanks([...banks, bank]);
       setNewBankSubject("");
       setNewBankCategoryId(undefined);
+      setNewBankType("theory");
+      setNewBankLanguage("");
       setShowCreateBank(false);
     } catch (err) {
       console.error("Failed to create bank:", err);
@@ -175,6 +181,8 @@ export function CategoriesList({ onSelectBank }: Props) {
   function openCreateBankForCategory(e: React.MouseEvent, categoryId: string) {
     e.stopPropagation();
     setNewBankCategoryId(categoryId);
+    setNewBankType("theory");
+    setNewBankLanguage("");
     setShowCreateBank(true);
   }
 
@@ -289,6 +297,70 @@ export function CategoriesList({ onSelectBank }: Props) {
                 autoFocus
               />
 
+              <label className="input-label">Bank Type</label>
+              <div className="type-selector">
+                <button
+                  type="button"
+                  className={`type-btn ${newBankType === "theory" ? "active" : ""}`}
+                  onClick={() => setNewBankType("theory")}
+                >
+                  <span className="type-icon">📝</span>
+                  <span className="type-name">Theory</span>
+                  <span className="type-desc">concepts, definitions</span>
+                </button>
+                <button
+                  type="button"
+                  className={`type-btn ${newBankType === "code" ? "active" : ""}`}
+                  onClick={() => setNewBankType("code")}
+                >
+                  <span className="type-icon">💻</span>
+                  <span className="type-name">Code</span>
+                  <span className="type-desc">syntax, programming</span>
+                </button>
+                <button
+                  type="button"
+                  className={`type-btn ${newBankType === "cli" ? "active" : ""}`}
+                  onClick={() => setNewBankType("cli")}
+                >
+                  <span className="type-icon">⌨️</span>
+                  <span className="type-name">CLI</span>
+                  <span className="type-desc">commands, terminal</span>
+                </button>
+              </div>
+
+              {newBankType === "code" && (
+                <>
+                  <label className="input-label">Programming Language</label>
+                  <div className="language-selector">
+                    {[
+                      { value: "go", label: "Go" },
+                      { value: "javascript", label: "JavaScript" },
+                      { value: "typescript", label: "TypeScript" },
+                      { value: "python", label: "Python" },
+                      { value: "rust", label: "Rust" },
+                      { value: "java", label: "Java" },
+                      { value: "c", label: "C" },
+                      { value: "cpp", label: "C++" },
+                      { value: "csharp", label: "C#" },
+                      { value: "php", label: "PHP" },
+                      { value: "ruby", label: "Ruby" },
+                      { value: "swift", label: "Swift" },
+                      { value: "kotlin", label: "Kotlin" },
+                      { value: "sql", label: "SQL" },
+                    ].map((lang) => (
+                      <button
+                        key={lang.value}
+                        type="button"
+                        className={`lang-btn ${newBankLanguage === lang.value ? "active" : ""}`}
+                        onClick={() => setNewBankLanguage(lang.value)}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
               <div className="modal-actions">
                 <button
                   type="button"
@@ -301,7 +373,10 @@ export function CategoriesList({ onSelectBank }: Props) {
                   type="submit"
                   className="btn btn-primary"
                   disabled={
-                    !newBankSubject.trim() || !newBankCategoryId || isCreating
+                    !newBankSubject.trim() ||
+                    !newBankCategoryId ||
+                    isCreating ||
+                    (newBankType === "code" && !newBankLanguage)
                   }
                 >
                   {isCreating ? "Creating..." : "Create Bank"}

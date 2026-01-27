@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { api, Session, SessionResult } from "../App";
+import { api, Session, SessionResult, BankType } from "../App";
+import { CodeEditor } from "./CodeEditor";
 import "./PracticeSession.css";
 
 type Props = {
   session: Session;
   bankSubject: string;
+  bankType: BankType;
+  bankLanguage?: string | null;
   onComplete: (results: SessionResult) => void;
   onCancel: () => void;
 };
@@ -12,6 +15,8 @@ type Props = {
 export function PracticeSession({
   session,
   bankSubject,
+  bankType,
+  bankLanguage,
   onComplete,
   onCancel,
 }: Props) {
@@ -117,6 +122,65 @@ export function PracticeSession({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   }
 
+  function getEditorLanguage(): string {
+    if (bankType === "cli") return "shell";
+    return bankLanguage || "plaintext";
+  }
+
+  function renderAnswerInput() {
+    if (bankType === "code") {
+      return (
+        <div className="answer-section">
+          <label className="input-label">Your Code</label>
+          <CodeEditor
+            value={answer}
+            onChange={setAnswer}
+            language={getEditorLanguage()}
+            height="300px"
+          />
+          <p className="answer-hint">Press ⌘+Enter to submit</p>
+        </div>
+      );
+    }
+
+    if (bankType === "cli") {
+      return (
+        <div className="answer-section">
+          <label className="input-label">Your Command</label>
+          <div className="cli-input-container">
+            <span className="cli-prompt">$</span>
+            <CodeEditor
+              value={answer}
+              onChange={setAnswer}
+              language="shell"
+              height="100px"
+            />
+          </div>
+          <p className="answer-hint">Press ⌘+Enter to submit</p>
+        </div>
+      );
+    }
+
+    // Default: theory
+    return (
+      <div className="answer-section">
+        <label className="input-label" htmlFor="answer">
+          Your Answer
+        </label>
+        <textarea
+          id="answer"
+          className="input textarea answer-input"
+          placeholder="Write your answer from memory..."
+          value={answer}
+          onChange={(e) => setAnswer(e.target.value)}
+          onKeyDown={handleKeyDown}
+          autoFocus
+        />
+        <p className="answer-hint">Press ⌘+Enter to submit</p>
+      </div>
+    );
+  }
+
   if (isCompleting) {
     return (
       <div className="practice-completing animate-fade-in">
@@ -138,6 +202,11 @@ export function PracticeSession({
           </span>
           {session.focus_on_weak && (
             <span className="practice-mode">🎯 Focus on weak</span>
+          )}
+          {bankType !== "theory" && (
+            <span className="practice-type">
+              {bankType === "code" ? "💻" : "⌨️"} {bankType.toUpperCase()}
+            </span>
           )}
         </div>
         <div className="practice-header-right">
@@ -166,21 +235,7 @@ export function PracticeSession({
           <h2 className="question-prompt">{currentQuestion.subject}</h2>
         </div>
 
-        <div className="answer-section">
-          <label className="input-label" htmlFor="answer">
-            Your Answer
-          </label>
-          <textarea
-            id="answer"
-            className="input textarea answer-input"
-            placeholder="Write your answer from memory..."
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            onKeyDown={handleKeyDown}
-            autoFocus
-          />
-          <p className="answer-hint">Press ⌘+Enter to submit</p>
-        </div>
+        {renderAnswerInput()}
 
         <div className="practice-actions">
           <button

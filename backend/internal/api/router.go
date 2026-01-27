@@ -143,10 +143,13 @@ type GetCategoryResponse struct {
 }
 
 type BankResponse struct {
-	ID         string  `json:"id"`
-	Subject    string  `json:"subject"`
-	CategoryID *string `json:"category_id,omitempty"`
-	Mastery    int     `json:"mastery"`
+	ID            string  `json:"id"`
+	Subject       string  `json:"subject"`
+	CategoryID    *string `json:"category_id,omitempty"`
+	GradingPrompt *string `json:"grading_prompt,omitempty"`
+	BankType      string  `json:"bank_type"`
+	Language      *string `json:"language,omitempty"`
+	Mastery       int     `json:"mastery"`
 }
 
 func getCategory(w http.ResponseWriter, r *http.Request) {
@@ -175,6 +178,8 @@ func getCategory(w http.ResponseWriter, r *http.Request) {
 			ID:         bank.ID,
 			Subject:    bank.Subject,
 			CategoryID: bank.CategoryID,
+			BankType:   string(bank.BankType),
+			Language:   bank.Language,
 			Mastery:    mastery,
 		}
 	}
@@ -275,6 +280,8 @@ func listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 			ID:         bank.ID,
 			Subject:    bank.Subject,
 			CategoryID: bank.CategoryID,
+			BankType:   string(bank.BankType),
+			Language:   bank.Language,
 			Mastery:    mastery,
 		}
 	}
@@ -319,12 +326,16 @@ func getCategoryStats(w http.ResponseWriter, r *http.Request) {
 type CreateBankRequest struct {
 	Subject    string  `json:"subject"`
 	CategoryID *string `json:"category_id,omitempty"`
+	BankType   string  `json:"bank_type,omitempty"` // theory, code, cli
+	Language   *string `json:"language,omitempty"`  // for code banks
 }
 
 type CreateBankResponse struct {
 	ID         string  `json:"id"`
 	Subject    string  `json:"subject"`
 	CategoryID *string `json:"category_id,omitempty"`
+	BankType   string  `json:"bank_type"`
+	Language   *string `json:"language,omitempty"`
 	Mastery    int     `json:"mastery"`
 }
 
@@ -357,7 +368,17 @@ func createBank(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bank := questionbank.NewWithCategory(req.Subject, *req.CategoryID)
+	// Validate bank_type
+	bankType := questionbank.BankType(req.BankType)
+	if bankType == "" {
+		bankType = questionbank.BankTypeTheory
+	}
+	if bankType != questionbank.BankTypeTheory && bankType != questionbank.BankTypeCode && bankType != questionbank.BankTypeCLI {
+		http.Error(w, "invalid bank_type: must be theory, code, or cli", http.StatusBadRequest)
+		return
+	}
+
+	bank := questionbank.NewWithOptions(req.Subject, req.CategoryID, bankType, req.Language)
 
 	if err := db.SaveBank(bank); err != nil {
 		http.Error(w, "failed to save bank", http.StatusInternalServerError)
@@ -370,6 +391,8 @@ func createBank(w http.ResponseWriter, r *http.Request) {
 		ID:         bank.ID,
 		Subject:    bank.Subject,
 		CategoryID: bank.CategoryID,
+		BankType:   string(bank.BankType),
+		Language:   bank.Language,
 		Mastery:    0,
 	})
 }
@@ -389,6 +412,8 @@ func listBanks(w http.ResponseWriter, r *http.Request) {
 			ID:         bank.ID,
 			Subject:    bank.Subject,
 			CategoryID: bank.CategoryID,
+			BankType:   string(bank.BankType),
+			Language:   bank.Language,
 			Mastery:    mastery,
 		}
 	}
@@ -403,6 +428,8 @@ type GetBankResponse struct {
 	Subject       string             `json:"subject"`
 	CategoryID    *string            `json:"category_id,omitempty"`
 	GradingPrompt *string            `json:"grading_prompt,omitempty"`
+	BankType      string             `json:"bank_type"`
+	Language      *string            `json:"language,omitempty"`
 	Mastery       int                `json:"mastery"`
 	Questions     []QuestionResponse `json:"questions"`
 }
@@ -465,6 +492,8 @@ func getBank(w http.ResponseWriter, r *http.Request) {
 		Subject:       bank.Subject,
 		CategoryID:    bank.CategoryID,
 		GradingPrompt: bank.GradingPrompt,
+		BankType:      string(bank.BankType),
+		Language:      bank.Language,
 		Mastery:       bankMastery,
 		Questions:     questions,
 	})

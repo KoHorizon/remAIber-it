@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS banks (
     subject TEXT NOT NULL,
     category_id TEXT,
     grading_prompt TEXT,
+    bank_type TEXT NOT NULL DEFAULT 'theory',
+    language TEXT,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 );
 
@@ -210,7 +212,7 @@ func (s *SQLiteStore) DeleteCategory(id string) error {
 // ============================================================================
 
 func (s *SQLiteStore) SaveBank(bank *questionbank.QuestionBank) error {
-	_, err := s.db.Exec("INSERT INTO banks (id, subject, category_id, grading_prompt) VALUES (?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.GradingPrompt)
+	_, err := s.db.Exec("INSERT INTO banks (id, subject, category_id, grading_prompt, bank_type, language) VALUES (?, ?, ?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.GradingPrompt, bank.BankType, bank.Language)
 	return err
 }
 
@@ -218,8 +220,10 @@ func (s *SQLiteStore) GetBank(id string) (*questionbank.QuestionBank, error) {
 	var bank questionbank.QuestionBank
 	var categoryID sql.NullString
 	var gradingPrompt sql.NullString
+	var bankType sql.NullString
+	var language sql.NullString
 
-	err := s.db.QueryRow("SELECT id, subject, category_id, grading_prompt FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt)
+	err := s.db.QueryRow("SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt, &bankType, &language)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -232,6 +236,14 @@ func (s *SQLiteStore) GetBank(id string) (*questionbank.QuestionBank, error) {
 	}
 	if gradingPrompt.Valid {
 		bank.GradingPrompt = &gradingPrompt.String
+	}
+	if bankType.Valid {
+		bank.BankType = questionbank.BankType(bankType.String)
+	} else {
+		bank.BankType = questionbank.BankTypeTheory
+	}
+	if language.Valid {
+		bank.Language = &language.String
 	}
 
 	rows, err := s.db.Query("SELECT id, subject, expected_answer FROM questions WHERE bank_id = ?", id)
@@ -252,7 +264,7 @@ func (s *SQLiteStore) GetBank(id string) (*questionbank.QuestionBank, error) {
 }
 
 func (s *SQLiteStore) ListBanks() ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt FROM banks")
+	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks")
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +275,9 @@ func (s *SQLiteStore) ListBanks() ([]*questionbank.QuestionBank, error) {
 		var bank questionbank.QuestionBank
 		var categoryID sql.NullString
 		var gradingPrompt sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt); err != nil {
+		var bankType sql.NullString
+		var language sql.NullString
+		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt, &bankType, &language); err != nil {
 			return nil, err
 		}
 		if categoryID.Valid {
@@ -272,13 +286,21 @@ func (s *SQLiteStore) ListBanks() ([]*questionbank.QuestionBank, error) {
 		if gradingPrompt.Valid {
 			bank.GradingPrompt = &gradingPrompt.String
 		}
+		if bankType.Valid {
+			bank.BankType = questionbank.BankType(bankType.String)
+		} else {
+			bank.BankType = questionbank.BankTypeTheory
+		}
+		if language.Valid {
+			bank.Language = &language.String
+		}
 		banks = append(banks, &bank)
 	}
 	return banks, nil
 }
 
 func (s *SQLiteStore) ListBanksByCategory(categoryID string) ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt FROM banks WHERE category_id = ?", categoryID)
+	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE category_id = ?", categoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +311,9 @@ func (s *SQLiteStore) ListBanksByCategory(categoryID string) ([]*questionbank.Qu
 		var bank questionbank.QuestionBank
 		var catID sql.NullString
 		var gradingPrompt sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &catID, &gradingPrompt); err != nil {
+		var bankType sql.NullString
+		var language sql.NullString
+		if err := rows.Scan(&bank.ID, &bank.Subject, &catID, &gradingPrompt, &bankType, &language); err != nil {
 			return nil, err
 		}
 		if catID.Valid {
@@ -298,13 +322,21 @@ func (s *SQLiteStore) ListBanksByCategory(categoryID string) ([]*questionbank.Qu
 		if gradingPrompt.Valid {
 			bank.GradingPrompt = &gradingPrompt.String
 		}
+		if bankType.Valid {
+			bank.BankType = questionbank.BankType(bankType.String)
+		} else {
+			bank.BankType = questionbank.BankTypeTheory
+		}
+		if language.Valid {
+			bank.Language = &language.String
+		}
 		banks = append(banks, &bank)
 	}
 	return banks, nil
 }
 
 func (s *SQLiteStore) ListUncategorizedBanks() ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt FROM banks WHERE category_id IS NULL")
+	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE category_id IS NULL")
 	if err != nil {
 		return nil, err
 	}
@@ -315,11 +347,21 @@ func (s *SQLiteStore) ListUncategorizedBanks() ([]*questionbank.QuestionBank, er
 		var bank questionbank.QuestionBank
 		var categoryID sql.NullString
 		var gradingPrompt sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt); err != nil {
+		var bankType sql.NullString
+		var language sql.NullString
+		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt, &bankType, &language); err != nil {
 			return nil, err
 		}
 		if gradingPrompt.Valid {
 			bank.GradingPrompt = &gradingPrompt.String
+		}
+		if bankType.Valid {
+			bank.BankType = questionbank.BankType(bankType.String)
+		} else {
+			bank.BankType = questionbank.BankTypeTheory
+		}
+		if language.Valid {
+			bank.Language = &language.String
 		}
 		banks = append(banks, &bank)
 	}

@@ -1,12 +1,20 @@
 import { useState, useEffect } from "react";
-import { api, Bank, Session, Category } from "../App";
+import { api, Bank, Session, Category, BankType } from "../App";
 import { SessionConfigModal } from "./SessionConfigModal";
+import { CodeEditor } from "./CodeEditor";
+import { TerminalDisplay } from "./TerminalDisplay";
+import { TerminalInput } from "./TerminalInput";
 import "./BankDetail.css";
 
 type Props = {
   bankId: string;
   onBack: () => void;
-  onStartPractice: (session: Session, bankSubject: string) => void;
+  onStartPractice: (
+    session: Session,
+    bankSubject: string,
+    bankType: BankType,
+    bankLanguage?: string | null,
+  ) => void;
 };
 
 export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
@@ -19,6 +27,9 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
     null,
   );
   const [showGradingSettings, setShowGradingSettings] = useState(false);
+  const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(
+    new Set(),
+  );
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
   const [gradingPrompt, setGradingPrompt] = useState("");
@@ -108,7 +119,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
         max_duration_min: config.maxDurationMin,
         focus_on_weak: config.focusOnWeak,
       });
-      onStartPractice(session, bank.subject);
+      onStartPractice(session, bank.subject, bank.bank_type, bank.language);
     } catch (err) {
       console.error("Failed to start session:", err);
     } finally {
@@ -264,17 +275,31 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
                 autoFocus
               />
 
-              <label className="input-label" htmlFor="answer">
-                Expected Answer
-              </label>
-              <textarea
-                id="answer"
-                className="input textarea"
-                placeholder="Enter the expected answer with key points..."
-                value={newAnswer}
-                onChange={(e) => setNewAnswer(e.target.value)}
-                rows={5}
-              />
+              <label className="input-label">Expected Answer</label>
+              {bank.bank_type === "theory" ? (
+                <textarea
+                  id="answer"
+                  className="input textarea"
+                  placeholder="Enter the expected answer with key points..."
+                  value={newAnswer}
+                  onChange={(e) => setNewAnswer(e.target.value)}
+                  rows={5}
+                />
+              ) : bank.bank_type === "cli" ? (
+                <TerminalInput
+                  value={newAnswer}
+                  onChange={setNewAnswer}
+                  placeholder="git commit -m 'message'"
+                  height="150px"
+                />
+              ) : (
+                <CodeEditor
+                  value={newAnswer}
+                  onChange={setNewAnswer}
+                  language={bank.language || "plaintext"}
+                  height="350px"
+                />
+              )}
 
               <div className="modal-actions">
                 <button
@@ -348,8 +373,11 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
           >
             <h2>Grading Settings</h2>
             <p className="grading-settings-description">
-              Customize how answers are graded for this bank. Leave empty to use
-              default concept-based grading.
+              Customize how answers are graded for this bank.
+              {bank.bank_type === "theory" &&
+                " Default: concept-based grading."}
+              {bank.bank_type === "code" && " Default: code syntax grading."}
+              {bank.bank_type === "cli" && " Default: CLI command grading."}
             </p>
 
             <label className="input-label" htmlFor="grading-prompt">
@@ -358,13 +386,13 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
             <textarea
               id="grading-prompt"
               className="input textarea grading-textarea"
-              placeholder={`Example for CLI commands:
-
-GRADING RULES:
-1. EXACT SYNTAX required - command must match character-for-character
-2. Flag order does not matter
-3. Typos = wrong (e.g., "git comit" is wrong)
-4. Missing flags = partial credit`}
+              placeholder={
+                bank.bank_type === "code"
+                  ? "Custom rules for code syntax grading..."
+                  : bank.bank_type === "cli"
+                    ? "Custom rules for CLI command grading..."
+                    : "Custom rules for concept grading..."
+              }
               value={gradingPrompt}
               onChange={(e) => setGradingPrompt(e.target.value)}
               rows={12}
@@ -372,11 +400,14 @@ GRADING RULES:
 
             <div className="grading-templates">
               <span className="templates-label">Templates:</span>
-              <button
-                type="button"
-                className="template-btn"
-                onClick={() =>
-                  setGradingPrompt(`GRADING RULES FOR CODE SYNTAX:
+
+              {/* Show Code Syntax for code banks */}
+              {bank.bank_type === "code" && (
+                <button
+                  type="button"
+                  className="template-btn"
+                  onClick={() =>
+                    setGradingPrompt(`GRADING RULES FOR CODE SYNTAX:
 
 1. STRUCTURE over exact wording
    - The code pattern/structure must match the expected answer
@@ -395,65 +426,95 @@ GRADING RULES:
    - Correct use of language idioms
 
 4. PARTIAL CREDIT for:
+   - Missing error handling
+   - Missing validations
    - Incomplete implementation
    - Minor syntax errors that show understanding
-   - Not importing packages in the user answer is not wrong. Do not count this as missed.
 
 5. WRONG if:
    - Completely different approach/pattern
    - Would not compile/run
    - Missing core functionality`)
-                }
-              >
-                Code Syntax
-              </button>
-              <button
-                type="button"
-                className="template-btn"
-                onClick={() =>
-                  setGradingPrompt(`GRADING RULES:
+                  }
+                >
+                  Code Syntax
+                </button>
+              )}
+
+              {/* Show CLI Commands for cli banks */}
+              {bank.bank_type === "cli" && (
+                <button
+                  type="button"
+                  className="template-btn"
+                  onClick={() =>
+                    setGradingPrompt(`GRADING RULES FOR CLI COMMANDS:
+
 1. EXACT SYNTAX required - command must match character-for-character
 2. Flag order does not matter (e.g., "-a -m" = "-m -a")
 3. Typos = wrong (e.g., "git comit" instead of "git commit")
 4. Missing flags or arguments = partial credit
 5. Extra unnecessary flags = still correct if core command is right`)
-                }
-              >
-                CLI Commands
-              </button>
-              <button
-                type="button"
-                className="template-btn"
-                onClick={() =>
-                  setGradingPrompt(`GRADING RULES:
+                  }
+                >
+                  CLI Commands
+                </button>
+              )}
+
+              {/* Show SQL for code banks with SQL language */}
+              {bank.bank_type === "code" && bank.language === "sql" && (
+                <button
+                  type="button"
+                  className="template-btn"
+                  onClick={() =>
+                    setGradingPrompt(`GRADING RULES FOR SQL:
+
 1. Keywords must match exactly (SELECT, FROM, WHERE, etc.)
 2. Table and column names must be correct
 3. Whitespace and formatting don't matter
 4. Case insensitive for SQL keywords
 5. Missing clauses = partial credit`)
-                }
-              >
-                SQL Queries
-              </button>
-              <button
-                type="button"
-                className="template-btn"
-                onClick={() =>
-                  setGradingPrompt(`GRADING RULES:
+                  }
+                >
+                  SQL Queries
+                </button>
+              )}
+
+              {/* Show Exact Match for code/cli banks */}
+              {(bank.bank_type === "code" || bank.bank_type === "cli") && (
+                <button
+                  type="button"
+                  className="template-btn"
+                  onClick={() =>
+                    setGradingPrompt(`GRADING RULES FOR EXACT MATCH:
+
 1. Character-perfect match required
 2. No partial credit - either correct or wrong
 3. Escape sequences must be exact
 4. Flags must be in correct position`)
-                }
-              >
-                Regex / Exact Match
-              </button>
+                  }
+                >
+                  Exact Match
+                </button>
+              )}
+
+              {/* Show Default (Concepts) for theory banks */}
+              {bank.bank_type === "theory" && (
+                <button
+                  type="button"
+                  className="template-btn"
+                  onClick={() => setGradingPrompt("")}
+                >
+                  Default (Concepts)
+                </button>
+              )}
+
+              {/* Clear button for all types */}
               <button
                 type="button"
-                className="template-btn"
+                className="template-btn template-btn-clear"
                 onClick={() => setGradingPrompt("")}
               >
-                Default (Concepts)
+                Clear
               </button>
             </div>
 
@@ -488,59 +549,139 @@ GRADING RULES:
         </div>
       ) : (
         <div className="questions-list">
-          {questions.map((q, index) => (
-            <div
-              key={q.id}
-              className="question-card card"
-              style={{ animationDelay: `${index * 0.05}s` }}
-            >
-              <div className="question-header">
-                <span className="question-number">Q{index + 1}</span>
-                <div
-                  className={`question-mastery ${getMasteryColor(q.mastery)}`}
-                >
-                  <span className="mastery-percent">{q.mastery}%</span>
-                  <span className="mastery-status">
-                    {getMasteryLabel(q.mastery)}
-                  </span>
-                </div>
-              </div>
-              <div className="question-content">
-                <p className="question-subject">{q.subject}</p>
-                {q.expected_answer && (
-                  <p className="question-answer">{q.expected_answer}</p>
-                )}
-              </div>
-              <div className="question-stats">
-                <span className="stat">
-                  <span className="stat-value">{q.times_answered}</span>
-                  <span className="stat-label">attempts</span>
-                </span>
-                <span className="stat">
-                  <span className="stat-value">{q.times_correct}</span>
-                  <span className="stat-label">correct</span>
-                </span>
-                {q.times_answered > 0 && (
-                  <span className="stat">
-                    <span className="stat-value">
-                      {Math.round((q.times_correct / q.times_answered) * 100)}%
-                    </span>
-                    <span className="stat-label">success rate</span>
-                  </span>
-                )}
-              </div>
-              <button
-                className="btn-delete"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDeleteConfirm(q.id);
-                }}
-                title="Delete question"
+          {questions.map((q, index) => {
+            const isExpanded = expandedAnswers.has(q.id);
+            const isCodeBank =
+              bank.bank_type === "code" || bank.bank_type === "cli";
+            const lines = q.expected_answer?.split("\n") || [];
+            const shouldCollapse = isCodeBank && lines.length > 15;
+            const displayedAnswer =
+              shouldCollapse && !isExpanded
+                ? lines.slice(0, 15).join("\n") + "\n..."
+                : q.expected_answer;
+
+            return (
+              <div
+                key={q.id}
+                className="question-card card"
+                style={{ animationDelay: `${index * 0.05}s` }}
               >
-                ×
-              </button>
-            </div>
-          ))}
+                <div className="question-header">
+                  <span className="question-number">Q{index + 1}</span>
+                  <div
+                    className={`question-mastery ${getMasteryColor(q.mastery)}`}
+                  >
+                    <span className="mastery-percent">{q.mastery}%</span>
+                    <span className="mastery-status">
+                      {getMasteryLabel(q.mastery)}
+                    </span>
+                  </div>
+                </div>
+                <div className="question-content">
+                  <p className="question-subject">{q.subject}</p>
+                  {q.expected_answer &&
+                    (bank.bank_type === "cli" ? (
+                      <div
+                        className={`code-answer ${isExpanded ? "expanded" : ""}`}
+                        onClick={() => {
+                          if (shouldCollapse) {
+                            setExpandedAnswers((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(q.id)) {
+                                next.delete(q.id);
+                              } else {
+                                next.add(q.id);
+                              }
+                              return next;
+                            });
+                          }
+                        }}
+                      >
+                        <TerminalDisplay
+                          value={q.expected_answer}
+                          expanded={isExpanded || !shouldCollapse}
+                          maxLines={15}
+                        />
+                        {shouldCollapse && (
+                          <span className="code-expand-hint">
+                            {isExpanded
+                              ? "Click to collapse"
+                              : `Click to expand (${lines.length} lines)`}
+                          </span>
+                        )}
+                      </div>
+                    ) : bank.bank_type === "code" ? (
+                      <div
+                        className={`code-answer ${isExpanded ? "expanded" : ""}`}
+                        onClick={() => {
+                          if (shouldCollapse) {
+                            setExpandedAnswers((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(q.id)) {
+                                next.delete(q.id);
+                              } else {
+                                next.add(q.id);
+                              }
+                              return next;
+                            });
+                          }
+                        }}
+                      >
+                        <CodeEditor
+                          value={displayedAnswer || ""}
+                          onChange={() => {}}
+                          language={bank.language || "plaintext"}
+                          height={
+                            shouldCollapse && !isExpanded
+                              ? "350px"
+                              : `${lines.length * 22 + 24}px`
+                          }
+                          readOnly={true}
+                        />
+                        {shouldCollapse && (
+                          <span className="code-expand-hint">
+                            {isExpanded
+                              ? "Click to collapse"
+                              : `Click to expand (${lines.length} lines)`}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="question-answer">{q.expected_answer}</p>
+                    ))}
+                </div>
+                <div className="question-stats">
+                  <span className="stat">
+                    <span className="stat-value">{q.times_answered}</span>
+                    <span className="stat-label">attempts</span>
+                  </span>
+                  <span className="stat">
+                    <span className="stat-value">{q.times_correct}</span>
+                    <span className="stat-label">correct</span>
+                  </span>
+                  {q.times_answered > 0 && (
+                    <span className="stat">
+                      <span className="stat-value">
+                        {Math.round((q.times_correct / q.times_answered) * 100)}
+                        %
+                      </span>
+                      <span className="stat-label">success rate</span>
+                    </span>
+                  )}
+                </div>
+                <button
+                  className="btn-delete"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteConfirm(q.id);
+                  }}
+                  title="Delete question"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

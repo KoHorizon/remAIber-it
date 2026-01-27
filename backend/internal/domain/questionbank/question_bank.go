@@ -7,11 +7,21 @@ import (
 	"github.com/remaimber-it/backend/internal/id"
 )
 
+type BankType string
+
+const (
+	BankTypeTheory BankType = "theory"
+	BankTypeCode   BankType = "code"
+	BankTypeCLI    BankType = "cli"
+)
+
 type QuestionBank struct {
 	ID            string
 	Subject       string
-	CategoryID    *string // Optional - can be nil for uncategorized banks
-	GradingPrompt *string // Optional - custom grading prompt for this bank
+	CategoryID    *string  // Optional - can be nil for uncategorized banks
+	GradingPrompt *string  // Optional - custom grading prompt for this bank
+	BankType      BankType // theory, code, or cli
+	Language      *string  // Optional - programming language for code banks
 	Questions     []Question
 }
 
@@ -21,6 +31,8 @@ func New(subject string) *QuestionBank {
 		Subject:       subject,
 		CategoryID:    nil,
 		GradingPrompt: nil,
+		BankType:      BankTypeTheory,
+		Language:      nil,
 		Questions:     []Question{},
 	}
 }
@@ -31,6 +43,24 @@ func NewWithCategory(subject string, categoryID string) *QuestionBank {
 		Subject:       subject,
 		CategoryID:    &categoryID,
 		GradingPrompt: nil,
+		BankType:      BankTypeTheory,
+		Language:      nil,
+		Questions:     []Question{},
+	}
+}
+
+func NewWithOptions(subject string, categoryID *string, bankType BankType, language *string) *QuestionBank {
+	bt := bankType
+	if bt == "" {
+		bt = BankTypeTheory
+	}
+	return &QuestionBank{
+		ID:            id.GenerateID(),
+		Subject:       subject,
+		CategoryID:    categoryID,
+		GradingPrompt: nil,
+		BankType:      bt,
+		Language:      language,
 		Questions:     []Question{},
 	}
 }

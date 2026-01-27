@@ -12,11 +12,15 @@ export type Category = {
   banks?: Bank[];
 };
 
+export type BankType = "theory" | "code" | "cli";
+
 export type Bank = {
   id: string;
   subject: string;
   category_id?: string | null;
   grading_prompt?: string | null;
+  bank_type: BankType;
+  language?: string | null;
   mastery: number;
   questions?: Question[];
 };
@@ -64,7 +68,13 @@ export type SessionResult = {
 type View =
   | { type: "home" }
   | { type: "bank"; bankId: string }
-  | { type: "practice"; session: Session; bankSubject: string }
+  | {
+      type: "practice";
+      session: Session;
+      bankSubject: string;
+      bankType: BankType;
+      bankLanguage?: string | null;
+    }
   | {
       type: "results";
       results: SessionResult;
@@ -128,11 +138,21 @@ export const api = {
     return res.json();
   },
 
-  async createBank(subject: string, categoryId?: string): Promise<Bank> {
+  async createBank(
+    subject: string,
+    categoryId?: string,
+    bankType?: BankType,
+    language?: string,
+  ): Promise<Bank> {
     const res = await fetch(`${API_BASE}/banks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, category_id: categoryId || null }),
+      body: JSON.stringify({
+        subject,
+        category_id: categoryId || null,
+        bank_type: bankType || "theory",
+        language: language || null,
+      }),
     });
     if (!res.ok) throw new Error("Failed to create bank");
     return res.json();
@@ -243,8 +263,19 @@ function App() {
   const navigate = {
     toHome: () => setView({ type: "home" }),
     toBank: (bankId: string) => setView({ type: "bank", bankId }),
-    toPractice: (session: Session, bankSubject: string) =>
-      setView({ type: "practice", session, bankSubject }),
+    toPractice: (
+      session: Session,
+      bankSubject: string,
+      bankType: BankType,
+      bankLanguage?: string | null,
+    ) =>
+      setView({
+        type: "practice",
+        session,
+        bankSubject,
+        bankType,
+        bankLanguage,
+      }),
     toResults: (
       results: SessionResult,
       questions: SessionQuestion[],
@@ -276,6 +307,8 @@ function App() {
           <PracticeSession
             session={view.session}
             bankSubject={view.bankSubject}
+            bankType={view.bankType}
+            bankLanguage={view.bankLanguage}
             onComplete={(results) =>
               navigate.toResults(
                 results,

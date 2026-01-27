@@ -1,0 +1,27 @@
+.code-editor-container {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: #1e1e1e;
+}
+
+.code-editor-container .monaco-editor {
+    padding: 0;
+}
+
+.code-editor-container .monaco-editor .margin {
+    background: #1e1e1e;
+}
+
+/* CLI-specific styling */
+.cli-editor-container {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: #0d1117;
+}
+
+.cli-editor-container .monaco-editor,
+.cli-editor-container .monaco-editor .margin {
+    background: #0d1117;
+}
