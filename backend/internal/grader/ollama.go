@@ -59,63 +59,49 @@ type GradeResult struct {
 	Missed  []string `json:"missed"`
 }
 
-// DefaultGradingRules is the default grading prompt for concept-based recall
+// DefaultGradingRules for theory/recall exercises
 const DefaultGradingRules = `GRADING RULES:
-
-1. WRONG FACTS = 0%% for that fact
-   - Wrong dates, numbers, names, or values are incorrect, not "close enough"
-   - "sept 2024" when expected "sept 2025" = WRONG (different year)
-
+1. WRONG FACTS = 0% for that fact
 2. AMBIGUOUS ANSWERS = treat as wrong unless they clearly match
-   - "09/26" is ambiguous (Sept 2026? Sept 26th?)
-   - When in doubt, the answer is wrong
-
-3. CORRECT FACTS with different phrasing = 100%% for that fact
-   - "sept 2025" = "Septembre 2025" = "09/2025" (same fact, full credit)
-   - "never" = "jamais" (same meaning, full credit)
-
+3. CORRECT FACTS with different phrasing = 100% for that fact
 4. MISSING FACTS = deduct proportionally
-   - If expected answer lists 6 items and user gives 3, score is ~50%%
-   - Each distinct concept/item in expected answer counts equally
-   - Partial lists get partial credit, not full credit
-
-5. COUNT ALL DISTINCT POINTS in expected answer
-   - Main categories AND their sub-items count separately
-   - Example: "pilotage insuffisant (objectifs, indicateurs, revues)" = 4 points
-   - If user says "pilotage insuffisant" without details, they get 1/4 points for that section`
+5. COUNT ALL DISTINCT POINTS in expected answer`
 
 // GradeAnswer asks the LLM to identify covered/missed facts, then calculates score server-side
-// If customPrompt is provided and not empty, it replaces the default grading rules
-// bankType can be "theory", "code", or "cli" - used for pre-validation
 func GradeAnswer(question, expectedAnswer, userAnswer string, customPrompt *string, bankType string) (string, error) {
 	gradingRules := DefaultGradingRules
 	if customPrompt != nil && *customPrompt != "" {
 		gradingRules = *customPrompt
 	}
 
-	// Build context based on bank type
 	var exerciseContext string
 	switch bankType {
 	case "code":
-		exerciseContext = `You are grading a CODE SYNTAX exercise. The user must write actual working code.
+		exerciseContext = `You are a Logic Auditor. Your ONLY goal is to verify that every logical action in the Expected Answer has a functional equivalent in the User Answer.
 
-CRITICAL: The user's answer MUST be actual code, not a description of code.
-- If the answer is written in natural language (English sentences describing code), give 0% - put everything in "missed"
-- "As you can see this is a func..." is NOT code, it's a description = 0%
-- Only actual code syntax like "func NewUser(email string)" counts as a valid attempt
-- Mentioning programming terms in English does NOT count as writing code`
+STRICT MAPPING RULES:
+1. FUNCTIONAL EQUIVALENCE: If the Expected code opens a resource, wraps an error, or cleans up, the User code must do the same. The "How" (syntax) and "Wording" (strings) DO NOT MATTER.
+2. THE STRING IGNORE RULE: Never penalize for different error message text or variable names. If you see "%w" or a wrapping pattern, it is CORRECT regardless of the text.
+3. CLOSURE EQUIVALENCE: A "defer f.Close()" and a "defer func() { f.Close() }() " are 100% IDENTICAL for grading.
+4. MAPPING PROCESS: 
+   - Step A: List logical actions in Expected. 
+   - Step B: Find them in User. 
+   - Step C: If found, it is COVERED. Only mark MISSED if the logic is totally absent.
+5. NO PEDANTRY: Do not deduct points for "idioms" if the logic is sound and would compile.`
+
 	case "cli":
 		exerciseContext = `You are grading a CLI/COMMAND exercise. The user must write actual terminal commands.
+- If the answer is natural language describing commands, give 0%.
+- Only actual command syntax counts.`
 
-CRITICAL: The user's answer MUST be actual commands, not a description.
-- If the answer is written in natural language describing commands, give 0% - put everything in "missed"
-- "You would use the git command to..." is NOT a command = 0%
-- Only actual commands like "git commit -m 'message'" count as valid attempts`
 	default:
 		exerciseContext = `You are grading a recall exercise. The user must demonstrate they remember the correct information.`
 	}
 
 	prompt := fmt.Sprintf(`%s /no_think
+
+GRADING RULES:
+%s
 
 QUESTION:
 %s
@@ -126,27 +112,20 @@ EXPECTED ANSWER:
 USER'S ANSWER:
 %s
 
-%s
+GRADING INSTRUCTIONS:
+1. Compare USER'S ANSWER against EXPECTED ANSWER logical steps.
+2. Identify which LOGICAL OPERATIONS from the expected answer are present.
+3. A concept is "covered" if the user implemented the same logic, even with different names.
+4. A concept is "missed" if a logical step present in the Expected Answer is absent in the User Answer.
+5. Provide the output as a JSON object only.
 
 OUTPUT FORMAT:
-- "covered": list key concepts the user got right (short phrases, 2-5 words each)
-- "missed": list key concepts the user missed (short phrases, 2-5 words each)
-- Do NOT copy the expected answer verbatim
-- Summarize each point concisely
-- For code/cli: if the answer is natural language instead of code, put EVERYTHING in "missed"
-
-Example output format:
-{"covered": ["concept1", "concept2"], "missed": ["concept3", "concept4"]}
-
-Respond with valid JSON only:
-{"covered": [...], "missed": [...]}`,
-		exerciseContext, question, expectedAnswer, userAnswer, gradingRules)
+{"covered": ["list of logical steps found"], "missed": ["list of logical steps absent"]}`,
+		exerciseContext, gradingRules, question, expectedAnswer, userAnswer)
 
 	reqBody := LLMRequest{
-		Model: getLLMModel(),
-		Messages: []Message{
-			{Role: "user", Content: prompt},
-		},
+		Model:       getLLMModel(),
+		Messages:    []Message{{Role: "user", Content: prompt}},
 		Temperature: 0,
 	}
 
@@ -166,26 +145,19 @@ Respond with valid JSON only:
 		return "", fmt.Errorf("no response from LLM")
 	}
 
-	rawContent := llmResp.Choices[0].Message.Content
+	cleanContent := extractJSON(llmResp.Choices[0].Message.Content)
 
-	// Extract JSON from response (handles <think> tags, etc.)
-	cleanContent := extractJSON(rawContent)
-
-	// Parse the LLM response to extract covered/missed
 	var gradeResult GradeResult
 	if err := json.Unmarshal([]byte(cleanContent), &gradeResult); err != nil {
-		// If parsing fails, return raw content and let caller handle it
-		return rawContent, nil
+		return cleanContent, nil
 	}
 
-	// Calculate score server-side: covered / (covered + missed) * 100
 	total := len(gradeResult.Covered) + len(gradeResult.Missed)
 	score := 0
 	if total > 0 {
 		score = (len(gradeResult.Covered) * 100) / total
 	}
 
-	// Return final result
 	finalResult := map[string]interface{}{
 		"score":   score,
 		"covered": gradeResult.Covered,

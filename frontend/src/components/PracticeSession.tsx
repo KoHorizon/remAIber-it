@@ -34,6 +34,8 @@ export function PracticeSession({
   const isLastQuestion = currentIndex === questions.length - 1;
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
+  const isCodeMode = bankType === "code" || bankType === "cli";
+
   // Timer effect
   useEffect(() => {
     if (timeRemaining === null || timeRemaining <= 0) return;
@@ -42,7 +44,6 @@ export function PracticeSession({
       setTimeRemaining((prev) => {
         if (prev === null || prev <= 1) {
           clearInterval(interval);
-          // Time's up - auto-complete session
           if (!completingRef.current) {
             handleTimeUp();
           }
@@ -61,7 +62,6 @@ export function PracticeSession({
     setIsCompleting(true);
 
     try {
-      // Submit current answer if any
       if (answer.trim()) {
         await api.submitAnswer(session.id, currentQuestion.id, answer.trim());
       }
@@ -127,58 +127,64 @@ export function PracticeSession({
     return bankLanguage || "plaintext";
   }
 
-  function renderAnswerInput() {
-    if (bankType === "code") {
-      return (
-        <div className="answer-section">
-          <label className="input-label">Your Code</label>
-          <CodeEditor
-            value={answer}
-            onChange={setAnswer}
-            language={getEditorLanguage()}
-            height="300px"
-          />
-          <p className="answer-hint">Press ⌘+Enter to submit</p>
-        </div>
-      );
-    }
+  // Parse question text to support markdown-like formatting
+  function renderQuestionContent(text: string) {
+    const lines = text.split("\n");
+    const elements: React.ReactNode[] = [];
+    let inList = false;
+    let listItems: string[] = [];
 
-    if (bankType === "cli") {
-      return (
-        <div className="answer-section">
-          <label className="input-label">Your Command</label>
-          <div className="cli-input-container">
-            <span className="cli-prompt">$</span>
-            <CodeEditor
-              value={answer}
-              onChange={setAnswer}
-              language="shell"
-              height="100px"
-            />
-          </div>
-          <p className="answer-hint">Press ⌘+Enter to submit</p>
-        </div>
-      );
-    }
+    const flushList = () => {
+      if (listItems.length > 0) {
+        elements.push(
+          <ul key={`list-${elements.length}`} className="question-list">
+            {listItems.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>,
+        );
+        listItems = [];
+        inList = false;
+      }
+    };
 
-    // Default: theory
-    return (
-      <div className="answer-section">
-        <label className="input-label" htmlFor="answer">
-          Your Answer
-        </label>
-        <textarea
-          id="answer"
-          className="input textarea answer-input"
-          placeholder="Write your answer from memory..."
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          onKeyDown={handleKeyDown}
-          autoFocus
-        />
-        <p className="answer-hint">Press ⌘+Enter to submit</p>
-      </div>
-    );
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+
+      // Check for list items (- item or * item)
+      if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+        inList = true;
+        listItems.push(trimmed.substring(2));
+      } else if (trimmed === "") {
+        flushList();
+        // Add spacing for empty lines
+        elements.push(
+          <div key={`space-${index}`} className="question-spacer" />,
+        );
+      } else {
+        flushList();
+        // Check for code blocks (text wrapped in backticks)
+        const parts = trimmed.split(/(`[^`]+`)/g);
+        const formattedParts = parts.map((part, i) => {
+          if (part.startsWith("`") && part.endsWith("`")) {
+            return (
+              <code key={i} className="inline-code">
+                {part.slice(1, -1)}
+              </code>
+            );
+          }
+          return part;
+        });
+        elements.push(
+          <p key={`p-${index}`} className="question-paragraph">
+            {formattedParts}
+          </p>,
+        );
+      }
+    });
+
+    flushList();
+    return elements;
   }
 
   if (isCompleting) {
@@ -192,6 +198,120 @@ export function PracticeSession({
     );
   }
 
+  // Code/CLI mode: Split layout like LeetCode
+  if (isCodeMode) {
+    return (
+      <div className="practice-session practice-session-split animate-fade-in">
+        {/* Header */}
+        <div className="practice-header-split">
+          <div className="practice-meta">
+            <span className="practice-subject">{bankSubject}</span>
+            <span className="practice-count">
+              Question {currentIndex + 1} of {questions.length}
+            </span>
+            {session.focus_on_weak && (
+              <span className="practice-mode">🎯 Focus on weak</span>
+            )}
+          </div>
+          <div className="practice-header-right">
+            {timeRemaining !== null && (
+              <span
+                className={`practice-timer ${timeRemaining <= 60 ? "timer-warning" : ""} ${timeRemaining <= 10 ? "timer-critical" : ""}`}
+              >
+                {formatTime(timeRemaining)}
+              </span>
+            )}
+            <button className="btn btn-ghost" onClick={onCancel}>
+              Exit
+            </button>
+          </div>
+        </div>
+
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+
+        {/* Split Panel */}
+        <div className="split-container" key={currentQuestion.id}>
+          {/* Left Panel - Question */}
+          <div className="split-panel split-panel-left">
+            <div className="panel-header">
+              <span className="panel-tab active">Description</span>
+            </div>
+            <div className="panel-content">
+              <div className="question-content-split animate-slide-up">
+                <div className="question-type-badge">
+                  {bankType === "code" ? "💻" : "⌨️"} {bankType.toUpperCase()}
+                  {bankType === "code" && bankLanguage && (
+                    <span className="language-badge">{bankLanguage}</span>
+                  )}
+                </div>
+                <div className="question-text">
+                  {renderQuestionContent(currentQuestion.subject)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Resizer */}
+          <div className="split-resizer" />
+
+          {/* Right Panel - Code Editor */}
+          <div className="split-panel split-panel-right">
+            <div className="panel-header">
+              <span className="panel-tab active">
+                {bankType === "code" ? "Code" : "Terminal"}
+              </span>
+            </div>
+            <div className="panel-content panel-content-editor">
+              {bankType === "cli" ? (
+                <div className="cli-editor-wrapper">
+                  <CodeEditor
+                    value={answer}
+                    onChange={setAnswer}
+                    language="shell"
+                    height="100%"
+                  />
+                </div>
+              ) : (
+                <CodeEditor
+                  value={answer}
+                  onChange={setAnswer}
+                  language={getEditorLanguage()}
+                  height="100%"
+                />
+              )}
+            </div>
+            <div className="panel-footer">
+              <span className="submit-hint">Press ⌘+Enter to submit</span>
+              <div className="panel-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleSkip}
+                  disabled={isSubmitting}
+                >
+                  Skip
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSubmit}
+                  disabled={!answer.trim() || isSubmitting}
+                >
+                  {isSubmitting
+                    ? "Submitting..."
+                    : isLastQuestion
+                      ? "Submit & See Results"
+                      : "Submit & Next"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Theory mode: Original vertical layout
   return (
     <div className="practice-session animate-fade-in">
       <div className="practice-header">
@@ -202,11 +322,6 @@ export function PracticeSession({
           </span>
           {session.focus_on_weak && (
             <span className="practice-mode">🎯 Focus on weak</span>
-          )}
-          {bankType !== "theory" && (
-            <span className="practice-type">
-              {bankType === "code" ? "💻" : "⌨️"} {bankType.toUpperCase()}
-            </span>
           )}
         </div>
         <div className="practice-header-right">
@@ -235,7 +350,21 @@ export function PracticeSession({
           <h2 className="question-prompt">{currentQuestion.subject}</h2>
         </div>
 
-        {renderAnswerInput()}
+        <div className="answer-section">
+          <label className="input-label" htmlFor="answer">
+            Your Answer
+          </label>
+          <textarea
+            id="answer"
+            className="input textarea answer-input"
+            placeholder="Write your answer from memory..."
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            onKeyDown={handleKeyDown}
+            autoFocus
+          />
+          <p className="answer-hint">Press ⌘+Enter to submit</p>
+        </div>
 
         <div className="practice-actions">
           <button

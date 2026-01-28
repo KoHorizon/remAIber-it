@@ -502,3 +502,9 @@ h3 {
         align-items: flex-start;
     }
 }
+
+.main:has(.results-code-mode) {
+    max-width: 100%;
+    width: 100%;
+    padding: 0;
+}

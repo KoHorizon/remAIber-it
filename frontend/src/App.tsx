@@ -412,6 +412,8 @@ function App() {
             results={view.results}
             questions={view.questions}
             bankSubject={view.bankSubject}
+            bankType={view.bankType}
+            bankLanguage={view.bankLanguage}
             onBack={navigate.toHome}
             onRetry={() =>
               handleRetry(

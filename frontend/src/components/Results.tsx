@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { SessionResult } from "../App";
+import React, { useState } from "react";
+import { SessionResult, BankType } from "../App";
+import { CodeEditor } from "./CodeEditor";
+import { TerminalDisplay } from "./TerminalDisplay";
 import "./Results.css";
 
 type ResultQuestion = {
@@ -12,6 +14,8 @@ type Props = {
   results: SessionResult;
   questions: ResultQuestion[];
   bankSubject: string;
+  bankType?: BankType;
+  bankLanguage?: string | null;
   onBack: () => void;
   onRetry: () => void;
 };
@@ -20,12 +24,16 @@ export function Results({
   results,
   questions,
   bankSubject,
+  bankType = "theory",
+  bankLanguage,
   onBack,
   onRetry,
 }: Props) {
   const [expandedAnswers, setExpandedAnswers] = useState<Set<number>>(
     new Set(),
   );
+
+  const isCodeMode = bankType === "code" || bankType === "cli";
 
   // Handle edge case where no questions were answered (timer ran out)
   const hasAnswers = results.max_score > 0;
@@ -65,8 +73,65 @@ export function Results({
     return "Keep studying! Focus on the concepts you missed.";
   };
 
+  // Render question text with formatting support
+  function renderFormattedQuestion(text: string): React.ReactNode {
+    const lines = text.split("\n");
+    const elements: React.JSX.Element[] = [];
+    let listItems: string[] = [];
+
+    const flushList = () => {
+      if (listItems.length > 0) {
+        elements.push(
+          <ul key={`list-${elements.length}`} className="result-question-list">
+            {listItems.map((item, i) => (
+              <li key={i}>{renderInlineCode(item)}</li>
+            ))}
+          </ul>,
+        );
+        listItems = [];
+      }
+    };
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+
+      if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+        listItems.push(trimmed.substring(2));
+      } else if (trimmed === "") {
+        flushList();
+      } else {
+        flushList();
+        elements.push(
+          <span key={`line-${index}`}>
+            {renderInlineCode(trimmed)}
+            {index < lines.length - 1 && <br />}
+          </span>,
+        );
+      }
+    });
+
+    flushList();
+    return elements;
+  }
+
+  function renderInlineCode(text: string): React.ReactNode {
+    const parts = text.split(/(`[^`]+`)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return (
+          <code key={i} className="inline-code">
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      return part;
+    });
+  }
+
   return (
-    <div className="results animate-fade-in">
+    <div
+      className={`results animate-fade-in ${isCodeMode ? "results-code-mode" : ""}`}
+    >
       <div className="results-header">
         <h3>Session Complete</h3>
         <h1>{bankSubject}</h1>
@@ -99,6 +164,145 @@ export function Results({
               const hasUserAnswer =
                 result.user_answer && result.user_answer.trim() !== "";
 
+              // Code/CLI mode: Full width layout
+              if (isCodeMode) {
+                return (
+                  <div
+                    key={i}
+                    className="breakdown-card breakdown-card-code card"
+                    style={{ animationDelay: `${i * 0.05}s` }}
+                  >
+                    {/* Header */}
+                    <div className="breakdown-header-code">
+                      <span className="breakdown-number">Q{i + 1}</span>
+                      <span
+                        className={`breakdown-score ${questionScore >= 70 ? "high" : questionScore >= 40 ? "mid" : "low"}`}
+                      >
+                        {questionScore}%
+                      </span>
+                    </div>
+
+                    {/* Question content on top */}
+                    <div className="breakdown-question-section">
+                      <div className="breakdown-question-content">
+                        {renderFormattedQuestion(question?.subject || "")}
+                      </div>
+                    </div>
+
+                    {/* Answers row: side by side */}
+                    <div className="breakdown-answers-section">
+                      {/* Left column: Your Answer */}
+                      <div className="breakdown-answer-column">
+                        <div className="breakdown-answer-block">
+                          <span className="answer-block-label">
+                            Your Answer
+                          </span>
+                          <div className="answer-block-content">
+                            {hasUserAnswer ? (
+                              bankType === "cli" ? (
+                                <TerminalDisplay
+                                  value={result.user_answer}
+                                  expanded={true}
+                                />
+                              ) : (
+                                <CodeEditor
+                                  value={result.user_answer}
+                                  onChange={() => {}}
+                                  language={bankLanguage || "plaintext"}
+                                  height="350px"
+                                  readOnly={true}
+                                />
+                              )
+                            ) : (
+                              <div className="answer-empty">Not answered</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right column: Expected Answer */}
+                      <div className="breakdown-answer-column">
+                        <div className="breakdown-answer-block">
+                          <span className="answer-block-label">
+                            Expected Answer
+                          </span>
+                          <div className="answer-block-content">
+                            {hasExpectedAnswer ? (
+                              bankType === "cli" ? (
+                                <TerminalDisplay
+                                  value={question.expected_answer || ""}
+                                  expanded={true}
+                                />
+                              ) : (
+                                <CodeEditor
+                                  value={question.expected_answer || ""}
+                                  onChange={() => {}}
+                                  language={bankLanguage || "plaintext"}
+                                  height="350px"
+                                  readOnly={true}
+                                />
+                              )
+                            ) : (
+                              <div className="answer-empty">
+                                No expected answer
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Feedback row: Covered and Missed side by side */}
+                    <div className="breakdown-feedback-row">
+                      <div className="feedback-section">
+                        {result.covered.length > 0 ? (
+                          <>
+                            <span className="feedback-label tag tag-success">
+                              ✓ Covered
+                            </span>
+                            <ul className="feedback-list">
+                              {result.covered.map((item, j) => (
+                                <li key={j}>{item}</li>
+                              ))}
+                            </ul>
+                          </>
+                        ) : (
+                          <span
+                            className="feedback-label tag tag-success"
+                            style={{ opacity: 0.5 }}
+                          >
+                            ✓ Covered (none)
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="feedback-section">
+                        {result.missed.length > 0 ? (
+                          <>
+                            <span className="feedback-label tag tag-error">
+                              ✗ Missed
+                            </span>
+                            <ul className="feedback-list">
+                              {result.missed.map((item, j) => (
+                                <li key={j}>{item}</li>
+                              ))}
+                            </ul>
+                          </>
+                        ) : (
+                          <span
+                            className="feedback-label tag tag-error"
+                            style={{ opacity: 0.5 }}
+                          >
+                            ✗ Missed (none)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Theory mode: Original vertical layout
               return (
                 <div
                   key={i}
@@ -114,7 +318,9 @@ export function Results({
                     </span>
                   </div>
 
-                  <p className="breakdown-question">{question?.subject}</p>
+                  <div className="breakdown-question">
+                    {renderFormattedQuestion(question?.subject || "")}
+                  </div>
 
                   {/* Answer Comparison Dropdown */}
                   {(hasExpectedAnswer || hasUserAnswer) && (

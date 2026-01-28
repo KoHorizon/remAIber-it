@@ -93,7 +93,6 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
     setIsDeleting(true);
     try {
       await api.deleteQuestion(bankId, questionId);
-      // Refetch bank data to get updated mastery
       const updatedBank = await api.getBank(bankId);
       setBank(updatedBank);
     } catch (err) {
@@ -177,6 +176,61 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
     return "Not practiced";
   }
 
+  // Render question text with formatting support
+  function renderFormattedText(text: string) {
+    const lines = text.split("\n");
+    const elements: React.ReactNode[] = [];
+    let listItems: string[] = [];
+
+    const flushList = () => {
+      if (listItems.length > 0) {
+        elements.push(
+          <ul key={`list-${elements.length}`} className="formatted-list">
+            {listItems.map((item, i) => (
+              <li key={i}>{renderInlineCode(item)}</li>
+            ))}
+          </ul>,
+        );
+        listItems = [];
+      }
+    };
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+
+      if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+        listItems.push(trimmed.substring(2));
+      } else if (trimmed === "") {
+        flushList();
+      } else {
+        flushList();
+        elements.push(
+          <span key={`line-${index}`}>
+            {renderInlineCode(trimmed)}
+            {index < lines.length - 1 && <br />}
+          </span>,
+        );
+      }
+    });
+
+    flushList();
+    return elements;
+  }
+
+  function renderInlineCode(text: string) {
+    const parts = text.split(/(`[^`]+`)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return (
+          <code key={i} className="inline-code">
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      return part;
+    });
+  }
+
   if (isLoading) {
     return (
       <div className="loading">
@@ -198,7 +252,8 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
 
   const questions = bank.questions || [];
   const categoryName = getCategoryName();
-  const currentBank = bank; // TypeScript narrowing helper
+  const currentBank = bank;
+  const isCodeMode = bank.bank_type === "code" || bank.bank_type === "cli";
 
   function getBankTypeBadge() {
     if (currentBank.bank_type === "code") {
@@ -278,8 +333,110 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
         />
       )}
 
-      {/* Add Question Modal */}
-      {showAddQuestion && (
+      {/* Add Question Modal - Split Layout for Code Banks */}
+      {showAddQuestion && isCodeMode && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowAddQuestion(false)}
+        >
+          <div
+            className="modal add-question-modal-split"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header-split">
+              <h2>Add Question</h2>
+              <button
+                className="btn-close"
+                onClick={() => setShowAddQuestion(false)}
+              >
+                ×
+              </button>
+            </div>
+            <form
+              onSubmit={handleAddQuestion}
+              className="add-question-form-split"
+            >
+              <div className="split-editor-container">
+                {/* Left: Question/Description */}
+                <div className="split-editor-panel">
+                  <div className="split-editor-header">
+                    <span className="split-editor-tab active">Description</span>
+                  </div>
+                  <div className="split-editor-content">
+                    <div className="split-editor-hint">
+                      <p>Write your question/task description. Supports:</p>
+                      <ul>
+                        <li>
+                          <code>- item</code> for bullet lists
+                        </li>
+                        <li>
+                          <code>`code`</code> for inline code
+                        </li>
+                        <li>Line breaks are preserved</li>
+                      </ul>
+                    </div>
+                    <textarea
+                      className="input textarea question-textarea"
+                      placeholder={`Example:\nDefine sentinel errors for:\n- not found\n- unauthorized\n- invalid input\n\nThen write a \`GetUser\` function that uses them.`}
+                      value={newQuestion}
+                      onChange={(e) => setNewQuestion(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {/* Right: Expected Answer */}
+                <div className="split-editor-panel">
+                  <div className="split-editor-header">
+                    <span className="split-editor-tab active">
+                      Expected Answer
+                    </span>
+                  </div>
+                  <div className="split-editor-content split-editor-content-code">
+                    {bank.bank_type === "cli" ? (
+                      <TerminalInput
+                        value={newAnswer}
+                        onChange={setNewAnswer}
+                        placeholder="git commit -m 'message'"
+                        height="100%"
+                      />
+                    ) : (
+                      <CodeEditor
+                        value={newAnswer}
+                        onChange={setNewAnswer}
+                        language={bank.language || "plaintext"}
+                        height="100%"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-actions-split">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowAddQuestion(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={
+                    !newQuestion.trim() || !newAnswer.trim() || isAdding
+                  }
+                >
+                  {isAdding ? "Adding..." : "Add Question"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Question Modal - Original for Theory Banks */}
+      {showAddQuestion && !isCodeMode && (
         <div
           className="modal-overlay"
           onClick={() => setShowAddQuestion(false)}
@@ -304,30 +461,14 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
               />
 
               <label className="input-label">Expected Answer</label>
-              {bank.bank_type === "theory" ? (
-                <textarea
-                  id="answer"
-                  className="input textarea"
-                  placeholder="Enter the expected answer with key points..."
-                  value={newAnswer}
-                  onChange={(e) => setNewAnswer(e.target.value)}
-                  rows={5}
-                />
-              ) : bank.bank_type === "cli" ? (
-                <TerminalInput
-                  value={newAnswer}
-                  onChange={setNewAnswer}
-                  placeholder="git commit -m 'message'"
-                  height="150px"
-                />
-              ) : (
-                <CodeEditor
-                  value={newAnswer}
-                  onChange={setNewAnswer}
-                  language={bank.language || "plaintext"}
-                  height="350px"
-                />
-              )}
+              <textarea
+                id="answer"
+                className="input textarea"
+                placeholder="Enter the expected answer with key points..."
+                value={newAnswer}
+                onChange={(e) => setNewAnswer(e.target.value)}
+                rows={5}
+              />
 
               <div className="modal-actions">
                 <button
@@ -429,7 +570,6 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
             <div className="grading-templates">
               <span className="templates-label">Templates:</span>
 
-              {/* Show Code Syntax for code banks */}
               {bank.bank_type === "code" && (
                 <button
                   type="button"
@@ -469,7 +609,6 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
                 </button>
               )}
 
-              {/* Show CLI Commands for cli banks */}
               {bank.bank_type === "cli" && (
                 <button
                   type="button"
@@ -488,7 +627,6 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
                 </button>
               )}
 
-              {/* Show SQL for code banks with SQL language */}
               {bank.bank_type === "code" && bank.language === "sql" && (
                 <button
                   type="button"
@@ -507,7 +645,6 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
                 </button>
               )}
 
-              {/* Show Exact Match for code/cli banks */}
               {(bank.bank_type === "code" || bank.bank_type === "cli") && (
                 <button
                   type="button"
@@ -525,7 +662,6 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
                 </button>
               )}
 
-              {/* Show Default (Concepts) for theory banks */}
               {bank.bank_type === "theory" && (
                 <button
                   type="button"
@@ -536,7 +672,6 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
                 </button>
               )}
 
-              {/* Clear button for all types */}
               <button
                 type="button"
                 className="template-btn template-btn-clear"
@@ -606,7 +741,13 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
                   </div>
                 </div>
                 <div className="question-content">
-                  <p className="question-subject">{q.subject}</p>
+                  {isCodeMode ? (
+                    <div className="question-subject-formatted">
+                      {renderFormattedText(q.subject)}
+                    </div>
+                  ) : (
+                    <p className="question-subject">{q.subject}</p>
+                  )}
                   {q.expected_answer &&
                     (bank.bank_type === "cli" ? (
                       <div
