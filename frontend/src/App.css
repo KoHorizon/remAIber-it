@@ -505,7 +505,7 @@ h3 {
     }
 }
 
-.main:has(.results-code-mode) {
+.main-content:has(.results-code-mode) {
     max-width: 100%;
     width: 100%;
     padding: 0;
