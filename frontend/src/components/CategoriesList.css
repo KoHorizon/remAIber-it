@@ -538,6 +538,7 @@
 
 .type-icon {
     font-size: 1.5rem;
+    font-family: var(--font-emoji);
 }
 
 .type-name {

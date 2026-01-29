@@ -377,7 +377,7 @@ function App() {
         </button>
       </header>
 
-      <main className="main">
+      <main className="main-content">
         {view.type === "home" && (
           <CategoriesList onSelectBank={navigate.toBank} />
         )}
