@@ -25,7 +25,6 @@ func getLLMModel() string {
 	return model
 }
 
-// extractJSON finds and returns the JSON object from a string
 func extractJSON(s string) string {
 	start := strings.Index(s, "{")
 	end := strings.LastIndex(s, "}")
@@ -59,15 +58,11 @@ type GradeResult struct {
 	Missed  []string `json:"missed"`
 }
 
-// DefaultGradingRules for theory/recall exercises
 const DefaultGradingRules = `GRADING RULES:
 1. WRONG FACTS = 0% for that fact
 2. AMBIGUOUS ANSWERS = treat as wrong unless they clearly match
-3. CORRECT FACTS with different phrasing = 100% for that fact
-4. MISSING FACTS = deduct proportionally
-5. COUNT ALL DISTINCT POINTS in expected answer`
+3. CORRECT FACTS with different phrasing = 100% for that fact`
 
-// GradeAnswer asks the LLM to identify covered/missed facts, then calculates score server-side
 func GradeAnswer(question, expectedAnswer, userAnswer string, customPrompt *string, bankType string) (string, error) {
 	gradingRules := DefaultGradingRules
 	if customPrompt != nil && *customPrompt != "" {
@@ -77,25 +72,21 @@ func GradeAnswer(question, expectedAnswer, userAnswer string, customPrompt *stri
 	var exerciseContext string
 	switch bankType {
 	case "code":
-		exerciseContext = `You are a Logic Auditor. Your ONLY goal is to verify that every logical action in the Expected Answer has a functional equivalent in the User Answer.
+		exerciseContext = `You are a Strict Code Auditor. Your goal is to verify logical checkpoints while ensuring code integrity.
 
-STRICT MAPPING RULES:
-1. FUNCTIONAL EQUIVALENCE: If the Expected code opens a resource, wraps an error, or cleans up, the User code must do the same. The "How" (syntax) and "Wording" (strings) DO NOT MATTER.
-2. THE STRING IGNORE RULE: Never penalize for different error message text or variable names. If you see "%w" or a wrapping pattern, it is CORRECT regardless of the text.
-3. CLOSURE EQUIVALENCE: A "defer f.Close()" and a "defer func() { f.Close() }() " are 100% IDENTICAL for grading.
-4. MAPPING PROCESS: 
-   - Step A: List logical actions in Expected. 
-   - Step B: Find them in User. 
-   - Step C: If found, it is COVERED. Only mark MISSED if the logic is totally absent.
-5. NO PEDANTRY: Do not deduct points for "idioms" if the logic is sound and would compile.`
+STRICT INTERNAL CONSISTENCY RULES:
+1. VARIABLE NAMES: While names can differ from the EXPECTED answer, they MUST be consistent within the USER'S answer.
+   - Example: If the user names a parameter 'job' but tries to use 'jobs' in a loop, this is a CRITICAL SYNTAX ERROR.
+   - Do not mark as "covered" if the code uses undefined variables or has scope errors.
+2. COMPILE CHECK: Mentally 'dry-run' the user's code. If it would fail to compile due to a typo or undefined variable, it is NOT covered.
+3. LOGIC OVER NAMING: Focus on the pattern (e.g., closing a channel, using a WaitGroup) rather than the specific name used in the expected answer.
+4. NO ASSUMPTIONS: Do not "fix" the user's typos in your mind. Grade exactly what is written.`
 
 	case "cli":
-		exerciseContext = `You are grading a CLI/COMMAND exercise. The user must write actual terminal commands.
-- If the answer is natural language describing commands, give 0%.
-- Only actual command syntax counts.`
+		exerciseContext = `You are grading a CLI exercise. User must write terminal commands.`
 
 	default:
-		exerciseContext = `You are grading a recall exercise. The user must demonstrate they remember the correct information.`
+		exerciseContext = `You are grading a recall exercise.`
 	}
 
 	prompt := fmt.Sprintf(`%s /no_think
@@ -112,15 +103,13 @@ EXPECTED ANSWER:
 USER'S ANSWER:
 %s
 
-GRADING INSTRUCTIONS:
-1. Compare USER'S ANSWER against EXPECTED ANSWER logical steps.
-2. Identify which LOGICAL OPERATIONS from the expected answer are present.
-3. A concept is "covered" if the user implemented the same logic, even with different names.
-4. A concept is "missed" if a logical step present in the Expected Answer is absent in the User Answer.
-5. Provide the output as a JSON object only.
+INSTRUCTIONS:
+1. Identify logical checkpoints (e.g., channel iteration, waitgroup signaling).
+2. Check for internal variable consistency. If a user uses 'job' then 'jobs', mark the step as MISSED.
+3. Respond in valid JSON format only.
 
 OUTPUT FORMAT:
-{"covered": ["list of logical steps found"], "missed": ["list of logical steps absent"]}`,
+{"covered": [...], "missed": ["Reason for failure if code is inconsistent"]}`,
 		exerciseContext, gradingRules, question, expectedAnswer, userAnswer)
 
 	reqBody := LLMRequest{
@@ -139,10 +128,6 @@ OUTPUT FORMAT:
 	var llmResp LLMResponse
 	if err := json.NewDecoder(resp.Body).Decode(&llmResp); err != nil {
 		return "", err
-	}
-
-	if len(llmResp.Choices) == 0 {
-		return "", fmt.Errorf("no response from LLM")
 	}
 
 	cleanContent := extractJSON(llmResp.Choices[0].Message.Content)
