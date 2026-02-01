@@ -492,6 +492,21 @@ export function CategoriesList({ onSelectBank }: Props) {
                       { value: "swift", label: "Swift" },
                       { value: "kotlin", label: "Kotlin" },
                       { value: "sql", label: "SQL" },
+                      { value: "yaml", label: "YAML" },
+                      { value: "dockerfile", label: "Dockerfile" },
+                      { value: "json", label: "JSON" },
+                      { value: "xml", label: "XML" },
+                      { value: "html", label: "HTML" },
+                      { value: "css", label: "CSS" },
+                      { value: "shell", label: "Shell" },
+                      { value: "markdown", label: "Markdown" },
+                      { value: "graphql", label: "GraphQL" },
+                      { value: "scala", label: "Scala" },
+                      { value: "lua", label: "Lua" },
+                      { value: "perl", label: "Perl" },
+                      { value: "r", label: "R" },
+                      { value: "powershell", label: "PowerShell" },
+                      { value: "hcl", label: "HCL / Terraform" },
                     ].map((lang) => (
                       <button
                         key={lang.value}
