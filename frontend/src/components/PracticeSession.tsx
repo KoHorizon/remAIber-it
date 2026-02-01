@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { api, Session, SessionResult, BankType } from "../App";
 import { CodeEditor } from "./CodeEditor";
+import { TerminalInput } from "./TerminalInput";
 import "./PracticeSession.css";
 
 type Props = {
@@ -256,7 +257,7 @@ export function PracticeSession({
           {/* Resizer */}
           <div className="split-resizer" />
 
-          {/* Right Panel - Code Editor */}
+          {/* Right Panel - Code Editor or Terminal */}
           <div className="split-panel split-panel-right">
             <div className="panel-header">
               <span className="panel-tab active">
@@ -265,14 +266,12 @@ export function PracticeSession({
             </div>
             <div className="panel-content panel-content-editor">
               {bankType === "cli" ? (
-                <div className="cli-editor-wrapper">
-                  <CodeEditor
-                    value={answer}
-                    onChange={setAnswer}
-                    language="shell"
-                    height="100%"
-                  />
-                </div>
+                <TerminalInput
+                  value={answer}
+                  onChange={setAnswer}
+                  placeholder="Type your command..."
+                  height="100%"
+                />
               ) : (
                 <CodeEditor
                   value={answer}

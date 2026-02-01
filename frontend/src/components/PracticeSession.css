@@ -508,3 +508,9 @@
         padding: 1rem;
     }
 }
+
+.panel-content-editor .terminal-input {
+    flex: 1;
+    border: none;
+    border-radius: 0;
+}
