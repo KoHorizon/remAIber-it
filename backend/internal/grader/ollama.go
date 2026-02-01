@@ -70,26 +70,35 @@ func GradeAnswer(question, expectedAnswer, userAnswer string, customPrompt *stri
 	}
 
 	var exerciseContext string
+	var specificInstructions string
+
 	switch bankType {
 	case "code":
-		exerciseContext = `You are a Strict Code Auditor. Your goal is to verify logical checkpoints while ensuring code integrity.
-
-STRICT INTERNAL CONSISTENCY RULES:
-1. VARIABLE NAMES: While names can differ from the EXPECTED answer, they MUST be consistent within the USER'S answer.
-   - Example: If the user names a parameter 'job' but tries to use 'jobs' in a loop, this is a CRITICAL SYNTAX ERROR.
-   - Do not mark as "covered" if the code uses undefined variables or has scope errors.
-2. COMPILE CHECK: Mentally 'dry-run' the user's code. If it would fail to compile due to a typo or undefined variable, it is NOT covered.
-3. LOGIC OVER NAMING: Focus on the pattern (e.g., closing a channel, using a WaitGroup) rather than the specific name used in the expected answer.
-4. NO ASSUMPTIONS: Do not "fix" the user's typos in your mind. Grade exactly what is written.`
+		exerciseContext = `You are a Strict Code Auditor. Your goal is to verify logical checkpoints while ensuring code integrity.`
+		specificInstructions = `1. Identify logical checkpoints (e.g., channel iteration, waitgroup signaling).
+2. Check for internal variable consistency. If a user uses 'job' then 'jobs', mark the step as MISSED.
+3. Mentally 'dry-run' the code; if it fails to compile/run due to typos, it is NOT covered.`
 
 	case "cli":
 		exerciseContext = `You are grading a CLI exercise. User must write terminal commands.`
+		specificInstructions = `1. Check for command correctness and required flags.
+2. Ensure the order of arguments is valid.`
 
 	default:
-		exerciseContext = `You are grading a recall exercise.`
+		exerciseContext = `You are a Subject Matter Expert grading a technical recall exercise.
+    
+    CRITICAL INSTRUCTION:
+    - You must look past specific terminology to the underlying technical mechanism.
+    - If a user uses a technical synonym (e.g., "comparison behavior" instead of "ahead or behind", or "in-memory" instead of "RAM"), it is 100% COVERED.
+    - Map the user's conceptual explanation back to the EXPECTED ANSWER'S bullet points.`
+
+		specificInstructions = `1. Break the EXPECTED ANSWER into its core factual components.
+2. For each component, check if the USER'S ANSWER expresses that same idea (even with synonyms).
+3. The "covered" and "missed" lists MUST ONLY contain strings from the EXPECTED ANSWER. `
 	}
 
-	prompt := fmt.Sprintf(`%s /no_think
+	// Refactored prompt to use specificInstructions instead of hardcoded code logic
+	prompt := fmt.Sprintf(`%s
 
 GRADING RULES:
 %s
@@ -103,14 +112,16 @@ EXPECTED ANSWER:
 USER'S ANSWER:
 %s
 
-INSTRUCTIONS:
-1. Identify logical checkpoints (e.g., channel iteration, waitgroup signaling).
-2. Check for internal variable consistency. If a user uses 'job' then 'jobs', mark the step as MISSED.
+SPECIFIC INSTRUCTIONS:
+%s
 3. Respond in valid JSON format only.
 
 OUTPUT FORMAT:
-{"covered": [...], "missed": ["Reason for failure if code is inconsistent"]}`,
-		exerciseContext, gradingRules, question, expectedAnswer, userAnswer)
+{
+  "covered": ["fact text", "..."],
+  "missed": ["fact text", "..."]
+}`,
+		exerciseContext, gradingRules, question, expectedAnswer, userAnswer, specificInstructions)
 
 	reqBody := LLMRequest{
 		Model:       getLLMModel(),
