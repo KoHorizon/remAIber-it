@@ -132,7 +132,6 @@ export function PracticeSession({
   function renderQuestionContent(text: string) {
     const lines = text.split("\n");
     const elements: React.ReactNode[] = [];
-    let inList = false;
     let listItems: string[] = [];
 
     const flushList = () => {
@@ -145,7 +144,6 @@ export function PracticeSession({
           </ul>,
         );
         listItems = [];
-        inList = false;
       }
     };
 
@@ -154,7 +152,6 @@ export function PracticeSession({
 
       // Check for list items (- item or * item)
       if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-        inList = true;
         listItems.push(trimmed.substring(2));
       } else if (trimmed === "") {
         flushList();
