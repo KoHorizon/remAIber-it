@@ -38,6 +38,7 @@ type GradeDetails struct {
 	Covered    []string `json:"covered"`
 	Missed     []string `json:"missed"`
 	UserAnswer string   `json:"user_answer"`
+	Status     string   `json:"status"` // "success", "failed", or "not_answered"
 }
 
 func RegisterRoutes(mux *http.ServeMux) {
@@ -951,7 +952,11 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 
 		response, err := ollama.GradeAnswer(q.Subject, q.ExpectedAnswer, answer, customPrompt, bType)
 		if err != nil {
-			log.Printf("grading error: %v", err)
+			log.Printf("grading error for question %s: %v", q.ID, err)
+			// Save a failure record so the user sees "grading failed" instead of "not answered"
+			if saveErr := db.SaveGradeFailure(sessionID, q.ID, answer, err.Error()); saveErr != nil {
+				log.Printf("failed to save grade failure: %v", saveErr)
+			}
 			return
 		}
 
@@ -961,11 +966,16 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 			Missed  []string `json:"missed"`
 		}
 		if err := json.Unmarshal([]byte(response), &result); err != nil {
-			log.Printf("parse error: %v", err)
+			log.Printf("parse error for question %s: %v (response: %s)", q.ID, err, response)
+			if saveErr := db.SaveGradeFailure(sessionID, q.ID, answer, "failed to parse grading response"); saveErr != nil {
+				log.Printf("failed to save grade failure: %v", saveErr)
+			}
 			return
 		}
 
-		db.SaveGrade(sessionID, q.ID, result.Score, result.Covered, result.Missed, answer)
+		if err := db.SaveGrade(sessionID, q.ID, result.Score, result.Covered, result.Missed, answer); err != nil {
+			log.Printf("failed to save grade for question %s: %v", q.ID, err)
+		}
 	}(*question, req.Answer, gradingPrompt, bankType)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1016,12 +1026,16 @@ func completeSession(w http.ResponseWriter, r *http.Request) {
 
 	for i, q := range session.Questions {
 		if grade, answered := gradedQuestions[q.ID]; answered {
-			// Question was answered
+			status := "success"
+			if grade.Status == store.GradeStatusFailed {
+				status = "failed"
+			}
 			results[i] = GradeDetails{
 				Score:      grade.Score,
 				Covered:    grade.Covered,
 				Missed:     grade.Missed,
 				UserAnswer: grade.UserAnswer,
+				Status:     status,
 			}
 			totalScore += grade.Score
 		} else {
@@ -1031,6 +1045,7 @@ func completeSession(w http.ResponseWriter, r *http.Request) {
 				Covered:    []string{},
 				Missed:     []string{"Not answered"},
 				UserAnswer: "",
+				Status:     "not_answered",
 			}
 		}
 	}

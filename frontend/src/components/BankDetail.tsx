@@ -18,6 +18,94 @@ type Props = {
   ) => void;
 };
 
+// ---------------------------------------------------------------------------
+// Grading rule templates
+//
+// These replace ONLY the "RULES:" block in the backend prompt. The backend
+// handles everything else: splitting expected answers into numbered key points,
+// asking the model to classify each as COVERED/MISSED, and parsing the JSON.
+//
+// Keep these SHORT (3-6 lines). Small local models (4-8B) lose track of long
+// instruction blocks. Focus on judgment criteria, not on output format or
+// decomposition — the backend owns that.
+// ---------------------------------------------------------------------------
+
+const DEFAULT_GRADING_RULES: Record<string, string> = {
+  theory: `- Accept synonyms and different wording if the core concept is correct
+- Practical examples that demonstrate understanding count as COVERED
+- Vague or technically incorrect statements = MISSED
+- The user doesn't need to match the exact terminology`,
+
+  code: `- Compare logic and structure, not variable names or formatting
+- Functionally equivalent approaches are equally correct
+- Minor syntax errors that don't affect core logic = COVERED
+- Code that wouldn't compile or produces wrong results = MISSED
+- Don't penalize missing imports unless critical to the logic`,
+
+  cli: `- Accept alternative commands that achieve the same goal
+- Flag order doesn't matter
+- Modern and legacy syntax both acceptable (e.g. git switch = git checkout)
+- Extra harmless flags are fine
+- Dangerous flags (--force, --hard) must match exactly when specified`,
+};
+
+// Optional specialized templates users can pick from
+const EXTRA_TEMPLATES: Record<
+  string,
+  { label: string; rules: string; bankTypes: string[] }
+> = {
+  strict_theory: {
+    label: "Strict (exact concepts)",
+    bankTypes: ["theory"],
+    rules: `- Require the correct technical term, not just a vague description
+- Partial answers that miss the core mechanism = MISSED
+- No credit for analogies without the actual concept`,
+  },
+  lenient_theory: {
+    label: "Lenient (understanding)",
+    bankTypes: ["theory"],
+    rules: `- Accept any phrasing that shows the user understands the concept
+- Analogies and real-world examples count as COVERED
+- Partial understanding = COVERED if the core idea is present
+- Only mark MISSED if completely wrong or absent`,
+  },
+  exact_match: {
+    label: "Exact match",
+    bankTypes: ["code", "cli"],
+    rules: `- Require near-exact match with the expected answer
+- Variable names and structure must match closely
+- No partial credit — either correct or wrong
+- Whitespace and formatting differences are acceptable`,
+  },
+  sql: {
+    label: "SQL queries",
+    bankTypes: ["code"],
+    rules: `- SQL keywords are case-insensitive (SELECT = select)
+- Table and column names must be correct
+- Whitespace and formatting don't matter
+- Functionally equivalent queries are acceptable (subquery vs JOIN)
+- Missing clauses that change the result = MISSED`,
+  },
+  conceptual_code: {
+    label: "Conceptual (logic only)",
+    bankTypes: ["code"],
+    rules: `- Only check if the algorithmic approach is correct
+- Ignore all syntax details, variable names, and formatting
+- Pseudocode-level correctness is sufficient
+- Focus on data flow and control flow, not language specifics`,
+  },
+};
+
+function getDefaultRules(bankType: string): string {
+  return DEFAULT_GRADING_RULES[bankType] || DEFAULT_GRADING_RULES.theory;
+}
+
+function getAvailableTemplates(bankType: string) {
+  return Object.entries(EXTRA_TEMPLATES).filter(([, t]) =>
+    t.bankTypes.includes(bankType),
+  );
+}
+
 export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
   const [bank, setBank] = useState<Bank | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -134,7 +222,11 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
   }
 
   function openGradingSettings() {
-    setGradingPrompt(bank?.grading_prompt || "");
+    if (bank?.grading_prompt) {
+      setGradingPrompt(bank.grading_prompt);
+    } else {
+      setGradingPrompt(getDefaultRules(bank?.bank_type || "theory"));
+    }
     setShowGradingSettings(true);
   }
 
@@ -270,6 +362,8 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
   }
 
   const typeBadge = getBankTypeBadge();
+  const bankType = bank.bank_type || "theory";
+  const extraTemplates = getAvailableTemplates(bankType);
 
   return (
     <div className="bank-detail animate-fade-in">
@@ -540,146 +634,92 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
             className="modal grading-settings-modal"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2>Grading Settings</h2>
+            <h2>Grading Rules</h2>
             <p className="grading-settings-description">
-              Customize how answers are graded for this bank.
-              {bank.bank_type === "theory" &&
-                " Default: concept-based grading."}
-              {bank.bank_type === "code" && " Default: code syntax grading."}
-              {bank.bank_type === "cli" && " Default: CLI command grading."}
+              These rules tell the AI how to judge whether your answer covers
+              each key point. The system automatically splits expected answers
+              into checkpoints — you only control the matching criteria here.
+              Keep it short for best results with local models.
             </p>
 
             <label className="input-label" htmlFor="grading-prompt">
-              Custom Grading Rules
+              Matching rules
+              <span className="input-hint">
+                {" "}
+                — each line should start with <code>-</code>
+              </span>
             </label>
             <textarea
               id="grading-prompt"
               className="input textarea grading-textarea"
-              placeholder={
-                bank.bank_type === "code"
-                  ? "Custom rules for code syntax grading..."
-                  : bank.bank_type === "cli"
-                    ? "Custom rules for CLI command grading..."
-                    : "Custom rules for concept grading..."
-              }
+              placeholder={`- Accept synonyms if the core concept is correct\n- Minor errors that don't affect the result = COVERED\n- Completely wrong or missing = MISSED`}
               value={gradingPrompt}
               onChange={(e) => setGradingPrompt(e.target.value)}
-              rows={12}
+              rows={8}
             />
 
             <div className="grading-templates">
-              <span className="templates-label">Templates:</span>
+              <span className="templates-label">Presets:</span>
 
-              {bank.bank_type === "code" && (
+              <button
+                type="button"
+                className={`template-btn ${
+                  gradingPrompt === getDefaultRules(bankType)
+                    ? "template-btn-active"
+                    : ""
+                }`}
+                onClick={() => setGradingPrompt(getDefaultRules(bankType))}
+              >
+                Default
+                {bankType === "theory" && " (concepts)"}
+                {bankType === "code" && " (code)"}
+                {bankType === "cli" && " (CLI)"}
+              </button>
+
+              {extraTemplates.map(([key, template]) => (
                 <button
+                  key={key}
                   type="button"
-                  className="template-btn"
-                  onClick={() =>
-                    setGradingPrompt(`GRADING RULES FOR CODE SYNTAX:
-
-1. STRUCTURE over exact wording
-   - The code pattern/structure must match the expected answer
-   - Variable names can differ (user vs u, email vs e)
-   - Formatting/whitespace doesn't matter
-
-2. FUNCTIONALITY is key
-   - The code must be syntactically valid for the language
-   - The logic must achieve the same result as expected
-   - Use your knowledge to verify the code would compile/run
-
-3. KEY ELEMENTS to check:
-   - Use the expected answer as the general basis.
-   - Correct language constructs (struct, class, function, etc.)
-   - Proper return types and error handling
-   - Required validations/checks are present
-   - Correct use of language idioms
-   - If there is no import, don't count it as wrong
-
-4. PARTIAL CREDIT for:
-   - Incomplete implementation
-   - Minor syntax errors that show understanding
-
-5. WRONG if:
-   - Completely different approach/pattern
-   - Would not compile/run
-   - Missing core functionality`)
-                  }
+                  className={`template-btn ${
+                    gradingPrompt === template.rules
+                      ? "template-btn-active"
+                      : ""
+                  }`}
+                  onClick={() => setGradingPrompt(template.rules)}
                 >
-                  Code Syntax
+                  {template.label}
                 </button>
-              )}
-
-              {bank.bank_type === "cli" && (
-                <button
-                  type="button"
-                  className="template-btn"
-                  onClick={() =>
-                    setGradingPrompt(`GRADING RULES FOR CLI COMMANDS:
-
-1. EXACT SYNTAX required - command must match character-for-character
-2. Flag order does not matter (e.g., "-a -m" = "-m -a")
-3. Typos = wrong (e.g., "git comit" instead of "git commit")
-4. Missing flags or arguments = partial credit
-5. Extra unnecessary flags = still correct if core command is right`)
-                  }
-                >
-                  CLI Commands
-                </button>
-              )}
-
-              {bank.bank_type === "code" && bank.language === "sql" && (
-                <button
-                  type="button"
-                  className="template-btn"
-                  onClick={() =>
-                    setGradingPrompt(`GRADING RULES FOR SQL:
-
-1. Keywords must match exactly (SELECT, FROM, WHERE, etc.)
-2. Table and column names must be correct
-3. Whitespace and formatting don't matter
-4. Case insensitive for SQL keywords
-5. Missing clauses = partial credit`)
-                  }
-                >
-                  SQL Queries
-                </button>
-              )}
-
-              {(bank.bank_type === "code" || bank.bank_type === "cli") && (
-                <button
-                  type="button"
-                  className="template-btn"
-                  onClick={() =>
-                    setGradingPrompt(`GRADING RULES FOR EXACT MATCH:
-
-1. Character-perfect match required
-2. No partial credit - either correct or wrong
-3. Escape sequences must be exact
-4. Flags must be in correct position`)
-                  }
-                >
-                  Exact Match
-                </button>
-              )}
-
-              {bank.bank_type === "theory" && (
-                <button
-                  type="button"
-                  className="template-btn"
-                  onClick={() => setGradingPrompt("")}
-                >
-                  Default (Concepts)
-                </button>
-              )}
+              ))}
 
               <button
                 type="button"
                 className="template-btn template-btn-clear"
                 onClick={() => setGradingPrompt("")}
               >
-                Clear
+                Clear (use built-in)
               </button>
             </div>
+
+            <details className="grading-help">
+              <summary>How grading works</summary>
+              <div className="grading-help-content">
+                <p>When you submit an answer, the system:</p>
+                <ol>
+                  <li>Splits the expected answer into numbered key points</li>
+                  <li>Sends each point + your answer to the local AI</li>
+                  <li>
+                    The AI classifies each point as <strong>COVERED</strong> or{" "}
+                    <strong>MISSED</strong> based on these rules
+                  </li>
+                  <li>Your score = percentage of points covered</li>
+                </ol>
+                <p>
+                  <strong>Tip:</strong> If grading feels too strict or too
+                  lenient, try a different preset or write your own rules.
+                  Shorter rules work better with small local models.
+                </p>
+              </div>
+            </details>
 
             <div className="modal-actions">
               <button

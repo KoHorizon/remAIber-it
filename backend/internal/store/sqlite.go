@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS grades (
     covered TEXT NOT NULL,
     missed TEXT NOT NULL,
     user_answer TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'success',
     FOREIGN KEY (session_id) REFERENCES sessions(id)
 );
 
@@ -73,6 +74,12 @@ CREATE TABLE IF NOT EXISTS question_stats (
     mastery INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
+`
+
+// migrations adds columns that may not exist in older databases.
+const migrations = `
+-- Add status column if it doesn't exist (SQLite doesn't support IF NOT EXISTS for columns,
+-- so we catch the error in Go).
 `
 
 type SQLiteStore struct {
@@ -91,10 +98,44 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
+	// Run migrations — add status column if missing
+	_ = addColumnIfNotExists(db, "grades", "status", "TEXT NOT NULL DEFAULT 'success'")
+
 	return &SQLiteStore{
 		db:      db,
 		gradeWg: make(map[string]*sync.WaitGroup),
 	}, nil
+}
+
+// addColumnIfNotExists tries to add a column; ignores the error if it already exists.
+func addColumnIfNotExists(db *sql.DB, table, column, definition string) error {
+	query := "ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition
+	_, err := db.Exec(query)
+	if err != nil {
+		// SQLite returns "duplicate column name" if it already exists — that's fine.
+		if isColumnExistsError(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func isColumnExistsError(err error) bool {
+	return err != nil && (contains(err.Error(), "duplicate column") || contains(err.Error(), "already exists"))
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && searchString(s, substr)
+}
+
+func searchString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *SQLiteStore) Close() error {
@@ -545,13 +586,14 @@ func (s *SQLiteStore) GetSession(id string) (*practicesession.PracticeSession, e
 // Grades
 // ============================================================================
 
+// SaveGrade stores a successful grading result.
 func (s *SQLiteStore) SaveGrade(sessionID string, questionID string, score int, covered, missed []string, userAnswer string) error {
 	coveredJSON, _ := json.Marshal(covered)
 	missedJSON, _ := json.Marshal(missed)
 
 	_, err := s.db.Exec(
-		"INSERT INTO grades (session_id, question_id, score, covered, missed, user_answer) VALUES (?, ?, ?, ?, ?, ?)",
-		sessionID, questionID, score, string(coveredJSON), string(missedJSON), userAnswer,
+		"INSERT INTO grades (session_id, question_id, score, covered, missed, user_answer, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		sessionID, questionID, score, string(coveredJSON), string(missedJSON), userAnswer, GradeStatusSuccess,
 	)
 	if err != nil {
 		return err
@@ -561,9 +603,23 @@ func (s *SQLiteStore) SaveGrade(sessionID string, questionID string, score int, 
 	return s.updateQuestionStats(questionID, score)
 }
 
+// SaveGradeFailure stores a record when grading fails, so the user sees
+// "grading failed" instead of "not answered."
+func (s *SQLiteStore) SaveGradeFailure(sessionID string, questionID string, userAnswer string, reason string) error {
+	missed := []string{"Grading failed: " + reason}
+	missedJSON, _ := json.Marshal(missed)
+	coveredJSON, _ := json.Marshal([]string{})
+
+	_, err := s.db.Exec(
+		"INSERT INTO grades (session_id, question_id, score, covered, missed, user_answer, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		sessionID, questionID, 0, string(coveredJSON), string(missedJSON), userAnswer, GradeStatusFailed,
+	)
+	return err
+}
+
 func (s *SQLiteStore) GetGrades(sessionID string) ([]StoredGrade, error) {
 	rows, err := s.db.Query(
-		"SELECT question_id, score, covered, missed, user_answer FROM grades WHERE session_id = ?",
+		"SELECT question_id, score, covered, missed, user_answer, COALESCE(status, 'success') FROM grades WHERE session_id = ?",
 		sessionID,
 	)
 	if err != nil {
@@ -575,11 +631,13 @@ func (s *SQLiteStore) GetGrades(sessionID string) ([]StoredGrade, error) {
 	for rows.Next() {
 		var g StoredGrade
 		var coveredJSON, missedJSON string
-		if err := rows.Scan(&g.QuestionID, &g.Score, &coveredJSON, &missedJSON, &g.UserAnswer); err != nil {
+		var status string
+		if err := rows.Scan(&g.QuestionID, &g.Score, &coveredJSON, &missedJSON, &g.UserAnswer, &status); err != nil {
 			return nil, err
 		}
 		json.Unmarshal([]byte(coveredJSON), &g.Covered)
 		json.Unmarshal([]byte(missedJSON), &g.Missed)
+		g.Status = GradeStatus(status)
 		grades = append(grades, g)
 	}
 	return grades, nil
