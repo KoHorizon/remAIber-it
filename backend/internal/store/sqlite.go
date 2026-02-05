@@ -88,6 +88,9 @@ type SQLiteStore struct {
 	mu      sync.RWMutex
 }
 
+// Compile-time check: *SQLiteStore must satisfy the Store interface.
+var _ Store = (*SQLiteStore)(nil)
+
 func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {

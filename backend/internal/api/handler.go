@@ -14,12 +14,14 @@ import (
 // Instead of relying on package-level globals, every handler method
 // receives its dependencies through this struct.
 type Handler struct {
-	store  *store.SQLiteStore
+	store  store.Store
 	logger *slog.Logger
 }
 
 // NewHandler creates a Handler with the given dependencies.
-func NewHandler(s *store.SQLiteStore, logger *slog.Logger) *Handler {
+// It accepts the Store interface so any implementation (SQLite, mock, …)
+// can be injected.
+func NewHandler(s store.Store, logger *slog.Logger) *Handler {
 	return &Handler{
 		store:  s,
 		logger: logger,
