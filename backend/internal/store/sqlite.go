@@ -4,7 +4,6 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
-	"sync"
 
 	_ "modernc.org/sqlite"
 
@@ -83,9 +82,7 @@ const migrations = `
 `
 
 type SQLiteStore struct {
-	db      *sql.DB
-	gradeWg map[string]*sync.WaitGroup
-	mu      sync.RWMutex
+	db *sql.DB
 }
 
 // Compile-time check: *SQLiteStore must satisfy the Store interface.
@@ -105,8 +102,7 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	_ = addColumnIfNotExists(db, "grades", "status", "TEXT NOT NULL DEFAULT 'success'")
 
 	return &SQLiteStore{
-		db:      db,
-		gradeWg: make(map[string]*sync.WaitGroup),
+		db: db,
 	}, nil
 }
 
@@ -545,10 +541,6 @@ func (s *SQLiteStore) SaveSession(session *practicesession.PracticeSession) erro
 		return err
 	}
 
-	s.mu.Lock()
-	s.gradeWg[session.ID] = &sync.WaitGroup{}
-	s.mu.Unlock()
-
 	return nil
 }
 
@@ -644,28 +636,6 @@ func (s *SQLiteStore) GetGrades(sessionID string) ([]StoredGrade, error) {
 		grades = append(grades, g)
 	}
 	return grades, nil
-}
-
-func (s *SQLiteStore) GetWaitGroup(sessionID string) *sync.WaitGroup {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.gradeWg[sessionID]
-}
-
-func (s *SQLiteStore) AddToWaitGroup(sessionID string) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if wg, ok := s.gradeWg[sessionID]; ok {
-		wg.Add(1)
-	}
-}
-
-func (s *SQLiteStore) DoneWaitGroup(sessionID string) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if wg, ok := s.gradeWg[sessionID]; ok {
-		wg.Done()
-	}
 }
 
 // ============================================================================

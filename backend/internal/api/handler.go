@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/remaimber-it/backend/internal/service"
 	"github.com/remaimber-it/backend/internal/store"
 )
 
@@ -14,17 +15,19 @@ import (
 // Instead of relying on package-level globals, every handler method
 // receives its dependencies through this struct.
 type Handler struct {
-	store  store.Store
-	logger *slog.Logger
+	store   store.Store
+	grading *service.GradingService
+	logger  *slog.Logger
 }
 
 // NewHandler creates a Handler with the given dependencies.
 // It accepts the Store interface so any implementation (SQLite, mock, …)
 // can be injected.
-func NewHandler(s store.Store, logger *slog.Logger) *Handler {
+func NewHandler(s store.Store, gs *service.GradingService, logger *slog.Logger) *Handler {
 	return &Handler{
-		store:  s,
-		logger: logger,
+		store:   s,
+		grading: gs,
+		logger:  logger,
 	}
 }
 

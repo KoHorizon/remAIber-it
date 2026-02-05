@@ -3,14 +3,13 @@ package api
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/remaimber-it/backend/internal/domain/category"
 	practicesession "github.com/remaimber-it/backend/internal/domain/practice_session"
 	"github.com/remaimber-it/backend/internal/domain/questionbank"
-	grader "github.com/remaimber-it/backend/internal/grader"
+	"github.com/remaimber-it/backend/internal/service"
 	"github.com/remaimber-it/backend/internal/store"
 )
 
@@ -726,6 +725,8 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.grading.TrackSession(session.ID)
+
 	questions := make([]SessionQuestion, len(session.Questions))
 	for i, q := range session.Questions {
 		questions[i] = SessionQuestion{
@@ -815,36 +816,15 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 		bankType = string(bank.BankType)
 	}
 
-	h.store.AddToWaitGroup(sessionID)
-	go func(q questionbank.Question, answer string, customPrompt *string, bType string) {
-		defer h.store.DoneWaitGroup(sessionID)
-
-		response, err := grader.GradeAnswer(q.Subject, q.ExpectedAnswer, answer, customPrompt, bType)
-		if err != nil {
-			log.Printf("grading error for question %s: %v", q.ID, err)
-			if saveErr := h.store.SaveGradeFailure(sessionID, q.ID, answer, err.Error()); saveErr != nil {
-				log.Printf("failed to save grade failure: %v", saveErr)
-			}
-			return
-		}
-
-		var result struct {
-			Score   int      `json:"score"`
-			Covered []string `json:"covered"`
-			Missed  []string `json:"missed"`
-		}
-		if err := json.Unmarshal([]byte(response), &result); err != nil {
-			log.Printf("parse error for question %s: %v (response: %s)", q.ID, err, response)
-			if saveErr := h.store.SaveGradeFailure(sessionID, q.ID, answer, "failed to parse grading response"); saveErr != nil {
-				log.Printf("failed to save grade failure: %v", saveErr)
-			}
-			return
-		}
-
-		if err := h.store.SaveGrade(sessionID, q.ID, result.Score, result.Covered, result.Missed, answer); err != nil {
-			log.Printf("failed to save grade for question %s: %v", q.ID, err)
-		}
-	}(*question, req.Answer, gradingPrompt, bankType)
+	h.grading.SubmitGrading(service.GradeRequest{
+		SessionID:      sessionID,
+		QuestionID:     question.ID,
+		Question:       question.Subject,
+		ExpectedAnswer: question.ExpectedAnswer,
+		UserAnswer:     req.Answer,
+		GradingPrompt:  gradingPrompt,
+		BankType:       bankType,
+	})
 
 	respondJSON(w, http.StatusOK, SubmitAnswerResponse{
 		Status: "submitted",
@@ -866,10 +846,8 @@ func (h *Handler) completeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wg := h.store.GetWaitGroup(sessionID)
-	if wg != nil {
-		wg.Wait()
-	}
+	// Wait for all grading goroutines to finish
+	h.grading.WaitForSession(sessionID)
 
 	grades, err := h.store.GetGrades(sessionID)
 	if err != nil {

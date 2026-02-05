@@ -11,6 +11,7 @@ import (
 
 	"github.com/remaimber-it/backend/internal/api"
 	"github.com/remaimber-it/backend/internal/infrastructure/config"
+	"github.com/remaimber-it/backend/internal/service"
 	"github.com/remaimber-it/backend/internal/store"
 )
 
@@ -26,7 +27,8 @@ func main() {
 	}
 	defer db.Close()
 
-	handler := api.NewHandler(db, logger)
+	gradingSvc := service.NewGradingService(db, logger)
+	handler := api.NewHandler(db, gradingSvc, logger)
 
 	// ── Routes ──────────────────────────────────────────────────────
 	mux := http.NewServeMux()

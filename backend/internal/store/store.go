@@ -2,7 +2,6 @@ package store
 
 import (
 	"errors"
-	"sync"
 
 	"github.com/remaimber-it/backend/internal/domain/category"
 	practicesession "github.com/remaimber-it/backend/internal/domain/practice_session"
@@ -49,11 +48,6 @@ type Store interface {
 	SaveGrade(sessionID string, questionID string, score int, covered, missed []string, userAnswer string) error
 	SaveGradeFailure(sessionID string, questionID string, userAnswer string, reason string) error
 	GetGrades(sessionID string) ([]StoredGrade, error)
-
-	// WaitGroup management (for async grading)
-	GetWaitGroup(sessionID string) *sync.WaitGroup
-	AddToWaitGroup(sessionID string)
-	DoneWaitGroup(sessionID string)
 
 	// Lifecycle
 	Close() error
