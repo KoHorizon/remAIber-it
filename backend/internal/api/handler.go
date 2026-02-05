@@ -52,3 +52,13 @@ func (h *Handler) handleStoreError(w http.ResponseWriter, err error, entity stri
 	http.Error(w, "internal error", http.StatusInternalServerError)
 	return true
 }
+
+// decodeJSON reads a JSON request body into dst.
+// Returns true on success. On failure it writes a 400 response and returns false.
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return false
+	}
+	return true
+}
