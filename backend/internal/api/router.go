@@ -1,9 +1,8 @@
-// internal/api/routes.go
+// internal/api/router.go
 package api
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -11,21 +10,48 @@ import (
 	"github.com/remaimber-it/backend/internal/domain/category"
 	practicesession "github.com/remaimber-it/backend/internal/domain/practice_session"
 	"github.com/remaimber-it/backend/internal/domain/questionbank"
-	ollama "github.com/remaimber-it/backend/internal/grader"
+	grader "github.com/remaimber-it/backend/internal/grader"
 	"github.com/remaimber-it/backend/internal/store"
 )
 
-var (
-	db *store.SQLiteStore
-)
+// RegisterRoutes wires all HTTP routes to the handler methods.
+func RegisterRoutes(mux *http.ServeMux, h *Handler) {
+	// Categories
+	mux.HandleFunc("POST /categories", h.createCategory)
+	mux.HandleFunc("GET /categories", h.listCategories)
+	mux.HandleFunc("GET /categories/{categoryID}", h.getCategory)
+	mux.HandleFunc("PUT /categories/{categoryID}", h.updateCategory)
+	mux.HandleFunc("DELETE /categories/{categoryID}", h.deleteCategory)
+	mux.HandleFunc("GET /categories/{categoryID}/banks", h.listBanksByCategory)
+	mux.HandleFunc("GET /categories/{categoryID}/stats", h.getCategoryStats)
 
-func init() {
-	var err error
-	db, err = store.NewSQLite("remaimber.db")
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Banks
+	mux.HandleFunc("POST /banks", h.createBank)
+	mux.HandleFunc("GET /banks", h.listBanks)
+	mux.HandleFunc("GET /banks/{bankID}", h.getBank)
+	mux.HandleFunc("DELETE /banks/{bankID}", h.deleteBank)
+	mux.HandleFunc("PATCH /banks/{bankID}/category", h.updateBankCategory)
+	mux.HandleFunc("PUT /banks/{bankID}/grading-prompt", h.updateBankGradingPrompt)
+	mux.HandleFunc("GET /banks/{bankID}/stats", h.getBankStats)
+
+	// Questions
+	mux.HandleFunc("POST /banks/{bankID}/questions", h.addQuestion)
+	mux.HandleFunc("DELETE /banks/{bankID}/questions/{questionID}", h.deleteQuestion)
+
+	// Sessions
+	mux.HandleFunc("POST /sessions", h.createSession)
+	mux.HandleFunc("GET /sessions/{sessionID}", h.getSession)
+	mux.HandleFunc("POST /sessions/{sessionID}/answers", h.submitAnswer)
+	mux.HandleFunc("POST /sessions/{sessionID}/complete", h.completeSession)
+
+	// Export/Import
+	mux.HandleFunc("GET /export", h.exportAll)
+	mux.HandleFunc("POST /import", h.importAll)
 }
+
+// ============================================================================
+// Request/Response types
+// ============================================================================
 
 type GradeResult struct {
 	QuestionID string
@@ -41,45 +67,10 @@ type GradeDetails struct {
 	Status     string   `json:"status"` // "success", "failed", or "not_answered"
 }
 
-func RegisterRoutes(mux *http.ServeMux) {
-	// Categories
-	mux.HandleFunc("POST /categories", createCategory)
-	mux.HandleFunc("GET /categories", listCategories)
-	mux.HandleFunc("GET /categories/{categoryID}", getCategory)
-	mux.HandleFunc("PUT /categories/{categoryID}", updateCategory)
-	mux.HandleFunc("DELETE /categories/{categoryID}", deleteCategory)
-	mux.HandleFunc("GET /categories/{categoryID}/banks", listBanksByCategory)
-	mux.HandleFunc("GET /categories/{categoryID}/stats", getCategoryStats)
-
-	// Banks
-	mux.HandleFunc("POST /banks", createBank)
-	mux.HandleFunc("GET /banks", listBanks)
-	mux.HandleFunc("GET /banks/{bankID}", getBank)
-	mux.HandleFunc("DELETE /banks/{bankID}", deleteBank)
-	mux.HandleFunc("PATCH /banks/{bankID}/category", updateBankCategory)
-	mux.HandleFunc("PUT /banks/{bankID}/grading-prompt", updateBankGradingPrompt)
-	mux.HandleFunc("GET /banks/{bankID}/stats", getBankStats)
-
-	// Questions
-	mux.HandleFunc("POST /banks/{bankID}/questions", addQuestion)
-	mux.HandleFunc("DELETE /banks/{bankID}/questions/{questionID}", deleteQuestion)
-
-	// Sessions
-	mux.HandleFunc("POST /sessions", createSession)
-	mux.HandleFunc("GET /sessions/{sessionID}", getSession)
-	mux.HandleFunc("POST /sessions/{sessionID}/answers", submitAnswer)
-	mux.HandleFunc("POST /sessions/{sessionID}/complete", completeSession)
-
-	// Export/Import
-	mux.HandleFunc("GET /export", exportAll)
-	mux.HandleFunc("POST /import", importAll)
-}
-
 // ============================================================================
 // Categories
 // ============================================================================
 
-// POST /categories
 type CreateCategoryRequest struct {
 	Name string `json:"name"`
 }
@@ -90,7 +81,7 @@ type CategoryResponse struct {
 	Mastery int    `json:"mastery"`
 }
 
-func createCategory(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
 	var req CreateCategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -103,23 +94,20 @@ func createCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cat := category.New(req.Name)
-	if err := db.SaveCategory(cat); err != nil {
+	if err := h.store.SaveCategory(cat); err != nil {
 		http.Error(w, "failed to save category", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(CategoryResponse{
+	respondJSON(w, http.StatusCreated, CategoryResponse{
 		ID:      cat.ID,
 		Name:    cat.Name,
 		Mastery: 0,
 	})
 }
 
-// GET /categories
-func listCategories(w http.ResponseWriter, r *http.Request) {
-	categories, err := db.ListCategories()
+func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
+	categories, err := h.store.ListCategories()
 	if err != nil {
 		http.Error(w, "failed to load categories", http.StatusInternalServerError)
 		return
@@ -127,7 +115,7 @@ func listCategories(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]CategoryResponse, len(categories))
 	for i, cat := range categories {
-		mastery, _ := db.GetCategoryMastery(cat.ID)
+		mastery, _ := h.store.GetCategoryMastery(cat.ID)
 		response[i] = CategoryResponse{
 			ID:      cat.ID,
 			Name:    cat.Name,
@@ -135,11 +123,9 @@ func listCategories(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	respondJSON(w, http.StatusOK, response)
 }
 
-// GET /categories/{categoryID}
 type GetCategoryResponse struct {
 	ID      string         `json:"id"`
 	Name    string         `json:"name"`
@@ -157,20 +143,15 @@ type BankResponse struct {
 	Mastery       int     `json:"mastery"`
 }
 
-func getCategory(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
 	categoryID := r.PathValue("categoryID")
 
-	cat, err := db.GetCategory(categoryID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "category not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, "failed to load category", http.StatusInternalServerError)
+	cat, err := h.store.GetCategory(categoryID)
+	if h.handleStoreError(w, err, "category") {
 		return
 	}
 
-	banks, err := db.ListBanksByCategory(categoryID)
+	banks, err := h.store.ListBanksByCategory(categoryID)
 	if err != nil {
 		http.Error(w, "failed to load banks", http.StatusInternalServerError)
 		return
@@ -178,7 +159,7 @@ func getCategory(w http.ResponseWriter, r *http.Request) {
 
 	bankResponses := make([]BankResponse, len(banks))
 	for i, bank := range banks {
-		mastery, _ := db.GetBankMastery(bank.ID)
+		mastery, _ := h.store.GetBankMastery(bank.ID)
 		bankResponses[i] = BankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
@@ -189,10 +170,9 @@ func getCategory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	categoryMastery, _ := db.GetCategoryMastery(categoryID)
+	categoryMastery, _ := h.store.GetCategoryMastery(categoryID)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(GetCategoryResponse{
+	respondJSON(w, http.StatusOK, GetCategoryResponse{
 		ID:      cat.ID,
 		Name:    cat.Name,
 		Mastery: categoryMastery,
@@ -200,12 +180,11 @@ func getCategory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// PUT /categories/{categoryID}
 type UpdateCategoryRequest struct {
 	Name string `json:"name"`
 }
 
-func updateCategory(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
 	categoryID := r.PathValue("categoryID")
 
 	var req UpdateCategoryRequest
@@ -224,55 +203,38 @@ func updateCategory(w http.ResponseWriter, r *http.Request) {
 		Name: req.Name,
 	}
 
-	err := db.UpdateCategory(cat)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "category not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, "failed to update category", http.StatusInternalServerError)
+	if h.handleStoreError(w, h.store.UpdateCategory(cat), "category") {
 		return
 	}
 
-	mastery, _ := db.GetCategoryMastery(categoryID)
+	mastery, _ := h.store.GetCategoryMastery(categoryID)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(CategoryResponse{
+	respondJSON(w, http.StatusOK, CategoryResponse{
 		ID:      cat.ID,
 		Name:    cat.Name,
 		Mastery: mastery,
 	})
 }
 
-// DELETE /categories/{categoryID}
-func deleteCategory(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deleteCategory(w http.ResponseWriter, r *http.Request) {
 	categoryID := r.PathValue("categoryID")
 
-	err := db.DeleteCategory(categoryID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "category not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, "failed to delete category", http.StatusInternalServerError)
+	if h.handleStoreError(w, h.store.DeleteCategory(categoryID), "category") {
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GET /categories/{categoryID}/banks
-func listBanksByCategory(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 	categoryID := r.PathValue("categoryID")
 
-	// Check category exists
-	_, err := db.GetCategory(categoryID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "category not found", http.StatusNotFound)
+	_, err := h.store.GetCategory(categoryID)
+	if h.handleStoreError(w, err, "category") {
 		return
 	}
 
-	banks, err := db.ListBanksByCategory(categoryID)
+	banks, err := h.store.ListBanksByCategory(categoryID)
 	if err != nil {
 		http.Error(w, "failed to load banks", http.StatusInternalServerError)
 		return
@@ -280,7 +242,7 @@ func listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]BankResponse, len(banks))
 	for i, bank := range banks {
-		mastery, _ := db.GetBankMastery(bank.ID)
+		mastery, _ := h.store.GetBankMastery(bank.ID)
 		response[i] = BankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
@@ -291,33 +253,29 @@ func listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	respondJSON(w, http.StatusOK, response)
 }
 
-// GET /categories/{categoryID}/stats
 type CategoryStatsResponse struct {
 	CategoryID string `json:"category_id"`
 	Mastery    int    `json:"mastery"`
 }
 
-func getCategoryStats(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getCategoryStats(w http.ResponseWriter, r *http.Request) {
 	categoryID := r.PathValue("categoryID")
 
-	_, err := db.GetCategory(categoryID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "category not found", http.StatusNotFound)
+	_, err := h.store.GetCategory(categoryID)
+	if h.handleStoreError(w, err, "category") {
 		return
 	}
 
-	mastery, err := db.GetCategoryMastery(categoryID)
+	mastery, err := h.store.GetCategoryMastery(categoryID)
 	if err != nil {
 		http.Error(w, "failed to get stats", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(CategoryStatsResponse{
+	respondJSON(w, http.StatusOK, CategoryStatsResponse{
 		CategoryID: categoryID,
 		Mastery:    mastery,
 	})
@@ -327,12 +285,11 @@ func getCategoryStats(w http.ResponseWriter, r *http.Request) {
 // Banks
 // ============================================================================
 
-// POST /banks
 type CreateBankRequest struct {
 	Subject    string  `json:"subject"`
 	CategoryID *string `json:"category_id,omitempty"`
-	BankType   string  `json:"bank_type,omitempty"` // theory, code, cli
-	Language   *string `json:"language,omitempty"`  // for code banks
+	BankType   string  `json:"bank_type,omitempty"`
+	Language   *string `json:"language,omitempty"`
 }
 
 type CreateBankResponse struct {
@@ -344,7 +301,7 @@ type CreateBankResponse struct {
 	Mastery    int     `json:"mastery"`
 }
 
-func createBank(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 	var req CreateBankRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -356,24 +313,16 @@ func createBank(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Category is now required
 	if req.CategoryID == nil || *req.CategoryID == "" {
 		http.Error(w, "category_id is required", http.StatusBadRequest)
 		return
 	}
 
-	// Validate category exists
-	_, err := db.GetCategory(*req.CategoryID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "category not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, "failed to validate category", http.StatusInternalServerError)
+	_, err := h.store.GetCategory(*req.CategoryID)
+	if h.handleStoreError(w, err, "category") {
 		return
 	}
 
-	// Validate bank_type
 	bankType := questionbank.BankType(req.BankType)
 	if bankType == "" {
 		bankType = questionbank.BankTypeTheory
@@ -385,14 +334,12 @@ func createBank(w http.ResponseWriter, r *http.Request) {
 
 	bank := questionbank.NewWithOptions(req.Subject, req.CategoryID, bankType, req.Language)
 
-	if err := db.SaveBank(bank); err != nil {
+	if err := h.store.SaveBank(bank); err != nil {
 		http.Error(w, "failed to save bank", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(CreateBankResponse{
+	respondJSON(w, http.StatusCreated, CreateBankResponse{
 		ID:         bank.ID,
 		Subject:    bank.Subject,
 		CategoryID: bank.CategoryID,
@@ -402,9 +349,8 @@ func createBank(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /banks
-func listBanks(w http.ResponseWriter, r *http.Request) {
-	banks, err := db.ListBanks()
+func (h *Handler) listBanks(w http.ResponseWriter, r *http.Request) {
+	banks, err := h.store.ListBanks()
 	if err != nil {
 		http.Error(w, "failed to load banks", http.StatusInternalServerError)
 		return
@@ -412,7 +358,7 @@ func listBanks(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]CreateBankResponse, len(banks))
 	for i, bank := range banks {
-		mastery, _ := db.GetBankMastery(bank.ID)
+		mastery, _ := h.store.GetBankMastery(bank.ID)
 		response[i] = CreateBankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
@@ -423,11 +369,9 @@ func listBanks(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	respondJSON(w, http.StatusOK, response)
 }
 
-// GET /banks/{bankID}
 type GetBankResponse struct {
 	ID            string             `json:"id"`
 	Subject       string             `json:"subject"`
@@ -448,22 +392,16 @@ type QuestionResponse struct {
 	TimesCorrect   int    `json:"times_correct"`
 }
 
-func getBank(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getBank(w http.ResponseWriter, r *http.Request) {
 	bankID := r.PathValue("bankID")
 
-	bank, err := db.GetBank(bankID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "bank not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, "failed to load bank", http.StatusInternalServerError)
+	bank, err := h.store.GetBank(bankID)
+	if h.handleStoreError(w, err, "bank") {
 		return
 	}
 
-	// Get stats for all questions in this bank
 	statsMap := make(map[string]*questionbank.QuestionStats)
-	stats, err := db.GetQuestionStatsByBank(bankID)
+	stats, err := h.store.GetQuestionStatsByBank(bankID)
 	if err == nil {
 		for i := range stats {
 			statsMap[stats[i].QuestionID] = &stats[i]
@@ -489,10 +427,9 @@ func getBank(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	bankMastery, _ := db.GetBankMastery(bankID)
+	bankMastery, _ := h.store.GetBankMastery(bankID)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(GetBankResponse{
+	respondJSON(w, http.StatusOK, GetBankResponse{
 		ID:            bank.ID,
 		Subject:       bank.Subject,
 		CategoryID:    bank.CategoryID,
@@ -504,29 +441,21 @@ func getBank(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DELETE /banks/{bankID}
-func deleteBank(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deleteBank(w http.ResponseWriter, r *http.Request) {
 	bankID := r.PathValue("bankID")
 
-	err := db.DeleteBank(bankID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "bank not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, "failed to delete bank", http.StatusInternalServerError)
+	if h.handleStoreError(w, h.store.DeleteBank(bankID), "bank") {
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// PATCH /banks/{bankID}/category
 type UpdateBankCategoryRequest struct {
 	CategoryID *string `json:"category_id"`
 }
 
-func updateBankCategory(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) updateBankCategory(w http.ResponseWriter, r *http.Request) {
 	bankID := r.PathValue("bankID")
 
 	var req UpdateBankCategoryRequest
@@ -535,35 +464,21 @@ func updateBankCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate category exists if provided
 	if req.CategoryID != nil {
-		_, err := db.GetCategory(*req.CategoryID)
-		if errors.Is(err, store.ErrNotFound) {
-			http.Error(w, "category not found", http.StatusNotFound)
-			return
-		}
-		if err != nil {
-			http.Error(w, "failed to validate category", http.StatusInternalServerError)
+		_, err := h.store.GetCategory(*req.CategoryID)
+		if h.handleStoreError(w, err, "category") {
 			return
 		}
 	}
 
-	err := db.UpdateBankCategory(bankID, req.CategoryID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "bank not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, "failed to update bank", http.StatusInternalServerError)
+	if h.handleStoreError(w, h.store.UpdateBankCategory(bankID, req.CategoryID), "bank") {
 		return
 	}
 
-	// Return updated bank
-	bank, _ := db.GetBank(bankID)
-	mastery, _ := db.GetBankMastery(bankID)
+	bank, _ := h.store.GetBank(bankID)
+	mastery, _ := h.store.GetBankMastery(bankID)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(CreateBankResponse{
+	respondJSON(w, http.StatusOK, CreateBankResponse{
 		ID:         bank.ID,
 		Subject:    bank.Subject,
 		CategoryID: bank.CategoryID,
@@ -571,12 +486,11 @@ func updateBankCategory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// PUT /banks/{bankID}/grading-prompt
 type UpdateGradingPromptRequest struct {
 	GradingPrompt *string `json:"grading_prompt"`
 }
 
-func updateBankGradingPrompt(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) updateBankGradingPrompt(w http.ResponseWriter, r *http.Request) {
 	bankID := r.PathValue("bankID")
 
 	var req UpdateGradingPromptRequest
@@ -585,28 +499,19 @@ func updateBankGradingPrompt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Allow empty string to clear the prompt (set to nil)
 	var promptToSave *string
 	if req.GradingPrompt != nil && *req.GradingPrompt != "" {
 		promptToSave = req.GradingPrompt
 	}
 
-	err := db.UpdateBankGradingPrompt(bankID, promptToSave)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "bank not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, "failed to update grading prompt", http.StatusInternalServerError)
+	if h.handleStoreError(w, h.store.UpdateBankGradingPrompt(bankID, promptToSave), "bank") {
 		return
 	}
 
-	// Return updated bank
-	bank, _ := db.GetBank(bankID)
-	mastery, _ := db.GetBankMastery(bankID)
+	bank, _ := h.store.GetBank(bankID)
+	mastery, _ := h.store.GetBankMastery(bankID)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(GetBankResponse{
+	respondJSON(w, http.StatusOK, GetBankResponse{
 		ID:            bank.ID,
 		Subject:       bank.Subject,
 		CategoryID:    bank.CategoryID,
@@ -616,7 +521,6 @@ func updateBankGradingPrompt(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /banks/{bankID}/stats
 type BankStatsResponse struct {
 	BankID         string                  `json:"bank_id"`
 	Mastery        int                     `json:"mastery"`
@@ -631,20 +535,15 @@ type QuestionStatsResponse struct {
 	Mastery       int    `json:"mastery"`
 }
 
-func getBankStats(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getBankStats(w http.ResponseWriter, r *http.Request) {
 	bankID := r.PathValue("bankID")
 
-	bank, err := db.GetBank(bankID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "bank not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, "failed to load bank", http.StatusInternalServerError)
+	bank, err := h.store.GetBank(bankID)
+	if h.handleStoreError(w, err, "bank") {
 		return
 	}
 
-	stats, err := db.GetQuestionStatsByBank(bankID)
+	stats, err := h.store.GetQuestionStatsByBank(bankID)
 	if err != nil {
 		http.Error(w, "failed to get stats", http.StatusInternalServerError)
 		return
@@ -660,10 +559,9 @@ func getBankStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	mastery, _ := db.GetBankMastery(bankID)
+	mastery, _ := h.store.GetBankMastery(bankID)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(BankStatsResponse{
+	respondJSON(w, http.StatusOK, BankStatsResponse{
 		BankID:         bankID,
 		Mastery:        mastery,
 		TotalQuestions: len(bank.Questions),
@@ -675,7 +573,6 @@ func getBankStats(w http.ResponseWriter, r *http.Request) {
 // Questions
 // ============================================================================
 
-// POST /banks/{bankID}/questions
 type AddQuestionRequest struct {
 	Subject        string `json:"subject"`
 	ExpectedAnswer string `json:"expected_answer"`
@@ -690,12 +587,11 @@ type AddQuestionResponse struct {
 	TimesCorrect   int    `json:"times_correct"`
 }
 
-func addQuestion(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 	bankID := r.PathValue("bankID")
 
-	bank, err := db.GetBank(bankID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "bank not found", http.StatusNotFound)
+	bank, err := h.store.GetBank(bankID)
+	if h.handleStoreError(w, err, "bank") {
 		return
 	}
 
@@ -711,14 +607,12 @@ func addQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newQuestion := bank.Questions[len(bank.Questions)-1]
-	if err := db.AddQuestion(bankID, newQuestion); err != nil {
+	if err := h.store.AddQuestion(bankID, newQuestion); err != nil {
 		http.Error(w, "failed to save question", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(AddQuestionResponse{
+	respondJSON(w, http.StatusCreated, AddQuestionResponse{
 		ID:             newQuestion.ID,
 		Subject:        newQuestion.Subject,
 		ExpectedAnswer: newQuestion.ExpectedAnswer,
@@ -728,17 +622,10 @@ func addQuestion(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DELETE /banks/{bankID}/questions/{questionID}
-func deleteQuestion(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deleteQuestion(w http.ResponseWriter, r *http.Request) {
 	questionID := r.PathValue("questionID")
 
-	err := db.DeleteQuestion(questionID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "question not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		http.Error(w, "failed to delete question", http.StatusInternalServerError)
+	if h.handleStoreError(w, h.store.DeleteQuestion(questionID), "question") {
 		return
 	}
 
@@ -749,13 +636,12 @@ func deleteQuestion(w http.ResponseWriter, r *http.Request) {
 // Sessions
 // ============================================================================
 
-// POST /sessions
 type CreateSessionRequest struct {
 	BankID         string   `json:"bank_id"`
-	MaxQuestions   *int     `json:"max_questions,omitempty"`    // optional: limit number of questions
-	MaxDurationMin *int     `json:"max_duration_min,omitempty"` // optional: time limit in minutes
-	FocusOnWeak    bool     `json:"focus_on_weak"`              // prioritize low mastery questions
-	QuestionIDs    []string `json:"question_ids,omitempty"`     // optional: specific questions for retry
+	MaxQuestions   *int     `json:"max_questions,omitempty"`
+	MaxDurationMin *int     `json:"max_duration_min,omitempty"`
+	FocusOnWeak    bool     `json:"focus_on_weak"`
+	QuestionIDs    []string `json:"question_ids,omitempty"`
 }
 
 type SessionQuestion struct {
@@ -771,16 +657,15 @@ type CreateSessionResponse struct {
 	FocusOnWeak    bool              `json:"focus_on_weak"`
 }
 
-func createSession(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 	var req CreateSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
 
-	bank, err := db.GetBank(req.BankID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "bank not found", http.StatusNotFound)
+	bank, err := h.store.GetBank(req.BankID)
+	if h.handleStoreError(w, err, "bank") {
 		return
 	}
 
@@ -789,7 +674,6 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build session config from request
 	config := practicesession.DefaultConfig()
 
 	if req.MaxQuestions != nil && *req.MaxQuestions > 0 {
@@ -805,15 +689,12 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 
 	var session *practicesession.PracticeSession
 
-	// If specific question IDs provided (retry), use those exact questions in order
 	if len(req.QuestionIDs) > 0 {
-		// Build a map for quick lookup
 		questionMap := make(map[string]questionbank.Question)
 		for _, q := range bank.Questions {
 			questionMap[q.ID] = q
 		}
 
-		// Get questions in the specified order
 		var specificQuestions []questionbank.Question
 		for _, qid := range req.QuestionIDs {
 			if q, ok := questionMap[qid]; ok {
@@ -828,10 +709,9 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 
 		session = practicesession.NewWithSpecificQuestions(bank, specificQuestions, config)
 	} else {
-		// Get ordered questions if focus on weak is enabled
 		var orderedQuestions []questionbank.Question
 		if req.FocusOnWeak {
-			orderedQuestions, err = db.GetQuestionsOrderedByMastery(req.BankID, true) // ascending = lowest mastery first
+			orderedQuestions, err = h.store.GetQuestionsOrderedByMastery(req.BankID, true)
 			if err != nil {
 				http.Error(w, "failed to get question order", http.StatusInternalServerError)
 				return
@@ -841,7 +721,7 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 		session = practicesession.NewWithConfig(bank, config, orderedQuestions)
 	}
 
-	if err := db.SaveSession(session); err != nil {
+	if err := h.store.SaveSession(session); err != nil {
 		http.Error(w, "failed to save session", http.StatusInternalServerError)
 		return
 	}
@@ -861,23 +741,18 @@ func createSession(w http.ResponseWriter, r *http.Request) {
 		FocusOnWeak: session.FocusOnWeak,
 	}
 
-	// Echo back duration if set (for frontend timer)
 	if req.MaxDurationMin != nil && *req.MaxDurationMin > 0 {
 		response.MaxDurationMin = req.MaxDurationMin
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
+	respondJSON(w, http.StatusCreated, response)
 }
 
-// GET /sessions/{sessionID}
-func getSession(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.PathValue("sessionID")
 
-	session, err := db.GetSession(sessionID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "session not found", http.StatusNotFound)
+	session, err := h.store.GetSession(sessionID)
+	if h.handleStoreError(w, err, "session") {
 		return
 	}
 
@@ -890,14 +765,12 @@ func getSession(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(CreateSessionResponse{
+	respondJSON(w, http.StatusOK, CreateSessionResponse{
 		ID:        session.ID,
 		Questions: questions,
 	})
 }
 
-// POST /sessions/{sessionID}/answers
 type SubmitAnswerRequest struct {
 	QuestionID string `json:"question_id"`
 	Answer     string `json:"answer"`
@@ -907,12 +780,11 @@ type SubmitAnswerResponse struct {
 	Status string `json:"status"`
 }
 
-func submitAnswer(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.PathValue("sessionID")
 
-	session, err := db.GetSession(sessionID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "session not found", http.StatusNotFound)
+	session, err := h.store.GetSession(sessionID)
+	if h.handleStoreError(w, err, "session") {
 		return
 	}
 
@@ -922,7 +794,6 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find the question
 	var question *questionbank.Question
 	for _, q := range session.Questions {
 		if q.ID == req.QuestionID {
@@ -936,25 +807,22 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the bank to retrieve custom grading prompt and bank type
-	bank, _ := db.GetBank(session.QuestionBankId)
+	bank, _ := h.store.GetBank(session.QuestionBankId)
 	var gradingPrompt *string
-	var bankType string = "theory" // default
+	var bankType string = "theory"
 	if bank != nil {
 		gradingPrompt = bank.GradingPrompt
 		bankType = string(bank.BankType)
 	}
 
-	// Grade asynchronously
-	db.AddToWaitGroup(sessionID)
+	h.store.AddToWaitGroup(sessionID)
 	go func(q questionbank.Question, answer string, customPrompt *string, bType string) {
-		defer db.DoneWaitGroup(sessionID)
+		defer h.store.DoneWaitGroup(sessionID)
 
-		response, err := ollama.GradeAnswer(q.Subject, q.ExpectedAnswer, answer, customPrompt, bType)
+		response, err := grader.GradeAnswer(q.Subject, q.ExpectedAnswer, answer, customPrompt, bType)
 		if err != nil {
 			log.Printf("grading error for question %s: %v", q.ID, err)
-			// Save a failure record so the user sees "grading failed" instead of "not answered"
-			if saveErr := db.SaveGradeFailure(sessionID, q.ID, answer, err.Error()); saveErr != nil {
+			if saveErr := h.store.SaveGradeFailure(sessionID, q.ID, answer, err.Error()); saveErr != nil {
 				log.Printf("failed to save grade failure: %v", saveErr)
 			}
 			return
@@ -967,24 +835,22 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := json.Unmarshal([]byte(response), &result); err != nil {
 			log.Printf("parse error for question %s: %v (response: %s)", q.ID, err, response)
-			if saveErr := db.SaveGradeFailure(sessionID, q.ID, answer, "failed to parse grading response"); saveErr != nil {
+			if saveErr := h.store.SaveGradeFailure(sessionID, q.ID, answer, "failed to parse grading response"); saveErr != nil {
 				log.Printf("failed to save grade failure: %v", saveErr)
 			}
 			return
 		}
 
-		if err := db.SaveGrade(sessionID, q.ID, result.Score, result.Covered, result.Missed, answer); err != nil {
+		if err := h.store.SaveGrade(sessionID, q.ID, result.Score, result.Covered, result.Missed, answer); err != nil {
 			log.Printf("failed to save grade for question %s: %v", q.ID, err)
 		}
 	}(*question, req.Answer, gradingPrompt, bankType)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(SubmitAnswerResponse{
+	respondJSON(w, http.StatusOK, SubmitAnswerResponse{
 		Status: "submitted",
 	})
 }
 
-// POST /sessions/{sessionID}/complete
 type CompleteSessionResponse struct {
 	SessionID  string         `json:"session_id"`
 	TotalScore int            `json:"total_score"`
@@ -992,35 +858,30 @@ type CompleteSessionResponse struct {
 	Results    []GradeDetails `json:"results"`
 }
 
-func completeSession(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) completeSession(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.PathValue("sessionID")
 
-	// Get the session to know all questions
-	session, err := db.GetSession(sessionID)
-	if errors.Is(err, store.ErrNotFound) {
-		http.Error(w, "session not found", http.StatusNotFound)
+	session, err := h.store.GetSession(sessionID)
+	if h.handleStoreError(w, err, "session") {
 		return
 	}
 
-	// Wait for all grading to complete
-	wg := db.GetWaitGroup(sessionID)
+	wg := h.store.GetWaitGroup(sessionID)
 	if wg != nil {
 		wg.Wait()
 	}
 
-	grades, err := db.GetGrades(sessionID)
+	grades, err := h.store.GetGrades(sessionID)
 	if err != nil {
 		http.Error(w, "failed to load grades", http.StatusInternalServerError)
 		return
 	}
 
-	// Create a map of graded questions for quick lookup
 	gradedQuestions := make(map[string]store.StoredGrade)
 	for _, g := range grades {
 		gradedQuestions[g.QuestionID] = g
 	}
 
-	// Build results for ALL questions in the session (in order)
 	results := make([]GradeDetails, len(session.Questions))
 	totalScore := 0
 
@@ -1039,7 +900,6 @@ func completeSession(w http.ResponseWriter, r *http.Request) {
 			}
 			totalScore += grade.Score
 		} else {
-			// Question was NOT answered - score is 0
 			results[i] = GradeDetails{
 				Score:      0,
 				Covered:    []string{},
@@ -1050,11 +910,9 @@ func completeSession(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Max score is based on total questions in session, not just answered ones
 	maxScore := len(session.Questions) * 100
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(CompleteSessionResponse{
+	respondJSON(w, http.StatusOK, CompleteSessionResponse{
 		SessionID:  sessionID,
 		TotalScore: totalScore,
 		MaxScore:   maxScore,
@@ -1090,9 +948,8 @@ type ExportData struct {
 	Categories []ExportCategory `json:"categories"`
 }
 
-// GET /export
-func exportAll(w http.ResponseWriter, r *http.Request) {
-	categories, err := db.ListCategories()
+func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
+	categories, err := h.store.ListCategories()
 	if err != nil {
 		http.Error(w, "failed to load categories", http.StatusInternalServerError)
 		return
@@ -1105,7 +962,7 @@ func exportAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, cat := range categories {
-		banks, err := db.ListBanksByCategory(cat.ID)
+		banks, err := h.store.ListBanksByCategory(cat.ID)
 		if err != nil {
 			continue
 		}
@@ -1116,8 +973,7 @@ func exportAll(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, bank := range banks {
-			// Get full bank with questions
-			fullBank, err := db.GetBank(bank.ID)
+			fullBank, err := h.store.GetBank(bank.ID)
 			if err != nil {
 				continue
 			}
@@ -1154,8 +1010,7 @@ type ImportResult struct {
 	QuestionsCreated  int `json:"questions_created"`
 }
 
-// POST /import
-func importAll(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 	var importData ExportData
 	if err := json.NewDecoder(r.Body).Decode(&importData); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -1165,16 +1020,14 @@ func importAll(w http.ResponseWriter, r *http.Request) {
 	result := ImportResult{}
 
 	for _, cat := range importData.Categories {
-		// Create category
 		newCat := category.New(cat.Name)
-		if err := db.SaveCategory(newCat); err != nil {
-			log.Printf("failed to create category %s: %v", cat.Name, err)
+		if err := h.store.SaveCategory(newCat); err != nil {
+			h.logger.Error("failed to create category", "name", cat.Name, "error", err)
 			continue
 		}
 		result.CategoriesCreated++
 
 		for _, bank := range cat.Banks {
-			// Create bank
 			bankType := questionbank.BankType(bank.BankType)
 			if bankType == "" {
 				bankType = questionbank.BankTypeTheory
@@ -1185,21 +1038,20 @@ func importAll(w http.ResponseWriter, r *http.Request) {
 				newBank.SetGradingPrompt(bank.GradingPrompt)
 			}
 
-			if err := db.SaveBank(newBank); err != nil {
-				log.Printf("failed to create bank %s: %v", bank.Subject, err)
+			if err := h.store.SaveBank(newBank); err != nil {
+				h.logger.Error("failed to create bank", "subject", bank.Subject, "error", err)
 				continue
 			}
 			result.BanksCreated++
 
-			// Add questions
 			for _, q := range bank.Questions {
 				if err := newBank.AddQuestions(q.Subject, q.ExpectedAnswer); err != nil {
-					log.Printf("failed to add question: %v", err)
+					h.logger.Error("failed to add question", "error", err)
 					continue
 				}
 				newQuestion := newBank.Questions[len(newBank.Questions)-1]
-				if err := db.AddQuestion(newBank.ID, newQuestion); err != nil {
-					log.Printf("failed to save question: %v", err)
+				if err := h.store.AddQuestion(newBank.ID, newQuestion); err != nil {
+					h.logger.Error("failed to save question", "error", err)
 					continue
 				}
 				result.QuestionsCreated++
@@ -1207,7 +1059,5 @@ func importAll(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(result)
+	respondJSON(w, http.StatusCreated, result)
 }
