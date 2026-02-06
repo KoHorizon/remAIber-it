@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"sync"
 
-	grader "github.com/remaimber-it/backend/internal/grader"
+	"github.com/remaimber-it/backend/internal/grader"
 	"github.com/remaimber-it/backend/internal/store"
 )
 
@@ -27,6 +27,7 @@ type GradeRequest struct {
 // persistence layer.
 type GradingService struct {
 	store  store.Store
+	grader grader.Grader
 	logger *slog.Logger
 
 	mu      sync.RWMutex
@@ -34,9 +35,10 @@ type GradingService struct {
 }
 
 // NewGradingService creates a GradingService.
-func NewGradingService(s store.Store, logger *slog.Logger) *GradingService {
+func NewGradingService(s store.Store, g grader.Grader, logger *slog.Logger) *GradingService {
 	return &GradingService{
 		store:   s,
+		grader:  g,
 		logger:  logger,
 		pending: make(map[string]*sync.WaitGroup),
 	}
@@ -82,7 +84,7 @@ func (gs *GradingService) WaitForSession(sessionID string) {
 
 // grade does the actual LLM call and persists the result.
 func (gs *GradingService) grade(req GradeRequest) {
-	response, err := grader.GradeAnswer(
+	response, err := gs.grader.GradeAnswer(
 		req.Question,
 		req.ExpectedAnswer,
 		req.UserAnswer,

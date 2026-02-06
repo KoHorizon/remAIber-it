@@ -5,26 +5,207 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
 
-func getLLMURL() string {
-	url := os.Getenv("LLM_URL")
-	if url == "" {
-		return "http://localhost:1234"
-	}
-	return url
+// OllamaGrader grades answers by calling an OpenAI-compatible LLM endpoint
+// (Ollama, LM Studio, vLLM, etc.).
+type OllamaGrader struct {
+	url    string       // e.g. "http://localhost:1234"
+	model  string       // e.g. "qwen3-8b"
+	client *http.Client // reused across calls
 }
 
-func getLLMModel() string {
-	model := os.Getenv("LLM_MODEL")
-	if model == "" {
-		return "qwen3-8b"
-	}
-	return model
+// Compile-time check: *OllamaGrader satisfies the Grader interface.
+var _ Grader = (*OllamaGrader)(nil)
+
+// GradeResult represents the structured output from the LLM.
+type GradeResult struct {
+	Score   int      `json:"score"`
+	Covered []string `json:"covered"`
+	Missed  []string `json:"missed"`
 }
+
+// GradeError is returned when grading fails so the caller can distinguish
+// between "LLM returned a bad grade" and "LLM was unreachable."
+type GradeError struct {
+	Reason  string
+	Wrapped error
+}
+
+func (e *GradeError) Error() string {
+	if e.Wrapped != nil {
+		return fmt.Sprintf("grading failed: %s: %v", e.Reason, e.Wrapped)
+	}
+	return fmt.Sprintf("grading failed: %s", e.Reason)
+}
+
+func (e *GradeError) Unwrap() error {
+	return e.Wrapped
+}
+
+// NewOllamaGrader creates a grader that calls the given LLM endpoint.
+func NewOllamaGrader(url, model string) *OllamaGrader {
+	return &OllamaGrader{
+		url:   url,
+		model: model,
+		client: &http.Client{
+			Timeout: 120 * time.Second,
+		},
+	}
+}
+
+// ============================================================================
+// Grader interface
+// ============================================================================
+
+const maxRetries = 2
+
+// GradeAnswer sends the user's answer to the LLM for grading and returns
+// the result as a JSON string with {score, covered, missed}.
+//
+// It retries once on parse failure (small models sometimes need a second try).
+func (g *OllamaGrader) GradeAnswer(question, expectedAnswer, userAnswer string, customPrompt *string, bankType string) (string, error) {
+	customRules := ""
+	if customPrompt != nil && *customPrompt != "" {
+		customRules = *customPrompt
+	}
+
+	// Build the appropriate prompt
+	var prompt string
+	switch bankType {
+	case "code":
+		prompt = buildCodePrompt(question, expectedAnswer, userAnswer, customRules)
+	case "cli":
+		prompt = buildCLIPrompt(question, expectedAnswer, userAnswer, customRules)
+	default:
+		prompt = buildTheoryPrompt(question, expectedAnswer, userAnswer, customRules)
+	}
+
+	var lastErr error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		result, err := g.callLLM(prompt)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		jsonStr := extractJSON(result)
+		if jsonStr == "" {
+			lastErr = &GradeError{Reason: "no JSON object found in LLM response"}
+			continue
+		}
+
+		var gradeResult GradeResult
+		if err := json.Unmarshal([]byte(jsonStr), &gradeResult); err != nil {
+			lastErr = &GradeError{Reason: "invalid JSON from LLM", Wrapped: err}
+			continue
+		}
+
+		// Validate: at least one of covered/missed should have items,
+		// unless the expected answer was trivially empty
+		if len(gradeResult.Covered) == 0 && len(gradeResult.Missed) == 0 {
+			// Treat as "model couldn't grade" — give benefit of the doubt
+			gradeResult.Missed = []string{"Unable to evaluate"}
+		}
+
+		// Compute score
+		total := len(gradeResult.Covered) + len(gradeResult.Missed)
+		score := 0
+		if total > 0 {
+			score = (len(gradeResult.Covered) * 100) / total
+		}
+
+		finalResult := map[string]interface{}{
+			"score":   score,
+			"covered": gradeResult.Covered,
+			"missed":  gradeResult.Missed,
+		}
+
+		resultJSON, _ := json.Marshal(finalResult)
+		return string(resultJSON), nil
+	}
+
+	return "", &GradeError{
+		Reason:  fmt.Sprintf("failed after %d attempts", maxRetries),
+		Wrapped: lastErr,
+	}
+}
+
+// ============================================================================
+// LLM communication
+// ============================================================================
+
+type llmRequest struct {
+	Model       string       `json:"model"`
+	Messages    []llmMessage `json:"messages"`
+	Temperature float64      `json:"temperature"`
+}
+
+type llmMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type llmResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
+
+// callLLM sends a single request to the LLM and returns the raw text response.
+func (g *OllamaGrader) callLLM(prompt string) (string, error) {
+	reqBody := llmRequest{
+		Model: g.model,
+		Messages: []llmMessage{
+			{Role: "user", Content: prompt},
+		},
+		Temperature: 0,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	resp, err := g.client.Post(
+		g.url+"/v1/chat/completions",
+		"application/json",
+		bytes.NewBuffer(jsonData),
+	)
+	if err != nil {
+		return "", fmt.Errorf("LLM request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("LLM returned status %d", resp.StatusCode)
+	}
+
+	var llmResp llmResponse
+	if err := json.NewDecoder(resp.Body).Decode(&llmResp); err != nil {
+		return "", fmt.Errorf("failed to decode LLM response: %w", err)
+	}
+
+	if len(llmResp.Choices) == 0 {
+		return "", fmt.Errorf("LLM returned no choices")
+	}
+
+	content := llmResp.Choices[0].Message.Content
+	if content == "" {
+		return "", fmt.Errorf("LLM returned empty content")
+	}
+
+	return content, nil
+}
+
+// ============================================================================
+// JSON extraction
+// ============================================================================
 
 // extractJSON finds the outermost JSON object in a string.
 // It handles nested braces correctly and skips braces inside quoted strings.
@@ -64,49 +245,6 @@ func extractJSON(s string) string {
 		}
 	}
 	return ""
-}
-
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type LLMRequest struct {
-	Model       string    `json:"model"`
-	Messages    []Message `json:"messages"`
-	Temperature float64   `json:"temperature"`
-}
-
-type LLMResponse struct {
-	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
-}
-
-type GradeResult struct {
-	Score   int      `json:"score"`
-	Covered []string `json:"covered"`
-	Missed  []string `json:"missed"`
-}
-
-// GradeError is returned when grading fails so the caller can distinguish
-// between "LLM returned a bad grade" and "LLM was unreachable."
-type GradeError struct {
-	Reason  string
-	Wrapped error
-}
-
-func (e *GradeError) Error() string {
-	if e.Wrapped != nil {
-		return fmt.Sprintf("grading failed: %s: %v", e.Reason, e.Wrapped)
-	}
-	return fmt.Sprintf("grading failed: %s", e.Reason)
-}
-
-func (e *GradeError) Unwrap() error {
-	return e.Wrapped
 }
 
 // ============================================================================
@@ -234,6 +372,10 @@ Respond with ONLY this JSON — no explanation, no markdown:
 		rules, question, keyPoints, userAnswer)
 }
 
+// ============================================================================
+// Text processing helpers
+// ============================================================================
+
 // splitKeyPoints attempts to break an expected answer into individual points.
 // It looks for bullet lists, numbered lists, or sentence boundaries.
 // This reduces the work the LLM has to do — instead of analyzing a blob of text,
@@ -311,132 +453,4 @@ func splitSentences(text string) []string {
 		sentences = append(sentences, trimmed)
 	}
 	return sentences
-}
-
-// ============================================================================
-// Core grading function
-// ============================================================================
-
-const maxRetries = 2
-
-// GradeAnswer sends the user's answer to the LLM for grading and returns
-// the result as a JSON string with {score, covered, missed}.
-//
-// It retries once on parse failure (small models sometimes need a second try).
-func GradeAnswer(question, expectedAnswer, userAnswer string, customPrompt *string, bankType string) (string, error) {
-	customRules := ""
-	if customPrompt != nil && *customPrompt != "" {
-		customRules = *customPrompt
-	}
-
-	// Build the appropriate prompt
-	var prompt string
-	switch bankType {
-	case "code":
-		prompt = buildCodePrompt(question, expectedAnswer, userAnswer, customRules)
-	case "cli":
-		prompt = buildCLIPrompt(question, expectedAnswer, userAnswer, customRules)
-	default:
-		prompt = buildTheoryPrompt(question, expectedAnswer, userAnswer, customRules)
-	}
-
-	var lastErr error
-
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		result, err := callLLM(prompt)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-
-		jsonStr := extractJSON(result)
-		if jsonStr == "" {
-			lastErr = &GradeError{Reason: "no JSON object found in LLM response"}
-			continue
-		}
-
-		var gradeResult GradeResult
-		if err := json.Unmarshal([]byte(jsonStr), &gradeResult); err != nil {
-			lastErr = &GradeError{Reason: "invalid JSON from LLM", Wrapped: err}
-			continue
-		}
-
-		// Validate: at least one of covered/missed should have items,
-		// unless the expected answer was trivially empty
-		if len(gradeResult.Covered) == 0 && len(gradeResult.Missed) == 0 {
-			// Treat as "model couldn't grade" — give benefit of the doubt
-			gradeResult.Missed = []string{"Unable to evaluate"}
-		}
-
-		// Compute score
-		total := len(gradeResult.Covered) + len(gradeResult.Missed)
-		score := 0
-		if total > 0 {
-			score = (len(gradeResult.Covered) * 100) / total
-		}
-
-		finalResult := map[string]interface{}{
-			"score":   score,
-			"covered": gradeResult.Covered,
-			"missed":  gradeResult.Missed,
-		}
-
-		resultJSON, _ := json.Marshal(finalResult)
-		return string(resultJSON), nil
-	}
-
-	return "", &GradeError{
-		Reason:  fmt.Sprintf("failed after %d attempts", maxRetries),
-		Wrapped: lastErr,
-	}
-}
-
-// callLLM sends a single request to the LLM and returns the raw text response.
-func callLLM(prompt string) (string, error) {
-	reqBody := LLMRequest{
-		Model: getLLMModel(),
-		Messages: []Message{
-			{Role: "user", Content: prompt},
-		},
-		Temperature: 0,
-	}
-
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	client := &http.Client{
-		Timeout: 120 * time.Second,
-	}
-
-	resp, err := client.Post(
-		getLLMURL()+"/v1/chat/completions",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
-	if err != nil {
-		return "", fmt.Errorf("LLM request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("LLM returned status %d", resp.StatusCode)
-	}
-
-	var llmResp LLMResponse
-	if err := json.NewDecoder(resp.Body).Decode(&llmResp); err != nil {
-		return "", fmt.Errorf("failed to decode LLM response: %w", err)
-	}
-
-	if len(llmResp.Choices) == 0 {
-		return "", fmt.Errorf("LLM returned no choices")
-	}
-
-	content := llmResp.Choices[0].Message.Content
-	if content == "" {
-		return "", fmt.Errorf("LLM returned empty content")
-	}
-
-	return content, nil
 }

@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/remaimber-it/backend/internal/api"
+	"github.com/remaimber-it/backend/internal/grader"
 	"github.com/remaimber-it/backend/internal/infrastructure/config"
 	"github.com/remaimber-it/backend/internal/service"
 	"github.com/remaimber-it/backend/internal/store"
@@ -27,7 +28,8 @@ func main() {
 	}
 	defer db.Close()
 
-	gradingSvc := service.NewGradingService(db, logger)
+	llm := grader.NewOllamaGrader(cfg.LLMURL, cfg.LLMModel)
+	gradingSvc := service.NewGradingService(db, llm, logger)
 	handler := api.NewHandler(db, gradingSvc, logger)
 
 	// ── Routes ──────────────────────────────────────────────────────

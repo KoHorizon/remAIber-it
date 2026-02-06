@@ -11,7 +11,10 @@ import (
 type Config struct {
 	ServerAddress   string
 	ShutdownTimeout time.Duration
-	// add DB, API keys later
+
+	// LLM grading
+	LLMURL   string // OpenAI-compatible endpoint, e.g. "http://localhost:1234"
+	LLMModel string // model name, e.g. "qwen3-8b"
 }
 
 func Load() *Config {
@@ -20,6 +23,8 @@ func Load() *Config {
 	return &Config{
 		ServerAddress:   mustGetenv("SERVER_ADDRESS"),
 		ShutdownTimeout: mustGetDuration("SHUTDOWN_TIMEOUT"),
+		LLMURL:          getenvDefault("LLM_URL", "http://localhost:1234"),
+		LLMModel:        getenvDefault("LLM_MODEL", "qwen3-8b"),
 	}
 }
 
@@ -41,4 +46,11 @@ func mustGetDuration(k string) time.Duration {
 		log.Fatalf("config: %s=%q is not a valid duration: %v", k, v, err)
 	}
 	return d
+}
+
+func getenvDefault(k, fallback string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return fallback
 }
