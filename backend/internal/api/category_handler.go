@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/remaimber-it/backend/internal/domain/category"
@@ -10,6 +11,13 @@ import (
 
 type CreateCategoryRequest struct {
 	Name string `json:"name"`
+}
+
+func (r *CreateCategoryRequest) Validate() error {
+	if r.Name == "" {
+		return errors.New("name is required")
+	}
+	return nil
 }
 
 type CategoryResponse struct {
@@ -29,6 +37,13 @@ type UpdateCategoryRequest struct {
 	Name string `json:"name"`
 }
 
+func (r *UpdateCategoryRequest) Validate() error {
+	if r.Name == "" {
+		return errors.New("name is required")
+	}
+	return nil
+}
+
 type CategoryStatsResponse struct {
 	CategoryID string `json:"category_id"`
 	Mastery    int    `json:"mastery"`
@@ -40,18 +55,13 @@ type CategoryStatsResponse struct {
 func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req CreateCategoryRequest
-	if !decodeJSON(w, r, &req) {
-		return
-	}
-
-	if req.Name == "" {
-		http.Error(w, "name is required", http.StatusBadRequest)
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
 	cat := category.New(req.Name)
 	if err := h.store.SaveCategory(ctx, cat); err != nil {
-		http.Error(w, "failed to save category", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to save category")
 		return
 	}
 
@@ -67,7 +77,7 @@ func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	categories, err := h.store.ListCategories(ctx)
 	if err != nil {
-		http.Error(w, "failed to load categories", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to load categories")
 		return
 	}
 
@@ -96,7 +106,7 @@ func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
 
 	banks, err := h.store.ListBanksByCategory(ctx, categoryID)
 	if err != nil {
-		http.Error(w, "failed to load banks", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to load banks")
 		return
 	}
 
@@ -129,12 +139,7 @@ func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
 	categoryID := r.PathValue("categoryID")
 
 	var req UpdateCategoryRequest
-	if !decodeJSON(w, r, &req) {
-		return
-	}
-
-	if req.Name == "" {
-		http.Error(w, "name is required", http.StatusBadRequest)
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
@@ -180,7 +185,7 @@ func (h *Handler) listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 
 	banks, err := h.store.ListBanksByCategory(ctx, categoryID)
 	if err != nil {
-		http.Error(w, "failed to load banks", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to load banks")
 		return
 	}
 
@@ -212,7 +217,7 @@ func (h *Handler) getCategoryStats(w http.ResponseWriter, r *http.Request) {
 
 	mastery, err := h.store.GetCategoryMastery(ctx, categoryID)
 	if err != nil {
-		http.Error(w, "failed to get stats", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to get stats")
 		return
 	}
 

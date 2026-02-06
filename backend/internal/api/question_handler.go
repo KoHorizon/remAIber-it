@@ -1,12 +1,25 @@
 package api
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+)
 
 // ── Request / Response types ────────────────────────────────────────────────
 
 type AddQuestionRequest struct {
 	Subject        string `json:"subject"`
 	ExpectedAnswer string `json:"expected_answer"`
+}
+
+func (r *AddQuestionRequest) Validate() error {
+	if r.Subject == "" {
+		return errors.New("subject is required")
+	}
+	if r.ExpectedAnswer == "" {
+		return errors.New("expected_answer is required")
+	}
+	return nil
 }
 
 type AddQuestionResponse struct {
@@ -31,18 +44,18 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req AddQuestionRequest
-	if !decodeJSON(w, r, &req) {
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
 	if err := bank.AddQuestions(req.Subject, req.ExpectedAnswer); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	newQuestion := bank.Questions[len(bank.Questions)-1]
 	if err := h.store.AddQuestion(ctx, bankID, newQuestion); err != nil {
-		http.Error(w, "failed to save question", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to save question")
 		return
 	}
 

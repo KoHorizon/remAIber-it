@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/remaimber-it/backend/internal/domain/questionbank"
@@ -13,6 +14,20 @@ type CreateBankRequest struct {
 	CategoryID *string `json:"category_id,omitempty"`
 	BankType   string  `json:"bank_type,omitempty"`
 	Language   *string `json:"language,omitempty"`
+}
+
+func (r *CreateBankRequest) Validate() error {
+	if r.Subject == "" {
+		return errors.New("subject is required")
+	}
+	if r.CategoryID == nil || *r.CategoryID == "" {
+		return errors.New("category_id is required")
+	}
+	bt := questionbank.BankType(r.BankType)
+	if r.BankType != "" && bt != questionbank.BankTypeTheory && bt != questionbank.BankTypeCode && bt != questionbank.BankTypeCLI {
+		return errors.New("invalid bank_type: must be theory, code, or cli")
+	}
+	return nil
 }
 
 type CreateBankResponse struct {
@@ -83,17 +98,7 @@ type QuestionStatsResponse struct {
 func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req CreateBankRequest
-	if !decodeJSON(w, r, &req) {
-		return
-	}
-
-	if req.Subject == "" {
-		http.Error(w, "subject is required", http.StatusBadRequest)
-		return
-	}
-
-	if req.CategoryID == nil || *req.CategoryID == "" {
-		http.Error(w, "category_id is required", http.StatusBadRequest)
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
@@ -106,15 +111,11 @@ func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 	if bankType == "" {
 		bankType = questionbank.BankTypeTheory
 	}
-	if bankType != questionbank.BankTypeTheory && bankType != questionbank.BankTypeCode && bankType != questionbank.BankTypeCLI {
-		http.Error(w, "invalid bank_type: must be theory, code, or cli", http.StatusBadRequest)
-		return
-	}
 
 	bank := questionbank.NewWithOptions(req.Subject, req.CategoryID, bankType, req.Language)
 
 	if err := h.store.SaveBank(ctx, bank); err != nil {
-		http.Error(w, "failed to save bank", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to save bank")
 		return
 	}
 
@@ -133,7 +134,7 @@ func (h *Handler) listBanks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	banks, err := h.store.ListBanks(ctx)
 	if err != nil {
-		http.Error(w, "failed to load banks", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to load banks")
 		return
 	}
 
@@ -292,7 +293,7 @@ func (h *Handler) getBankStats(w http.ResponseWriter, r *http.Request) {
 
 	stats, err := h.store.GetQuestionStatsByBank(ctx, bankID)
 	if err != nil {
-		http.Error(w, "failed to get stats", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to get stats")
 		return
 	}
 

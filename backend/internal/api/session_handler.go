@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -18,6 +19,13 @@ type CreateSessionRequest struct {
 	MaxDurationMin *int     `json:"max_duration_min,omitempty"`
 	FocusOnWeak    bool     `json:"focus_on_weak"`
 	QuestionIDs    []string `json:"question_ids,omitempty"`
+}
+
+func (r *CreateSessionRequest) Validate() error {
+	if r.BankID == "" {
+		return errors.New("bank_id is required")
+	}
+	return nil
 }
 
 type SessionQuestion struct {
@@ -38,6 +46,16 @@ type SubmitAnswerRequest struct {
 	Answer     string `json:"answer"`
 }
 
+func (r *SubmitAnswerRequest) Validate() error {
+	if r.QuestionID == "" {
+		return errors.New("question_id is required")
+	}
+	if r.Answer == "" {
+		return errors.New("answer is required")
+	}
+	return nil
+}
+
 type SubmitAnswerResponse struct {
 	Status string `json:"status"`
 }
@@ -55,7 +73,7 @@ type CompleteSessionResponse struct {
 func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req CreateSessionRequest
-	if !decodeJSON(w, r, &req) {
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
@@ -65,7 +83,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(bank.Questions) == 0 {
-		http.Error(w, "bank has no questions", http.StatusBadRequest)
+		respondError(w, http.StatusBadRequest, "bank has no questions")
 		return
 	}
 
@@ -98,7 +116,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(specificQuestions) == 0 {
-			http.Error(w, "no valid questions found", http.StatusBadRequest)
+			respondError(w, http.StatusBadRequest, "no valid questions found")
 			return
 		}
 
@@ -108,7 +126,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 		if req.FocusOnWeak {
 			orderedQuestions, err = h.store.GetQuestionsOrderedByMastery(ctx, req.BankID, true)
 			if err != nil {
-				http.Error(w, "failed to get question order", http.StatusInternalServerError)
+				respondError(w, http.StatusInternalServerError, "failed to get question order")
 				return
 			}
 		}
@@ -117,7 +135,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.store.SaveSession(ctx, session); err != nil {
-		http.Error(w, "failed to save session", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to save session")
 		return
 	}
 
@@ -181,7 +199,7 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req SubmitAnswerRequest
-	if !decodeJSON(w, r, &req) {
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
 
@@ -194,7 +212,7 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if question == nil {
-		http.Error(w, "question not found in session", http.StatusNotFound)
+		respondError(w, http.StatusNotFound, "question not found in session")
 		return
 	}
 
@@ -236,7 +254,7 @@ func (h *Handler) completeSession(w http.ResponseWriter, r *http.Request) {
 
 	grades, err := h.store.GetGrades(ctx, sessionID)
 	if err != nil {
-		http.Error(w, "failed to load grades", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to load grades")
 		return
 	}
 

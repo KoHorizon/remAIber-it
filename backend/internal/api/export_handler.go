@@ -48,7 +48,7 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	categories, err := h.store.ListCategories(ctx)
 	if err != nil {
-		http.Error(w, "failed to load categories", http.StatusInternalServerError)
+		respondError(w, http.StatusInternalServerError, "failed to load categories")
 		return
 	}
 
