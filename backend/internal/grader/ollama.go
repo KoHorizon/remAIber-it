@@ -2,6 +2,7 @@ package grader
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -66,7 +67,7 @@ const maxRetries = 2
 // the result as a JSON string with {score, covered, missed}.
 //
 // It retries once on parse failure (small models sometimes need a second try).
-func (g *OllamaGrader) GradeAnswer(question, expectedAnswer, userAnswer string, customPrompt *string, bankType string) (string, error) {
+func (g *OllamaGrader) GradeAnswer(ctx context.Context, question, expectedAnswer, userAnswer string, customPrompt *string, bankType string) (string, error) {
 	customRules := ""
 	if customPrompt != nil && *customPrompt != "" {
 		customRules = *customPrompt
@@ -86,7 +87,7 @@ func (g *OllamaGrader) GradeAnswer(question, expectedAnswer, userAnswer string, 
 	var lastErr error
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		result, err := g.callLLM(prompt)
+		result, err := g.callLLM(ctx, prompt)
 		if err != nil {
 			lastErr = err
 			continue
@@ -158,7 +159,7 @@ type llmResponse struct {
 }
 
 // callLLM sends a single request to the LLM and returns the raw text response.
-func (g *OllamaGrader) callLLM(prompt string) (string, error) {
+func (g *OllamaGrader) callLLM(ctx context.Context, prompt string) (string, error) {
 	reqBody := llmRequest{
 		Model: g.model,
 		Messages: []llmMessage{
@@ -172,11 +173,13 @@ func (g *OllamaGrader) callLLM(prompt string) (string, error) {
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	resp, err := g.client.Post(
-		g.url+"/v1/chat/completions",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, g.url+"/v1/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := g.client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("LLM request failed: %w", err)
 	}

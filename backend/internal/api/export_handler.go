@@ -45,7 +45,8 @@ type ImportResult struct {
 
 // GET /export
 func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
-	categories, err := h.store.ListCategories()
+	ctx := r.Context()
+	categories, err := h.store.ListCategories(ctx)
 	if err != nil {
 		http.Error(w, "failed to load categories", http.StatusInternalServerError)
 		return
@@ -58,7 +59,7 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, cat := range categories {
-		banks, err := h.store.ListBanksByCategory(cat.ID)
+		banks, err := h.store.ListBanksByCategory(ctx, cat.ID)
 		if err != nil {
 			continue
 		}
@@ -69,7 +70,7 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, bank := range banks {
-			fullBank, err := h.store.GetBank(bank.ID)
+			fullBank, err := h.store.GetBank(ctx, bank.ID)
 			if err != nil {
 				continue
 			}
@@ -102,6 +103,7 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 
 // POST /import
 func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var importData ExportData
 	if !decodeJSON(w, r, &importData) {
 		return
@@ -111,7 +113,7 @@ func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 
 	for _, cat := range importData.Categories {
 		newCat := category.New(cat.Name)
-		if err := h.store.SaveCategory(newCat); err != nil {
+		if err := h.store.SaveCategory(ctx, newCat); err != nil {
 			h.logger.Error("failed to create category", "name", cat.Name, "error", err)
 			continue
 		}
@@ -128,7 +130,7 @@ func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 				newBank.SetGradingPrompt(bank.GradingPrompt)
 			}
 
-			if err := h.store.SaveBank(newBank); err != nil {
+			if err := h.store.SaveBank(ctx, newBank); err != nil {
 				h.logger.Error("failed to create bank", "subject", bank.Subject, "error", err)
 				continue
 			}
@@ -140,7 +142,7 @@ func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				newQuestion := newBank.Questions[len(newBank.Questions)-1]
-				if err := h.store.AddQuestion(newBank.ID, newQuestion); err != nil {
+				if err := h.store.AddQuestion(ctx, newBank.ID, newQuestion); err != nil {
 					h.logger.Error("failed to save question", "error", err)
 					continue
 				}

@@ -81,6 +81,7 @@ type QuestionStatsResponse struct {
 
 // POST /banks
 func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req CreateBankRequest
 	if !decodeJSON(w, r, &req) {
 		return
@@ -96,7 +97,7 @@ func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.store.GetCategory(*req.CategoryID)
+	_, err := h.store.GetCategory(ctx, *req.CategoryID)
 	if h.handleStoreError(w, err, "category") {
 		return
 	}
@@ -112,7 +113,7 @@ func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 
 	bank := questionbank.NewWithOptions(req.Subject, req.CategoryID, bankType, req.Language)
 
-	if err := h.store.SaveBank(bank); err != nil {
+	if err := h.store.SaveBank(ctx, bank); err != nil {
 		http.Error(w, "failed to save bank", http.StatusInternalServerError)
 		return
 	}
@@ -129,7 +130,8 @@ func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 
 // GET /banks
 func (h *Handler) listBanks(w http.ResponseWriter, r *http.Request) {
-	banks, err := h.store.ListBanks()
+	ctx := r.Context()
+	banks, err := h.store.ListBanks(ctx)
 	if err != nil {
 		http.Error(w, "failed to load banks", http.StatusInternalServerError)
 		return
@@ -137,7 +139,7 @@ func (h *Handler) listBanks(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]CreateBankResponse, len(banks))
 	for i, bank := range banks {
-		mastery, _ := h.store.GetBankMastery(bank.ID)
+		mastery, _ := h.store.GetBankMastery(ctx, bank.ID)
 		response[i] = CreateBankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
@@ -153,15 +155,16 @@ func (h *Handler) listBanks(w http.ResponseWriter, r *http.Request) {
 
 // GET /banks/{bankID}
 func (h *Handler) getBank(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	bankID := r.PathValue("bankID")
 
-	bank, err := h.store.GetBank(bankID)
+	bank, err := h.store.GetBank(ctx, bankID)
 	if h.handleStoreError(w, err, "bank") {
 		return
 	}
 
 	statsMap := make(map[string]*questionbank.QuestionStats)
-	stats, err := h.store.GetQuestionStatsByBank(bankID)
+	stats, err := h.store.GetQuestionStatsByBank(ctx, bankID)
 	if err == nil {
 		for i := range stats {
 			statsMap[stats[i].QuestionID] = &stats[i]
@@ -187,7 +190,7 @@ func (h *Handler) getBank(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	bankMastery, _ := h.store.GetBankMastery(bankID)
+	bankMastery, _ := h.store.GetBankMastery(ctx, bankID)
 
 	respondJSON(w, http.StatusOK, GetBankResponse{
 		ID:            bank.ID,
@@ -203,9 +206,10 @@ func (h *Handler) getBank(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /banks/{bankID}
 func (h *Handler) deleteBank(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	bankID := r.PathValue("bankID")
 
-	if h.handleStoreError(w, h.store.DeleteBank(bankID), "bank") {
+	if h.handleStoreError(w, h.store.DeleteBank(ctx, bankID), "bank") {
 		return
 	}
 
@@ -214,6 +218,7 @@ func (h *Handler) deleteBank(w http.ResponseWriter, r *http.Request) {
 
 // PATCH /banks/{bankID}/category
 func (h *Handler) updateBankCategory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	bankID := r.PathValue("bankID")
 
 	var req UpdateBankCategoryRequest
@@ -222,18 +227,18 @@ func (h *Handler) updateBankCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.CategoryID != nil {
-		_, err := h.store.GetCategory(*req.CategoryID)
+		_, err := h.store.GetCategory(ctx, *req.CategoryID)
 		if h.handleStoreError(w, err, "category") {
 			return
 		}
 	}
 
-	if h.handleStoreError(w, h.store.UpdateBankCategory(bankID, req.CategoryID), "bank") {
+	if h.handleStoreError(w, h.store.UpdateBankCategory(ctx, bankID, req.CategoryID), "bank") {
 		return
 	}
 
-	bank, _ := h.store.GetBank(bankID)
-	mastery, _ := h.store.GetBankMastery(bankID)
+	bank, _ := h.store.GetBank(ctx, bankID)
+	mastery, _ := h.store.GetBankMastery(ctx, bankID)
 
 	respondJSON(w, http.StatusOK, CreateBankResponse{
 		ID:         bank.ID,
@@ -245,6 +250,7 @@ func (h *Handler) updateBankCategory(w http.ResponseWriter, r *http.Request) {
 
 // PUT /banks/{bankID}/grading-prompt
 func (h *Handler) updateBankGradingPrompt(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	bankID := r.PathValue("bankID")
 
 	var req UpdateGradingPromptRequest
@@ -257,12 +263,12 @@ func (h *Handler) updateBankGradingPrompt(w http.ResponseWriter, r *http.Request
 		promptToSave = req.GradingPrompt
 	}
 
-	if h.handleStoreError(w, h.store.UpdateBankGradingPrompt(bankID, promptToSave), "bank") {
+	if h.handleStoreError(w, h.store.UpdateBankGradingPrompt(ctx, bankID, promptToSave), "bank") {
 		return
 	}
 
-	bank, _ := h.store.GetBank(bankID)
-	mastery, _ := h.store.GetBankMastery(bankID)
+	bank, _ := h.store.GetBank(ctx, bankID)
+	mastery, _ := h.store.GetBankMastery(ctx, bankID)
 
 	respondJSON(w, http.StatusOK, GetBankResponse{
 		ID:            bank.ID,
@@ -276,14 +282,15 @@ func (h *Handler) updateBankGradingPrompt(w http.ResponseWriter, r *http.Request
 
 // GET /banks/{bankID}/stats
 func (h *Handler) getBankStats(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	bankID := r.PathValue("bankID")
 
-	bank, err := h.store.GetBank(bankID)
+	bank, err := h.store.GetBank(ctx, bankID)
 	if h.handleStoreError(w, err, "bank") {
 		return
 	}
 
-	stats, err := h.store.GetQuestionStatsByBank(bankID)
+	stats, err := h.store.GetQuestionStatsByBank(ctx, bankID)
 	if err != nil {
 		http.Error(w, "failed to get stats", http.StatusInternalServerError)
 		return
@@ -299,7 +306,7 @@ func (h *Handler) getBankStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	mastery, _ := h.store.GetBankMastery(bankID)
+	mastery, _ := h.store.GetBankMastery(ctx, bankID)
 
 	respondJSON(w, http.StatusOK, BankStatsResponse{
 		BankID:         bankID,

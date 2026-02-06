@@ -2,6 +2,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -83,8 +84,13 @@ func (gs *GradingService) WaitForSession(sessionID string) {
 }
 
 // grade does the actual LLM call and persists the result.
+// It uses context.Background because grading runs asynchronously
+// and must not be cancelled when the originating HTTP request ends.
 func (gs *GradingService) grade(req GradeRequest) {
+	ctx := context.Background()
+
 	response, err := gs.grader.GradeAnswer(
+		ctx,
 		req.Question,
 		req.ExpectedAnswer,
 		req.UserAnswer,
@@ -96,7 +102,7 @@ func (gs *GradingService) grade(req GradeRequest) {
 			"question_id", req.QuestionID,
 			"error", err,
 		)
-		if saveErr := gs.store.SaveGradeFailure(req.SessionID, req.QuestionID, req.UserAnswer, err.Error()); saveErr != nil {
+		if saveErr := gs.store.SaveGradeFailure(ctx, req.SessionID, req.QuestionID, req.UserAnswer, err.Error()); saveErr != nil {
 			gs.logger.Error("failed to save grade failure", "error", saveErr)
 		}
 		return
@@ -114,7 +120,7 @@ func (gs *GradingService) grade(req GradeRequest) {
 			"response", response,
 		)
 		if saveErr := gs.store.SaveGradeFailure(
-			req.SessionID, req.QuestionID, req.UserAnswer,
+			ctx, req.SessionID, req.QuestionID, req.UserAnswer,
 			fmt.Sprintf("failed to parse grading response: %v", err),
 		); saveErr != nil {
 			gs.logger.Error("failed to save grade failure", "error", saveErr)
@@ -123,7 +129,7 @@ func (gs *GradingService) grade(req GradeRequest) {
 	}
 
 	if err := gs.store.SaveGrade(
-		req.SessionID, req.QuestionID,
+		ctx, req.SessionID, req.QuestionID,
 		result.Score, result.Covered, result.Missed,
 		req.UserAnswer,
 	); err != nil {

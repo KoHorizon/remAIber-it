@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"errors"
 
 	"github.com/remaimber-it/backend/internal/domain/category"
@@ -17,37 +18,37 @@ var (
 // must satisfy this interface.
 type Store interface {
 	// Categories
-	SaveCategory(cat *category.Category) error
-	GetCategory(id string) (*category.Category, error)
-	ListCategories() ([]*category.Category, error)
-	UpdateCategory(cat *category.Category) error
-	DeleteCategory(id string) error
-	GetCategoryMastery(categoryID string) (int, error)
+	SaveCategory(ctx context.Context, cat *category.Category) error
+	GetCategory(ctx context.Context, id string) (*category.Category, error)
+	ListCategories(ctx context.Context) ([]*category.Category, error)
+	UpdateCategory(ctx context.Context, cat *category.Category) error
+	DeleteCategory(ctx context.Context, id string) error
+	GetCategoryMastery(ctx context.Context, categoryID string) (int, error)
 
 	// Banks
-	SaveBank(bank *questionbank.QuestionBank) error
-	GetBank(id string) (*questionbank.QuestionBank, error)
-	ListBanks() ([]*questionbank.QuestionBank, error)
-	ListBanksByCategory(categoryID string) ([]*questionbank.QuestionBank, error)
-	UpdateBankCategory(bankID string, categoryID *string) error
-	UpdateBankGradingPrompt(bankID string, gradingPrompt *string) error
-	DeleteBank(id string) error
-	GetBankMastery(bankID string) (int, error)
+	SaveBank(ctx context.Context, bank *questionbank.QuestionBank) error
+	GetBank(ctx context.Context, id string) (*questionbank.QuestionBank, error)
+	ListBanks(ctx context.Context) ([]*questionbank.QuestionBank, error)
+	ListBanksByCategory(ctx context.Context, categoryID string) ([]*questionbank.QuestionBank, error)
+	UpdateBankCategory(ctx context.Context, bankID string, categoryID *string) error
+	UpdateBankGradingPrompt(ctx context.Context, bankID string, gradingPrompt *string) error
+	DeleteBank(ctx context.Context, id string) error
+	GetBankMastery(ctx context.Context, bankID string) (int, error)
 
 	// Questions
-	AddQuestion(bankID string, question questionbank.Question) error
-	DeleteQuestion(id string) error
-	GetQuestionStatsByBank(bankID string) ([]questionbank.QuestionStats, error)
-	GetQuestionsOrderedByMastery(bankID string, ascending bool) ([]questionbank.Question, error)
+	AddQuestion(ctx context.Context, bankID string, question questionbank.Question) error
+	DeleteQuestion(ctx context.Context, id string) error
+	GetQuestionStatsByBank(ctx context.Context, bankID string) ([]questionbank.QuestionStats, error)
+	GetQuestionsOrderedByMastery(ctx context.Context, bankID string, ascending bool) ([]questionbank.Question, error)
 
 	// Sessions
-	SaveSession(session *practicesession.PracticeSession) error
-	GetSession(id string) (*practicesession.PracticeSession, error)
+	SaveSession(ctx context.Context, session *practicesession.PracticeSession) error
+	GetSession(ctx context.Context, id string) (*practicesession.PracticeSession, error)
 
 	// Grades
-	SaveGrade(sessionID string, questionID string, score int, covered, missed []string, userAnswer string) error
-	SaveGradeFailure(sessionID string, questionID string, userAnswer string, reason string) error
-	GetGrades(sessionID string) ([]StoredGrade, error)
+	SaveGrade(ctx context.Context, sessionID string, questionID string, score int, covered, missed []string, userAnswer string) error
+	SaveGradeFailure(ctx context.Context, sessionID string, questionID string, userAnswer string, reason string) error
+	GetGrades(ctx context.Context, sessionID string) ([]StoredGrade, error)
 
 	// Lifecycle
 	Close() error

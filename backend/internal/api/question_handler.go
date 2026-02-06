@@ -22,9 +22,10 @@ type AddQuestionResponse struct {
 
 // POST /banks/{bankID}/questions
 func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	bankID := r.PathValue("bankID")
 
-	bank, err := h.store.GetBank(bankID)
+	bank, err := h.store.GetBank(ctx, bankID)
 	if h.handleStoreError(w, err, "bank") {
 		return
 	}
@@ -40,7 +41,7 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newQuestion := bank.Questions[len(bank.Questions)-1]
-	if err := h.store.AddQuestion(bankID, newQuestion); err != nil {
+	if err := h.store.AddQuestion(ctx, bankID, newQuestion); err != nil {
 		http.Error(w, "failed to save question", http.StatusInternalServerError)
 		return
 	}
@@ -57,9 +58,10 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /banks/{bankID}/questions/{questionID}
 func (h *Handler) deleteQuestion(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	questionID := r.PathValue("questionID")
 
-	if h.handleStoreError(w, h.store.DeleteQuestion(questionID), "question") {
+	if h.handleStoreError(w, h.store.DeleteQuestion(ctx, questionID), "question") {
 		return
 	}
 

@@ -38,6 +38,7 @@ type CategoryStatsResponse struct {
 
 // POST /categories
 func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req CreateCategoryRequest
 	if !decodeJSON(w, r, &req) {
 		return
@@ -49,7 +50,7 @@ func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cat := category.New(req.Name)
-	if err := h.store.SaveCategory(cat); err != nil {
+	if err := h.store.SaveCategory(ctx, cat); err != nil {
 		http.Error(w, "failed to save category", http.StatusInternalServerError)
 		return
 	}
@@ -63,7 +64,8 @@ func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
 
 // GET /categories
 func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
-	categories, err := h.store.ListCategories()
+	ctx := r.Context()
+	categories, err := h.store.ListCategories(ctx)
 	if err != nil {
 		http.Error(w, "failed to load categories", http.StatusInternalServerError)
 		return
@@ -71,7 +73,7 @@ func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]CategoryResponse, len(categories))
 	for i, cat := range categories {
-		mastery, _ := h.store.GetCategoryMastery(cat.ID)
+		mastery, _ := h.store.GetCategoryMastery(ctx, cat.ID)
 		response[i] = CategoryResponse{
 			ID:      cat.ID,
 			Name:    cat.Name,
@@ -84,14 +86,15 @@ func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
 
 // GET /categories/{categoryID}
 func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	categoryID := r.PathValue("categoryID")
 
-	cat, err := h.store.GetCategory(categoryID)
+	cat, err := h.store.GetCategory(ctx, categoryID)
 	if h.handleStoreError(w, err, "category") {
 		return
 	}
 
-	banks, err := h.store.ListBanksByCategory(categoryID)
+	banks, err := h.store.ListBanksByCategory(ctx, categoryID)
 	if err != nil {
 		http.Error(w, "failed to load banks", http.StatusInternalServerError)
 		return
@@ -99,7 +102,7 @@ func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
 
 	bankResponses := make([]BankResponse, len(banks))
 	for i, bank := range banks {
-		mastery, _ := h.store.GetBankMastery(bank.ID)
+		mastery, _ := h.store.GetBankMastery(ctx, bank.ID)
 		bankResponses[i] = BankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
@@ -110,7 +113,7 @@ func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	categoryMastery, _ := h.store.GetCategoryMastery(categoryID)
+	categoryMastery, _ := h.store.GetCategoryMastery(ctx, categoryID)
 
 	respondJSON(w, http.StatusOK, GetCategoryResponse{
 		ID:      cat.ID,
@@ -122,6 +125,7 @@ func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
 
 // PUT /categories/{categoryID}
 func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	categoryID := r.PathValue("categoryID")
 
 	var req UpdateCategoryRequest
@@ -139,11 +143,11 @@ func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
 		Name: req.Name,
 	}
 
-	if h.handleStoreError(w, h.store.UpdateCategory(cat), "category") {
+	if h.handleStoreError(w, h.store.UpdateCategory(ctx, cat), "category") {
 		return
 	}
 
-	mastery, _ := h.store.GetCategoryMastery(categoryID)
+	mastery, _ := h.store.GetCategoryMastery(ctx, categoryID)
 
 	respondJSON(w, http.StatusOK, CategoryResponse{
 		ID:      cat.ID,
@@ -154,9 +158,10 @@ func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /categories/{categoryID}
 func (h *Handler) deleteCategory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	categoryID := r.PathValue("categoryID")
 
-	if h.handleStoreError(w, h.store.DeleteCategory(categoryID), "category") {
+	if h.handleStoreError(w, h.store.DeleteCategory(ctx, categoryID), "category") {
 		return
 	}
 
@@ -165,14 +170,15 @@ func (h *Handler) deleteCategory(w http.ResponseWriter, r *http.Request) {
 
 // GET /categories/{categoryID}/banks
 func (h *Handler) listBanksByCategory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	categoryID := r.PathValue("categoryID")
 
-	_, err := h.store.GetCategory(categoryID)
+	_, err := h.store.GetCategory(ctx, categoryID)
 	if h.handleStoreError(w, err, "category") {
 		return
 	}
 
-	banks, err := h.store.ListBanksByCategory(categoryID)
+	banks, err := h.store.ListBanksByCategory(ctx, categoryID)
 	if err != nil {
 		http.Error(w, "failed to load banks", http.StatusInternalServerError)
 		return
@@ -180,7 +186,7 @@ func (h *Handler) listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 
 	response := make([]BankResponse, len(banks))
 	for i, bank := range banks {
-		mastery, _ := h.store.GetBankMastery(bank.ID)
+		mastery, _ := h.store.GetBankMastery(ctx, bank.ID)
 		response[i] = BankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
@@ -196,14 +202,15 @@ func (h *Handler) listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 
 // GET /categories/{categoryID}/stats
 func (h *Handler) getCategoryStats(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	categoryID := r.PathValue("categoryID")
 
-	_, err := h.store.GetCategory(categoryID)
+	_, err := h.store.GetCategory(ctx, categoryID)
 	if h.handleStoreError(w, err, "category") {
 		return
 	}
 
-	mastery, err := h.store.GetCategoryMastery(categoryID)
+	mastery, err := h.store.GetCategoryMastery(ctx, categoryID)
 	if err != nil {
 		http.Error(w, "failed to get stats", http.StatusInternalServerError)
 		return

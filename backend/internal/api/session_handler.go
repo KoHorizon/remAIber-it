@@ -53,12 +53,13 @@ type CompleteSessionResponse struct {
 
 // POST /sessions
 func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req CreateSessionRequest
 	if !decodeJSON(w, r, &req) {
 		return
 	}
 
-	bank, err := h.store.GetBank(req.BankID)
+	bank, err := h.store.GetBank(ctx, req.BankID)
 	if h.handleStoreError(w, err, "bank") {
 		return
 	}
@@ -105,7 +106,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 	} else {
 		var orderedQuestions []questionbank.Question
 		if req.FocusOnWeak {
-			orderedQuestions, err = h.store.GetQuestionsOrderedByMastery(req.BankID, true)
+			orderedQuestions, err = h.store.GetQuestionsOrderedByMastery(ctx, req.BankID, true)
 			if err != nil {
 				http.Error(w, "failed to get question order", http.StatusInternalServerError)
 				return
@@ -115,7 +116,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 		session = practicesession.NewWithConfig(bank, config, orderedQuestions)
 	}
 
-	if err := h.store.SaveSession(session); err != nil {
+	if err := h.store.SaveSession(ctx, session); err != nil {
 		http.Error(w, "failed to save session", http.StatusInternalServerError)
 		return
 	}
@@ -146,9 +147,10 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 
 // GET /sessions/{sessionID}
 func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	sessionID := r.PathValue("sessionID")
 
-	session, err := h.store.GetSession(sessionID)
+	session, err := h.store.GetSession(ctx, sessionID)
 	if h.handleStoreError(w, err, "session") {
 		return
 	}
@@ -170,9 +172,10 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 
 // POST /sessions/{sessionID}/answers
 func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	sessionID := r.PathValue("sessionID")
 
-	session, err := h.store.GetSession(sessionID)
+	session, err := h.store.GetSession(ctx, sessionID)
 	if h.handleStoreError(w, err, "session") {
 		return
 	}
@@ -195,7 +198,7 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bank, _ := h.store.GetBank(session.QuestionBankId)
+	bank, _ := h.store.GetBank(ctx, session.QuestionBankId)
 	var gradingPrompt *string
 	var bankType string = "theory"
 	if bank != nil {
@@ -220,9 +223,10 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 
 // POST /sessions/{sessionID}/complete
 func (h *Handler) completeSession(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	sessionID := r.PathValue("sessionID")
 
-	session, err := h.store.GetSession(sessionID)
+	session, err := h.store.GetSession(ctx, sessionID)
 	if h.handleStoreError(w, err, "session") {
 		return
 	}
@@ -230,7 +234,7 @@ func (h *Handler) completeSession(w http.ResponseWriter, r *http.Request) {
 	// Wait for all grading goroutines to finish
 	h.grading.WaitForSession(sessionID)
 
-	grades, err := h.store.GetGrades(sessionID)
+	grades, err := h.store.GetGrades(ctx, sessionID)
 	if err != nil {
 		http.Error(w, "failed to load grades", http.StatusInternalServerError)
 		return
