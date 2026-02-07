@@ -2,9 +2,9 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
-	"sync"
 
 	_ "modernc.org/sqlite"
 
@@ -83,10 +83,11 @@ const migrations = `
 `
 
 type SQLiteStore struct {
-	db      *sql.DB
-	gradeWg map[string]*sync.WaitGroup
-	mu      sync.RWMutex
+	db *sql.DB
 }
+
+// Compile-time check: *SQLiteStore must satisfy the Store interface.
+var _ Store = (*SQLiteStore)(nil)
 
 func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	db, err := sql.Open("sqlite", dbPath)
@@ -102,8 +103,7 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	_ = addColumnIfNotExists(db, "grades", "status", "TEXT NOT NULL DEFAULT 'success'")
 
 	return &SQLiteStore{
-		db:      db,
-		gradeWg: make(map[string]*sync.WaitGroup),
+		db: db,
 	}, nil
 }
 
@@ -146,14 +146,14 @@ func (s *SQLiteStore) Close() error {
 // Categories
 // ============================================================================
 
-func (s *SQLiteStore) SaveCategory(cat *category.Category) error {
-	_, err := s.db.Exec("INSERT INTO categories (id, name) VALUES (?, ?)", cat.ID, cat.Name)
+func (s *SQLiteStore) SaveCategory(ctx context.Context, cat *category.Category) error {
+	_, err := s.db.ExecContext(ctx, "INSERT INTO categories (id, name) VALUES (?, ?)", cat.ID, cat.Name)
 	return err
 }
 
-func (s *SQLiteStore) GetCategory(id string) (*category.Category, error) {
+func (s *SQLiteStore) GetCategory(ctx context.Context, id string) (*category.Category, error) {
 	var cat category.Category
-	err := s.db.QueryRow("SELECT id, name FROM categories WHERE id = ?", id).Scan(&cat.ID, &cat.Name)
+	err := s.db.QueryRowContext(ctx, "SELECT id, name FROM categories WHERE id = ?", id).Scan(&cat.ID, &cat.Name)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -163,8 +163,8 @@ func (s *SQLiteStore) GetCategory(id string) (*category.Category, error) {
 	return &cat, nil
 }
 
-func (s *SQLiteStore) ListCategories() ([]*category.Category, error) {
-	rows, err := s.db.Query("SELECT id, name FROM categories")
+func (s *SQLiteStore) ListCategories(ctx context.Context) ([]*category.Category, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT id, name FROM categories")
 	if err != nil {
 		return nil, err
 	}
@@ -181,8 +181,8 @@ func (s *SQLiteStore) ListCategories() ([]*category.Category, error) {
 	return categories, nil
 }
 
-func (s *SQLiteStore) UpdateCategory(cat *category.Category) error {
-	result, err := s.db.Exec("UPDATE categories SET name = ? WHERE id = ?", cat.Name, cat.ID)
+func (s *SQLiteStore) UpdateCategory(ctx context.Context, cat *category.Category) error {
+	result, err := s.db.ExecContext(ctx, "UPDATE categories SET name = ? WHERE id = ?", cat.Name, cat.ID)
 	if err != nil {
 		return err
 	}
@@ -196,15 +196,15 @@ func (s *SQLiteStore) UpdateCategory(cat *category.Category) error {
 	return nil
 }
 
-func (s *SQLiteStore) DeleteCategory(id string) error {
-	tx, err := s.db.Begin()
+func (s *SQLiteStore) DeleteCategory(ctx context.Context, id string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
 	// First, delete question stats for questions in banks of this category
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 		DELETE FROM question_stats 
 		WHERE question_id IN (
 			SELECT q.id FROM questions q
@@ -217,7 +217,7 @@ func (s *SQLiteStore) DeleteCategory(id string) error {
 	}
 
 	// Delete all questions belonging to banks in this category
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 		DELETE FROM questions 
 		WHERE bank_id IN (SELECT id FROM banks WHERE category_id = ?)
 	`, id)
@@ -226,13 +226,13 @@ func (s *SQLiteStore) DeleteCategory(id string) error {
 	}
 
 	// Then, delete all banks in this category
-	_, err = tx.Exec("DELETE FROM banks WHERE category_id = ?", id)
+	_, err = tx.ExecContext(ctx, "DELETE FROM banks WHERE category_id = ?", id)
 	if err != nil {
 		return err
 	}
 
 	// Finally, delete the category itself
-	result, err := tx.Exec("DELETE FROM categories WHERE id = ?", id)
+	result, err := tx.ExecContext(ctx, "DELETE FROM categories WHERE id = ?", id)
 	if err != nil {
 		return err
 	}
@@ -252,19 +252,19 @@ func (s *SQLiteStore) DeleteCategory(id string) error {
 // Banks
 // ============================================================================
 
-func (s *SQLiteStore) SaveBank(bank *questionbank.QuestionBank) error {
-	_, err := s.db.Exec("INSERT INTO banks (id, subject, category_id, grading_prompt, bank_type, language) VALUES (?, ?, ?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.GradingPrompt, bank.BankType, bank.Language)
+func (s *SQLiteStore) SaveBank(ctx context.Context, bank *questionbank.QuestionBank) error {
+	_, err := s.db.ExecContext(ctx, "INSERT INTO banks (id, subject, category_id, grading_prompt, bank_type, language) VALUES (?, ?, ?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.GradingPrompt, bank.BankType, bank.Language)
 	return err
 }
 
-func (s *SQLiteStore) GetBank(id string) (*questionbank.QuestionBank, error) {
+func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.QuestionBank, error) {
 	var bank questionbank.QuestionBank
 	var categoryID sql.NullString
 	var gradingPrompt sql.NullString
 	var bankType sql.NullString
 	var language sql.NullString
 
-	err := s.db.QueryRow("SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt, &bankType, &language)
+	err := s.db.QueryRowContext(ctx, "SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt, &bankType, &language)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -287,7 +287,7 @@ func (s *SQLiteStore) GetBank(id string) (*questionbank.QuestionBank, error) {
 		bank.Language = &language.String
 	}
 
-	rows, err := s.db.Query("SELECT id, subject, expected_answer FROM questions WHERE bank_id = ?", id)
+	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, expected_answer FROM questions WHERE bank_id = ?", id)
 	if err != nil {
 		return nil, err
 	}
@@ -304,8 +304,8 @@ func (s *SQLiteStore) GetBank(id string) (*questionbank.QuestionBank, error) {
 	return &bank, nil
 }
 
-func (s *SQLiteStore) ListBanks() ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks")
+func (s *SQLiteStore) ListBanks(ctx context.Context) ([]*questionbank.QuestionBank, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks")
 	if err != nil {
 		return nil, err
 	}
@@ -340,8 +340,8 @@ func (s *SQLiteStore) ListBanks() ([]*questionbank.QuestionBank, error) {
 	return banks, nil
 }
 
-func (s *SQLiteStore) ListBanksByCategory(categoryID string) ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE category_id = ?", categoryID)
+func (s *SQLiteStore) ListBanksByCategory(ctx context.Context, categoryID string) ([]*questionbank.QuestionBank, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE category_id = ?", categoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -376,8 +376,8 @@ func (s *SQLiteStore) ListBanksByCategory(categoryID string) ([]*questionbank.Qu
 	return banks, nil
 }
 
-func (s *SQLiteStore) ListUncategorizedBanks() ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.Query("SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE category_id IS NULL")
+func (s *SQLiteStore) ListUncategorizedBanks(ctx context.Context) ([]*questionbank.QuestionBank, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE category_id IS NULL")
 	if err != nil {
 		return nil, err
 	}
@@ -409,8 +409,8 @@ func (s *SQLiteStore) ListUncategorizedBanks() ([]*questionbank.QuestionBank, er
 	return banks, nil
 }
 
-func (s *SQLiteStore) UpdateBankCategory(bankID string, categoryID *string) error {
-	result, err := s.db.Exec("UPDATE banks SET category_id = ? WHERE id = ?", categoryID, bankID)
+func (s *SQLiteStore) UpdateBankCategory(ctx context.Context, bankID string, categoryID *string) error {
+	result, err := s.db.ExecContext(ctx, "UPDATE banks SET category_id = ? WHERE id = ?", categoryID, bankID)
 	if err != nil {
 		return err
 	}
@@ -424,8 +424,8 @@ func (s *SQLiteStore) UpdateBankCategory(bankID string, categoryID *string) erro
 	return nil
 }
 
-func (s *SQLiteStore) UpdateBankGradingPrompt(bankID string, gradingPrompt *string) error {
-	result, err := s.db.Exec("UPDATE banks SET grading_prompt = ? WHERE id = ?", gradingPrompt, bankID)
+func (s *SQLiteStore) UpdateBankGradingPrompt(ctx context.Context, bankID string, gradingPrompt *string) error {
+	result, err := s.db.ExecContext(ctx, "UPDATE banks SET grading_prompt = ? WHERE id = ?", gradingPrompt, bankID)
 	if err != nil {
 		return err
 	}
@@ -439,15 +439,15 @@ func (s *SQLiteStore) UpdateBankGradingPrompt(bankID string, gradingPrompt *stri
 	return nil
 }
 
-func (s *SQLiteStore) DeleteBank(id string) error {
-	tx, err := s.db.Begin()
+func (s *SQLiteStore) DeleteBank(ctx context.Context, id string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
 	// Delete question stats for questions in this bank
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 		DELETE FROM question_stats 
 		WHERE question_id IN (SELECT id FROM questions WHERE bank_id = ?)
 	`, id)
@@ -455,12 +455,12 @@ func (s *SQLiteStore) DeleteBank(id string) error {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM questions WHERE bank_id = ?", id)
+	_, err = tx.ExecContext(ctx, "DELETE FROM questions WHERE bank_id = ?", id)
 	if err != nil {
 		return err
 	}
 
-	result, err := tx.Exec("DELETE FROM banks WHERE id = ?", id)
+	result, err := tx.ExecContext(ctx, "DELETE FROM banks WHERE id = ?", id)
 	if err != nil {
 		return err
 	}
@@ -476,28 +476,28 @@ func (s *SQLiteStore) DeleteBank(id string) error {
 	return tx.Commit()
 }
 
-func (s *SQLiteStore) AddQuestion(bankID string, question questionbank.Question) error {
-	_, err := s.db.Exec(
+func (s *SQLiteStore) AddQuestion(ctx context.Context, bankID string, question questionbank.Question) error {
+	_, err := s.db.ExecContext(ctx,
 		"INSERT INTO questions (id, bank_id, subject, expected_answer) VALUES (?, ?, ?, ?)",
 		question.ID, bankID, question.Subject, question.ExpectedAnswer,
 	)
 	return err
 }
 
-func (s *SQLiteStore) DeleteQuestion(id string) error {
-	tx, err := s.db.Begin()
+func (s *SQLiteStore) DeleteQuestion(ctx context.Context, id string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
 	// Delete question stats first
-	_, err = tx.Exec("DELETE FROM question_stats WHERE question_id = ?", id)
+	_, err = tx.ExecContext(ctx, "DELETE FROM question_stats WHERE question_id = ?", id)
 	if err != nil {
 		return err
 	}
 
-	result, err := tx.Exec("DELETE FROM questions WHERE id = ?", id)
+	result, err := tx.ExecContext(ctx, "DELETE FROM questions WHERE id = ?", id)
 	if err != nil {
 		return err
 	}
@@ -516,20 +516,20 @@ func (s *SQLiteStore) DeleteQuestion(id string) error {
 // Sessions
 // ============================================================================
 
-func (s *SQLiteStore) SaveSession(session *practicesession.PracticeSession) error {
-	tx, err := s.db.Begin()
+func (s *SQLiteStore) SaveSession(ctx context.Context, session *practicesession.PracticeSession) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec("INSERT INTO sessions (id, bank_id) VALUES (?, ?)", session.ID, session.QuestionBankId)
+	_, err = tx.ExecContext(ctx, "INSERT INTO sessions (id, bank_id) VALUES (?, ?)", session.ID, session.QuestionBankId)
 	if err != nil {
 		return err
 	}
 
 	for i, q := range session.Questions {
-		_, err = tx.Exec(
+		_, err = tx.ExecContext(ctx,
 			"INSERT INTO session_questions (session_id, question_id, question_subject, expected_answer, position) VALUES (?, ?, ?, ?, ?)",
 			session.ID, q.ID, q.Subject, q.ExpectedAnswer, i,
 		)
@@ -542,18 +542,14 @@ func (s *SQLiteStore) SaveSession(session *practicesession.PracticeSession) erro
 		return err
 	}
 
-	s.mu.Lock()
-	s.gradeWg[session.ID] = &sync.WaitGroup{}
-	s.mu.Unlock()
-
 	return nil
 }
 
-func (s *SQLiteStore) GetSession(id string) (*practicesession.PracticeSession, error) {
+func (s *SQLiteStore) GetSession(ctx context.Context, id string) (*practicesession.PracticeSession, error) {
 	var session practicesession.PracticeSession
 	var bankID string
 
-	err := s.db.QueryRow("SELECT id, bank_id FROM sessions WHERE id = ?", id).Scan(&session.ID, &bankID)
+	err := s.db.QueryRowContext(ctx, "SELECT id, bank_id FROM sessions WHERE id = ?", id).Scan(&session.ID, &bankID)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -562,7 +558,7 @@ func (s *SQLiteStore) GetSession(id string) (*practicesession.PracticeSession, e
 	}
 	session.QuestionBankId = bankID
 
-	rows, err := s.db.Query(
+	rows, err := s.db.QueryContext(ctx,
 		"SELECT question_id, question_subject, expected_answer FROM session_questions WHERE session_id = ? ORDER BY position",
 		id,
 	)
@@ -587,11 +583,11 @@ func (s *SQLiteStore) GetSession(id string) (*practicesession.PracticeSession, e
 // ============================================================================
 
 // SaveGrade stores a successful grading result.
-func (s *SQLiteStore) SaveGrade(sessionID string, questionID string, score int, covered, missed []string, userAnswer string) error {
+func (s *SQLiteStore) SaveGrade(ctx context.Context, sessionID string, questionID string, score int, covered, missed []string, userAnswer string) error {
 	coveredJSON, _ := json.Marshal(covered)
 	missedJSON, _ := json.Marshal(missed)
 
-	_, err := s.db.Exec(
+	_, err := s.db.ExecContext(ctx,
 		"INSERT INTO grades (session_id, question_id, score, covered, missed, user_answer, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		sessionID, questionID, score, string(coveredJSON), string(missedJSON), userAnswer, GradeStatusSuccess,
 	)
@@ -600,25 +596,25 @@ func (s *SQLiteStore) SaveGrade(sessionID string, questionID string, score int, 
 	}
 
 	// Update question statistics
-	return s.updateQuestionStats(questionID, score)
+	return s.updateQuestionStats(ctx, questionID, score)
 }
 
 // SaveGradeFailure stores a record when grading fails, so the user sees
 // "grading failed" instead of "not answered."
-func (s *SQLiteStore) SaveGradeFailure(sessionID string, questionID string, userAnswer string, reason string) error {
+func (s *SQLiteStore) SaveGradeFailure(ctx context.Context, sessionID string, questionID string, userAnswer string, reason string) error {
 	missed := []string{"Grading failed: " + reason}
 	missedJSON, _ := json.Marshal(missed)
 	coveredJSON, _ := json.Marshal([]string{})
 
-	_, err := s.db.Exec(
+	_, err := s.db.ExecContext(ctx,
 		"INSERT INTO grades (session_id, question_id, score, covered, missed, user_answer, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		sessionID, questionID, 0, string(coveredJSON), string(missedJSON), userAnswer, GradeStatusFailed,
 	)
 	return err
 }
 
-func (s *SQLiteStore) GetGrades(sessionID string) ([]StoredGrade, error) {
-	rows, err := s.db.Query(
+func (s *SQLiteStore) GetGrades(ctx context.Context, sessionID string) ([]StoredGrade, error) {
+	rows, err := s.db.QueryContext(ctx,
 		"SELECT question_id, score, covered, missed, user_answer, COALESCE(status, 'success') FROM grades WHERE session_id = ?",
 		sessionID,
 	)
@@ -643,36 +639,14 @@ func (s *SQLiteStore) GetGrades(sessionID string) ([]StoredGrade, error) {
 	return grades, nil
 }
 
-func (s *SQLiteStore) GetWaitGroup(sessionID string) *sync.WaitGroup {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.gradeWg[sessionID]
-}
-
-func (s *SQLiteStore) AddToWaitGroup(sessionID string) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if wg, ok := s.gradeWg[sessionID]; ok {
-		wg.Add(1)
-	}
-}
-
-func (s *SQLiteStore) DoneWaitGroup(sessionID string) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if wg, ok := s.gradeWg[sessionID]; ok {
-		wg.Done()
-	}
-}
-
 // ============================================================================
 // Question Statistics
 // ============================================================================
 
-func (s *SQLiteStore) updateQuestionStats(questionID string, score int) error {
+func (s *SQLiteStore) updateQuestionStats(ctx context.Context, questionID string, score int) error {
 	// Check if stats exist
 	var exists bool
-	err := s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM question_stats WHERE question_id = ?)", questionID).Scan(&exists)
+	err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM question_stats WHERE question_id = ?)", questionID).Scan(&exists)
 	if err != nil {
 		return err
 	}
@@ -686,7 +660,7 @@ func (s *SQLiteStore) updateQuestionStats(questionID string, score int) error {
 		// Update existing stats
 		// Mastery formula (Option 3): latest_score * 0.6 + historical_average * 0.4
 		// historical_average = total_score / times_answered (before adding new score)
-		_, err = s.db.Exec(`
+		_, err = s.db.ExecContext(ctx, `
 			UPDATE question_stats 
 			SET times_answered = times_answered + 1,
 			    times_correct = times_correct + ?,
@@ -700,7 +674,7 @@ func (s *SQLiteStore) updateQuestionStats(questionID string, score int) error {
 		`, isCorrect, score, score, score, questionID)
 	} else {
 		// Insert new stats - first attempt, so mastery = latest score
-		_, err = s.db.Exec(`
+		_, err = s.db.ExecContext(ctx, `
 			INSERT INTO question_stats (question_id, times_answered, times_correct, total_score, latest_score, mastery)
 			VALUES (?, 1, ?, ?, ?, ?)
 		`, questionID, isCorrect, score, score, score)
@@ -709,9 +683,9 @@ func (s *SQLiteStore) updateQuestionStats(questionID string, score int) error {
 	return err
 }
 
-func (s *SQLiteStore) GetQuestionStats(questionID string) (*questionbank.QuestionStats, error) {
+func (s *SQLiteStore) GetQuestionStats(ctx context.Context, questionID string) (*questionbank.QuestionStats, error) {
 	var stats questionbank.QuestionStats
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT question_id, times_answered, times_correct, total_score, latest_score, mastery
 		FROM question_stats WHERE question_id = ?
 	`, questionID).Scan(&stats.QuestionID, &stats.TimesAnswered, &stats.TimesCorrect, &stats.TotalScore, &stats.LatestScore, &stats.Mastery)
@@ -726,8 +700,8 @@ func (s *SQLiteStore) GetQuestionStats(questionID string) (*questionbank.Questio
 	return &stats, nil
 }
 
-func (s *SQLiteStore) GetQuestionStatsByBank(bankID string) ([]questionbank.QuestionStats, error) {
-	rows, err := s.db.Query(`
+func (s *SQLiteStore) GetQuestionStatsByBank(ctx context.Context, bankID string) ([]questionbank.QuestionStats, error) {
+	rows, err := s.db.QueryContext(ctx, `
 		SELECT q.id, COALESCE(qs.times_answered, 0), COALESCE(qs.times_correct, 0), 
 		       COALESCE(qs.total_score, 0), COALESCE(qs.latest_score, 0), COALESCE(qs.mastery, 0)
 		FROM questions q
@@ -750,9 +724,9 @@ func (s *SQLiteStore) GetQuestionStatsByBank(bankID string) ([]questionbank.Ques
 	return stats, nil
 }
 
-func (s *SQLiteStore) GetBankMastery(bankID string) (int, error) {
+func (s *SQLiteStore) GetBankMastery(ctx context.Context, bankID string) (int, error) {
 	var mastery sql.NullFloat64
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT AVG(COALESCE(qs.mastery, 0))
 		FROM questions q
 		LEFT JOIN question_stats qs ON q.id = qs.question_id
@@ -768,9 +742,9 @@ func (s *SQLiteStore) GetBankMastery(bankID string) (int, error) {
 	return int(mastery.Float64), nil
 }
 
-func (s *SQLiteStore) GetCategoryMastery(categoryID string) (int, error) {
+func (s *SQLiteStore) GetCategoryMastery(ctx context.Context, categoryID string) (int, error) {
 	var mastery sql.NullFloat64
-	err := s.db.QueryRow(`
+	err := s.db.QueryRowContext(ctx, `
 		SELECT AVG(COALESCE(qs.mastery, 0))
 		FROM questions q
 		JOIN banks b ON q.bank_id = b.id
@@ -788,13 +762,13 @@ func (s *SQLiteStore) GetCategoryMastery(categoryID string) (int, error) {
 }
 
 // GetQuestionsOrderedByMastery returns questions sorted by mastery (lowest first for weak focus)
-func (s *SQLiteStore) GetQuestionsOrderedByMastery(bankID string, ascending bool) ([]questionbank.Question, error) {
+func (s *SQLiteStore) GetQuestionsOrderedByMastery(ctx context.Context, bankID string, ascending bool) ([]questionbank.Question, error) {
 	order := "ASC"
 	if !ascending {
 		order = "DESC"
 	}
 
-	rows, err := s.db.Query(`
+	rows, err := s.db.QueryContext(ctx, `
 		SELECT q.id, q.subject, q.expected_answer, COALESCE(qs.mastery, 0) as mastery
 		FROM questions q
 		LEFT JOIN question_stats qs ON q.id = qs.question_id

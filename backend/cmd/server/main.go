@@ -2,52 +2,69 @@
 package main
 
 import (
-    "context"
-    "log/slog"
-    "net/http"
-    "os"
-    "os/signal"
-    "syscall"
+	"context"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
-    "github.com/remaimber-it/backend/internal/api"
-    "github.com/remaimber-it/backend/internal/infrastructure/config"
+	"github.com/remaimber-it/backend/internal/api"
+	"github.com/remaimber-it/backend/internal/grader"
+	"github.com/remaimber-it/backend/internal/infrastructure/config"
+	"github.com/remaimber-it/backend/internal/service"
+	"github.com/remaimber-it/backend/internal/store"
 )
 
 func main() {
-    cfg := config.Load()
-    logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	cfg := config.Load()
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-    mux := http.NewServeMux()
+	// ── Dependencies ────────────────────────────────────────────────
+	db, err := store.NewSQLite("remaimber.db")
+	if err != nil {
+		logger.Error("failed to open database", "error", err)
+		os.Exit(1)
+	}
+	defer db.Close()
 
-    mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-        w.WriteHeader(http.StatusOK)
-        w.Write([]byte(`{"status": "ok"}`))
-    })
+	llm := grader.NewOllamaGrader(cfg.LLMURL, cfg.LLMModel)
+	gradingSvc := service.NewGradingService(db, llm, logger)
+	handler := api.NewHandler(db, gradingSvc, logger)
 
-    api.RegisterRoutes(mux)
+	// ── Routes ──────────────────────────────────────────────────────
+	mux := http.NewServeMux()
 
-    server := &http.Server{
-        Addr:    cfg.ServerAddress,
-        Handler: api.CORS(mux),
-    }
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "ok"}`))
+	})
 
-    go func() {
-        sigChan := make(chan os.Signal, 1)
-        signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-        <-sigChan
+	api.RegisterRoutes(mux, handler)
 
-        ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
-        defer cancel()
+	// ── Server ──────────────────────────────────────────────────────
+	server := &http.Server{
+		Addr:    cfg.ServerAddress,
+		Handler: api.CORS(mux),
+	}
 
-        logger.Info("shutting down server")
-        if err := server.Shutdown(ctx); err != nil {
-            logger.Error("server forced to shutdown", "error", err)
-        }
-    }()
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
 
-    logger.Info("starting server", "address", cfg.ServerAddress)
-    if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-        logger.Error("server failed to start", "error", err)
-        os.Exit(1)
-    }
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+		defer cancel()
+
+		logger.Info("shutting down server")
+		if err := server.Shutdown(ctx); err != nil {
+			logger.Error("server forced to shutdown", "error", err)
+		}
+	}()
+
+	logger.Info("starting server", "address", cfg.ServerAddress)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		logger.Error("server failed to start", "error", err)
+		os.Exit(1)
+	}
 }
