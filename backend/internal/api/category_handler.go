@@ -10,7 +10,7 @@ import (
 // ── Request / Response types ────────────────────────────────────────────────
 
 type CreateCategoryRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" example:"Golang"`
 }
 
 func (r *CreateCategoryRequest) Validate() error {
@@ -21,20 +21,20 @@ func (r *CreateCategoryRequest) Validate() error {
 }
 
 type CategoryResponse struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Mastery int    `json:"mastery"`
+	ID      string `json:"id" example:"a1b2c3d4e5f6g7h8"`
+	Name    string `json:"name" example:"Golang"`
+	Mastery int    `json:"mastery" example:"42"`
 }
 
 type GetCategoryResponse struct {
-	ID      string         `json:"id"`
-	Name    string         `json:"name"`
-	Mastery int            `json:"mastery"`
+	ID      string         `json:"id" example:"a1b2c3d4e5f6g7h8"`
+	Name    string         `json:"name" example:"Golang"`
+	Mastery int            `json:"mastery" example:"42"`
 	Banks   []BankResponse `json:"banks"`
 }
 
 type UpdateCategoryRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" example:"Rust"`
 }
 
 func (r *UpdateCategoryRequest) Validate() error {
@@ -45,13 +45,23 @@ func (r *UpdateCategoryRequest) Validate() error {
 }
 
 type CategoryStatsResponse struct {
-	CategoryID string `json:"category_id"`
-	Mastery    int    `json:"mastery"`
+	CategoryID string `json:"category_id" example:"a1b2c3d4e5f6g7h8"`
+	Mastery    int    `json:"mastery" example:"42"`
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
-// POST /categories
+// createCategory creates a new category.
+// @Summary      Create a category
+// @Description  Create a new category for organizing question banks.
+// @Tags         Categories
+// @Accept       json
+// @Produce      json
+// @Param        body  body      CreateCategoryRequest  true  "Category to create"
+// @Success      201   {object}  CategoryResponse
+// @Failure      400   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /categories [post]
 func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req CreateCategoryRequest
@@ -72,7 +82,14 @@ func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /categories
+// listCategories lists all categories.
+// @Summary      List categories
+// @Description  Returns all categories with their mastery scores.
+// @Tags         Categories
+// @Produce      json
+// @Success      200  {array}   CategoryResponse
+// @Failure      500  {object}  map[string]string
+// @Router       /categories [get]
 func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	categories, err := h.store.ListCategories(ctx)
@@ -94,7 +111,16 @@ func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, response)
 }
 
-// GET /categories/{categoryID}
+// getCategory returns a single category with its banks.
+// @Summary      Get a category
+// @Description  Returns a category with all its question banks.
+// @Tags         Categories
+// @Produce      json
+// @Param        categoryID  path      string  true  "Category ID"
+// @Success      200         {object}  GetCategoryResponse
+// @Failure      404         {object}  map[string]string
+// @Failure      500         {object}  map[string]string
+// @Router       /categories/{categoryID} [get]
 func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	categoryID := r.PathValue("categoryID")
@@ -133,7 +159,18 @@ func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// PUT /categories/{categoryID}
+// updateCategory renames an existing category.
+// @Summary      Update a category
+// @Description  Update the name of an existing category.
+// @Tags         Categories
+// @Accept       json
+// @Produce      json
+// @Param        categoryID  path      string                 true  "Category ID"
+// @Param        body        body      UpdateCategoryRequest   true  "New category data"
+// @Success      200         {object}  CategoryResponse
+// @Failure      400         {object}  map[string]string
+// @Failure      404         {object}  map[string]string
+// @Router       /categories/{categoryID} [put]
 func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	categoryID := r.PathValue("categoryID")
@@ -161,7 +198,15 @@ func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DELETE /categories/{categoryID}
+// deleteCategory removes a category and all its banks.
+// @Summary      Delete a category
+// @Description  Delete a category and cascade-delete all its banks and questions.
+// @Tags         Categories
+// @Param        categoryID  path  string  true  "Category ID"
+// @Success      204
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /categories/{categoryID} [delete]
 func (h *Handler) deleteCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	categoryID := r.PathValue("categoryID")
@@ -173,7 +218,16 @@ func (h *Handler) deleteCategory(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GET /categories/{categoryID}/banks
+// listBanksByCategory returns all banks in a category.
+// @Summary      List banks by category
+// @Description  Returns all question banks belonging to a category.
+// @Tags         Categories
+// @Produce      json
+// @Param        categoryID  path      string  true  "Category ID"
+// @Success      200         {array}   BankResponse
+// @Failure      404         {object}  map[string]string
+// @Failure      500         {object}  map[string]string
+// @Router       /categories/{categoryID}/banks [get]
 func (h *Handler) listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	categoryID := r.PathValue("categoryID")
@@ -205,7 +259,16 @@ func (h *Handler) listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, response)
 }
 
-// GET /categories/{categoryID}/stats
+// getCategoryStats returns mastery stats for a category.
+// @Summary      Get category stats
+// @Description  Returns the aggregate mastery score for a category.
+// @Tags         Categories
+// @Produce      json
+// @Param        categoryID  path      string  true  "Category ID"
+// @Success      200         {object}  CategoryStatsResponse
+// @Failure      404         {object}  map[string]string
+// @Failure      500         {object}  map[string]string
+// @Router       /categories/{categoryID}/stats [get]
 func (h *Handler) getCategoryStats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	categoryID := r.PathValue("categoryID")

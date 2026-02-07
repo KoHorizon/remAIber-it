@@ -8,8 +8,8 @@ import (
 // ── Request / Response types ────────────────────────────────────────────────
 
 type AddQuestionRequest struct {
-	Subject        string `json:"subject"`
-	ExpectedAnswer string `json:"expected_answer"`
+	Subject        string `json:"subject" example:"What is a goroutine?"`
+	ExpectedAnswer string `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
 }
 
 func (r *AddQuestionRequest) Validate() error {
@@ -23,17 +23,29 @@ func (r *AddQuestionRequest) Validate() error {
 }
 
 type AddQuestionResponse struct {
-	ID             string `json:"id"`
-	Subject        string `json:"subject"`
-	ExpectedAnswer string `json:"expected_answer"`
-	Mastery        int    `json:"mastery"`
-	TimesAnswered  int    `json:"times_answered"`
-	TimesCorrect   int    `json:"times_correct"`
+	ID             string `json:"id" example:"q1w2e3r4t5y6u7i8"`
+	Subject        string `json:"subject" example:"What is a goroutine?"`
+	ExpectedAnswer string `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
+	Mastery        int    `json:"mastery" example:"0"`
+	TimesAnswered  int    `json:"times_answered" example:"0"`
+	TimesCorrect   int    `json:"times_correct" example:"0"`
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
-// POST /banks/{bankID}/questions
+// addQuestion adds a new question to a bank.
+// @Summary      Add a question
+// @Description  Add a new question with an expected answer to a question bank.
+// @Tags         Questions
+// @Accept       json
+// @Produce      json
+// @Param        bankID  path      string              true  "Bank ID"
+// @Param        body    body      AddQuestionRequest   true  "Question to add"
+// @Success      201     {object}  AddQuestionResponse
+// @Failure      400     {object}  map[string]string
+// @Failure      404     {object}  map[string]string
+// @Failure      500     {object}  map[string]string
+// @Router       /banks/{bankID}/questions [post]
 func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bankID := r.PathValue("bankID")
@@ -48,7 +60,7 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := bank.AddQuestions(req.Subject, req.ExpectedAnswer); err != nil {
+	if err := bank.AddQuestion(req.Subject, req.ExpectedAnswer); err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -69,7 +81,16 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DELETE /banks/{bankID}/questions/{questionID}
+// deleteQuestion removes a question from a bank.
+// @Summary      Delete a question
+// @Description  Delete a question and its statistics.
+// @Tags         Questions
+// @Param        bankID      path  string  true  "Bank ID"
+// @Param        questionID  path  string  true  "Question ID"
+// @Success      204
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /banks/{bankID}/questions/{questionID} [delete]
 func (h *Handler) deleteQuestion(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	questionID := r.PathValue("questionID")

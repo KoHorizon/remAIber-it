@@ -1,4 +1,3 @@
-// internal/api/handler.go
 package api
 
 import (
@@ -10,6 +9,9 @@ import (
 	"github.com/remaimber-it/backend/internal/service"
 	"github.com/remaimber-it/backend/internal/store"
 )
+
+// maxRequestBodySize is the upper limit for JSON request bodies (1 MB).
+const maxRequestBodySize = 1 << 20
 
 // Handler holds all dependencies needed by HTTP handlers.
 // Instead of relying on package-level globals, every handler method
@@ -64,9 +66,18 @@ type Validatable interface {
 }
 
 // decodeJSON reads a JSON request body into dst.
+// The body is capped at maxRequestBodySize to prevent abuse.
 // Returns true on success. On failure it writes a 400 response and returns false.
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+
 	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		// MaxBytesReader returns a specific error when the limit is exceeded.
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			respondError(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return false
+		}
 		respondError(w, http.StatusBadRequest, "invalid json")
 		return false
 	}

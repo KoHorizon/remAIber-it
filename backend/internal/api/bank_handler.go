@@ -10,10 +10,10 @@ import (
 // ── Request / Response types ────────────────────────────────────────────────
 
 type CreateBankRequest struct {
-	Subject    string  `json:"subject"`
-	CategoryID *string `json:"category_id,omitempty"`
-	BankType   string  `json:"bank_type,omitempty"`
-	Language   *string `json:"language,omitempty"`
+	Subject    string  `json:"subject" example:"Go concurrency patterns"`
+	CategoryID *string `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
+	BankType   string  `json:"bank_type,omitempty" example:"theory"`
+	Language   *string `json:"language,omitempty" example:"go"`
 }
 
 func (r *CreateBankRequest) Validate() error {
@@ -31,70 +31,81 @@ func (r *CreateBankRequest) Validate() error {
 }
 
 type CreateBankResponse struct {
-	ID         string  `json:"id"`
-	Subject    string  `json:"subject"`
-	CategoryID *string `json:"category_id,omitempty"`
-	BankType   string  `json:"bank_type"`
-	Language   *string `json:"language,omitempty"`
-	Mastery    int     `json:"mastery"`
+	ID         string  `json:"id" example:"x9y8z7w6v5u4t3s2"`
+	Subject    string  `json:"subject" example:"Go concurrency patterns"`
+	CategoryID *string `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
+	BankType   string  `json:"bank_type" example:"theory"`
+	Language   *string `json:"language,omitempty" example:"go"`
+	Mastery    int     `json:"mastery" example:"0"`
 }
 
 // BankResponse is used when banks appear nested inside a category response.
 type BankResponse struct {
-	ID            string  `json:"id"`
-	Subject       string  `json:"subject"`
-	CategoryID    *string `json:"category_id,omitempty"`
+	ID            string  `json:"id" example:"x9y8z7w6v5u4t3s2"`
+	Subject       string  `json:"subject" example:"Go concurrency patterns"`
+	CategoryID    *string `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
 	GradingPrompt *string `json:"grading_prompt,omitempty"`
-	BankType      string  `json:"bank_type"`
-	Language      *string `json:"language,omitempty"`
-	Mastery       int     `json:"mastery"`
+	BankType      string  `json:"bank_type" example:"theory"`
+	Language      *string `json:"language,omitempty" example:"go"`
+	Mastery       int     `json:"mastery" example:"42"`
 }
 
 type GetBankResponse struct {
-	ID            string             `json:"id"`
-	Subject       string             `json:"subject"`
-	CategoryID    *string            `json:"category_id,omitempty"`
+	ID            string             `json:"id" example:"x9y8z7w6v5u4t3s2"`
+	Subject       string             `json:"subject" example:"Go concurrency patterns"`
+	CategoryID    *string            `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
 	GradingPrompt *string            `json:"grading_prompt,omitempty"`
-	BankType      string             `json:"bank_type"`
-	Language      *string            `json:"language,omitempty"`
-	Mastery       int                `json:"mastery"`
+	BankType      string             `json:"bank_type" example:"theory"`
+	Language      *string            `json:"language,omitempty" example:"go"`
+	Mastery       int                `json:"mastery" example:"42"`
 	Questions     []QuestionResponse `json:"questions"`
 }
 
 type QuestionResponse struct {
-	ID             string `json:"id"`
-	Subject        string `json:"subject"`
-	ExpectedAnswer string `json:"expected_answer"`
-	Mastery        int    `json:"mastery"`
-	TimesAnswered  int    `json:"times_answered"`
-	TimesCorrect   int    `json:"times_correct"`
+	ID             string `json:"id" example:"q1w2e3r4t5y6u7i8"`
+	Subject        string `json:"subject" example:"What is a goroutine?"`
+	ExpectedAnswer string `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
+	Mastery        int    `json:"mastery" example:"75"`
+	TimesAnswered  int    `json:"times_answered" example:"3"`
+	TimesCorrect   int    `json:"times_correct" example:"2"`
 }
 
 type UpdateBankCategoryRequest struct {
-	CategoryID *string `json:"category_id"`
+	CategoryID *string `json:"category_id" example:"a1b2c3d4e5f6g7h8"`
 }
 
 type UpdateGradingPromptRequest struct {
-	GradingPrompt *string `json:"grading_prompt"`
+	GradingPrompt *string `json:"grading_prompt" example:"Be strict about exact terminology."`
 }
 
 type BankStatsResponse struct {
-	BankID         string                  `json:"bank_id"`
-	Mastery        int                     `json:"mastery"`
-	TotalQuestions int                     `json:"total_questions"`
+	BankID         string                  `json:"bank_id" example:"x9y8z7w6v5u4t3s2"`
+	Mastery        int                     `json:"mastery" example:"42"`
+	TotalQuestions int                     `json:"total_questions" example:"10"`
 	QuestionStats  []QuestionStatsResponse `json:"question_stats"`
 }
 
 type QuestionStatsResponse struct {
-	QuestionID    string `json:"question_id"`
-	TimesAnswered int    `json:"times_answered"`
-	TimesCorrect  int    `json:"times_correct"`
-	Mastery       int    `json:"mastery"`
+	QuestionID    string `json:"question_id" example:"q1w2e3r4t5y6u7i8"`
+	TimesAnswered int    `json:"times_answered" example:"3"`
+	TimesCorrect  int    `json:"times_correct" example:"2"`
+	Mastery       int    `json:"mastery" example:"75"`
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
-// POST /banks
+// createBank creates a new question bank.
+// @Summary      Create a question bank
+// @Description  Create a new question bank within a category.
+// @Tags         Banks
+// @Accept       json
+// @Produce      json
+// @Param        body  body      CreateBankRequest  true  "Bank to create"
+// @Success      201   {object}  CreateBankResponse
+// @Failure      400   {object}  map[string]string
+// @Failure      404   {object}  map[string]string  "category not found"
+// @Failure      500   {object}  map[string]string
+// @Router       /banks [post]
 func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req CreateBankRequest
@@ -129,7 +140,14 @@ func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /banks
+// listBanks lists all question banks.
+// @Summary      List all banks
+// @Description  Returns all question banks across all categories.
+// @Tags         Banks
+// @Produce      json
+// @Success      200  {array}   CreateBankResponse
+// @Failure      500  {object}  map[string]string
+// @Router       /banks [get]
 func (h *Handler) listBanks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	banks, err := h.store.ListBanks(ctx)
@@ -154,7 +172,16 @@ func (h *Handler) listBanks(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, response)
 }
 
-// GET /banks/{bankID}
+// getBank returns a single bank with its questions.
+// @Summary      Get a question bank
+// @Description  Returns a question bank with all its questions and their stats.
+// @Tags         Banks
+// @Produce      json
+// @Param        bankID  path      string  true  "Bank ID"
+// @Success      200     {object}  GetBankResponse
+// @Failure      404     {object}  map[string]string
+// @Failure      500     {object}  map[string]string
+// @Router       /banks/{bankID} [get]
 func (h *Handler) getBank(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bankID := r.PathValue("bankID")
@@ -205,7 +232,15 @@ func (h *Handler) getBank(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DELETE /banks/{bankID}
+// deleteBank removes a question bank and its questions.
+// @Summary      Delete a question bank
+// @Description  Delete a bank and cascade-delete all its questions and stats.
+// @Tags         Banks
+// @Param        bankID  path  string  true  "Bank ID"
+// @Success      204
+// @Failure      404  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /banks/{bankID} [delete]
 func (h *Handler) deleteBank(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bankID := r.PathValue("bankID")
@@ -217,7 +252,18 @@ func (h *Handler) deleteBank(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// PATCH /banks/{bankID}/category
+// updateBankCategory moves a bank to a different category.
+// @Summary      Update bank category
+// @Description  Move a question bank to a different category (or set to null).
+// @Tags         Banks
+// @Accept       json
+// @Produce      json
+// @Param        bankID  path      string                     true  "Bank ID"
+// @Param        body    body      UpdateBankCategoryRequest   true  "New category"
+// @Success      200     {object}  CreateBankResponse
+// @Failure      400     {object}  map[string]string
+// @Failure      404     {object}  map[string]string
+// @Router       /banks/{bankID}/category [patch]
 func (h *Handler) updateBankCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bankID := r.PathValue("bankID")
@@ -245,11 +291,24 @@ func (h *Handler) updateBankCategory(w http.ResponseWriter, r *http.Request) {
 		ID:         bank.ID,
 		Subject:    bank.Subject,
 		CategoryID: bank.CategoryID,
+		BankType:   string(bank.BankType),
+		Language:   bank.Language,
 		Mastery:    mastery,
 	})
 }
 
-// PUT /banks/{bankID}/grading-prompt
+// updateBankGradingPrompt sets or clears a custom grading prompt.
+// @Summary      Update grading prompt
+// @Description  Set or clear a custom grading prompt for a question bank.
+// @Tags         Banks
+// @Accept       json
+// @Produce      json
+// @Param        bankID  path      string                      true  "Bank ID"
+// @Param        body    body      UpdateGradingPromptRequest   true  "Grading prompt"
+// @Success      200     {object}  GetBankResponse
+// @Failure      400     {object}  map[string]string
+// @Failure      404     {object}  map[string]string
+// @Router       /banks/{bankID}/grading-prompt [put]
 func (h *Handler) updateBankGradingPrompt(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bankID := r.PathValue("bankID")
@@ -276,12 +335,23 @@ func (h *Handler) updateBankGradingPrompt(w http.ResponseWriter, r *http.Request
 		Subject:       bank.Subject,
 		CategoryID:    bank.CategoryID,
 		GradingPrompt: bank.GradingPrompt,
+		BankType:      string(bank.BankType),
+		Language:      bank.Language,
 		Mastery:       mastery,
 		Questions:     nil,
 	})
 }
 
-// GET /banks/{bankID}/stats
+// getBankStats returns mastery statistics for a bank.
+// @Summary      Get bank stats
+// @Description  Returns mastery and per-question statistics for a bank.
+// @Tags         Banks
+// @Produce      json
+// @Param        bankID  path      string  true  "Bank ID"
+// @Success      200     {object}  BankStatsResponse
+// @Failure      404     {object}  map[string]string
+// @Failure      500     {object}  map[string]string
+// @Router       /banks/{bankID}/stats [get]
 func (h *Handler) getBankStats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bankID := r.PathValue("bankID")

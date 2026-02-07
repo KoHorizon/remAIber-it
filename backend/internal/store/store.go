@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("not found")
+	ErrNotFound         = errors.New("not found")
+	ErrSessionCompleted = errors.New("session already completed")
 )
 
 // Store defines the persistence contract for the application.
@@ -44,6 +45,7 @@ type Store interface {
 	// Sessions
 	SaveSession(ctx context.Context, session *practicesession.PracticeSession) error
 	GetSession(ctx context.Context, id string) (*practicesession.PracticeSession, error)
+	CompleteSession(ctx context.Context, id string) error
 
 	// Grades
 	SaveGrade(ctx context.Context, sessionID string, questionID string, score int, covered, missed []string, userAnswer string) error

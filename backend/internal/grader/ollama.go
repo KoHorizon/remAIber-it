@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // OllamaGrader grades answers by calling an OpenAI-compatible LLM endpoint
@@ -395,26 +396,14 @@ func splitKeyPoints(text string) string {
 		// Strip common list prefixes
 		trimmed = strings.TrimLeft(trimmed, "•·")
 		trimmed = strings.TrimSpace(trimmed)
-		if len(trimmed) > 2 && trimmed[0] == '-' && trimmed[1] == ' ' {
+		if strings.HasPrefix(trimmed, "- ") {
 			trimmed = strings.TrimSpace(trimmed[2:])
 		}
-		if len(trimmed) > 2 && trimmed[0] == '*' && trimmed[1] == ' ' {
+		if strings.HasPrefix(trimmed, "* ") {
 			trimmed = strings.TrimSpace(trimmed[2:])
 		}
 		// Strip numbered prefix like "1. " or "1) "
-		if len(trimmed) > 3 && trimmed[0] >= '0' && trimmed[0] <= '9' {
-			for i, ch := range trimmed {
-				if ch == '.' || ch == ')' {
-					if i+1 < len(trimmed) && trimmed[i+1] == ' ' {
-						trimmed = strings.TrimSpace(trimmed[i+2:])
-					}
-					break
-				}
-				if ch < '0' || ch > '9' {
-					break
-				}
-			}
-		}
+		trimmed = stripNumberedPrefix(trimmed)
 
 		if trimmed != "" {
 			points = append(points, trimmed)
@@ -422,38 +411,68 @@ func splitKeyPoints(text string) string {
 	}
 
 	// If we only got one big block (no natural list structure), try splitting by sentences
-	if len(points) == 1 && len(points[0]) > 120 {
+	if len(points) == 1 && len([]rune(points[0])) > 120 {
 		sentences := splitSentences(points[0])
 		if len(sentences) > 1 {
 			points = sentences
 		}
 	}
 
-	result := ""
+	var b strings.Builder
 	for i, p := range points {
-		result += fmt.Sprintf("%d. %s\n", i+1, p)
+		fmt.Fprintf(&b, "%d. %s\n", i+1, p)
 	}
-	return result
+	return b.String()
+}
+
+// stripNumberedPrefix removes a leading "1. " or "1) " style prefix.
+// Operates on runes for UTF-8 safety.
+func stripNumberedPrefix(s string) string {
+	runes := []rune(s)
+	if len(runes) < 3 || !unicode.IsDigit(runes[0]) {
+		return s
+	}
+
+	for i, r := range runes {
+		if r == '.' || r == ')' {
+			if i+1 < len(runes) && runes[i+1] == ' ' {
+				return strings.TrimSpace(string(runes[i+2:]))
+			}
+			break
+		}
+		if !unicode.IsDigit(r) {
+			break
+		}
+	}
+	return s
 }
 
 // splitSentences does a basic sentence split on ". " boundaries.
+// It iterates over runes so multi-byte characters (e.g. accented letters,
+// CJK, emoji) are handled correctly.
 func splitSentences(text string) []string {
 	var sentences []string
-	current := ""
+	var current strings.Builder
 
-	for i := 0; i < len(text); i++ {
-		current += string(text[i])
-		if text[i] == '.' && i+1 < len(text) && text[i+1] == ' ' {
-			trimmed := strings.TrimSpace(current)
-			if trimmed != "" && len(trimmed) > 10 {
-				sentences = append(sentences, trimmed)
+	runes := []rune(text)
+	for i, r := range runes {
+		current.WriteRune(r)
+
+		// Look for ". " as a sentence boundary
+		if r == '.' && i+1 < len(runes) && runes[i+1] == ' ' {
+			sentence := strings.TrimSpace(current.String())
+			if len([]rune(sentence)) > 10 {
+				sentences = append(sentences, sentence)
 			}
-			current = ""
+			current.Reset()
 		}
 	}
-	trimmed := strings.TrimSpace(current)
-	if trimmed != "" && len(trimmed) > 10 {
-		sentences = append(sentences, trimmed)
+
+	// Remaining text after the last period
+	sentence := strings.TrimSpace(current.String())
+	if len([]rune(sentence)) > 10 {
+		sentences = append(sentences, sentence)
 	}
+
 	return sentences
 }

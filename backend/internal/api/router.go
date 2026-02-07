@@ -39,18 +39,16 @@ func RegisterRoutes(mux *http.ServeMux, h *Handler) {
 
 // ── Shared response types ───────────────────────────────────────────────────
 
-// GradeResult is used internally during async grading.
-type GradeResult struct {
-	QuestionID string
-	Response   string
-	Err        error
+// ErrorResponse is the standard error envelope.
+type ErrorResponse struct {
+	Error string `json:"error" example:"entity not found"`
 }
 
 // GradeDetails appears in session completion responses.
 type GradeDetails struct {
-	Score      int      `json:"score"`
-	Covered    []string `json:"covered"`
-	Missed     []string `json:"missed"`
-	UserAnswer string   `json:"user_answer"`
-	Status     string   `json:"status"` // "success", "failed", or "not_answered"
+	Score      int      `json:"score" example:"80"`
+	Covered    []string `json:"covered" example:"goroutines are lightweight"`
+	Missed     []string `json:"missed" example:"managed by Go runtime"`
+	UserAnswer string   `json:"user_answer" example:"A goroutine is a lightweight thread."`
+	Status     string   `json:"status" example:"success"` // "success", "failed", or "not_answered"
 }

@@ -1,4 +1,3 @@
-// questionbank.go
 package questionbank
 
 import (
@@ -73,7 +72,8 @@ func (qb *QuestionBank) SetGradingPrompt(prompt *string) {
 	qb.GradingPrompt = prompt
 }
 
-func (qb *QuestionBank) AddQuestions(subject string, expectedAnswer string) error {
+// AddQuestion appends a single question to the bank.
+func (qb *QuestionBank) AddQuestion(subject string, expectedAnswer string) error {
 	if subject == "" {
 		return errors.New("question subject cannot be empty")
 	}
