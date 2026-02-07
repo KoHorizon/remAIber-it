@@ -1,4 +1,3 @@
-// questionbank.go
 package questionbank
 
 import (
