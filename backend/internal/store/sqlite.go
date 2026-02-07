@@ -1,4 +1,3 @@
-// internal/store/sqlite.go
 package store
 
 import (
@@ -98,6 +97,9 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	// Run migrations — add columns if missing for older databases.
 	_ = addColumnIfNotExists(db, "grades", "status", "TEXT NOT NULL DEFAULT 'success'")
 	_ = addColumnIfNotExists(db, "sessions", "status", "TEXT NOT NULL DEFAULT 'active'")
+
+	// Ensure only one grade per question per session.
+	_, _ = db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_grades_session_question ON grades (session_id, question_id)")
 
 	return &SQLiteStore{
 		db: db,
@@ -569,12 +571,20 @@ func (s *SQLiteStore) CompleteSession(ctx context.Context, id string) error {
 // ============================================================================
 
 // SaveGrade stores a successful grading result.
+// If a grade already exists for this (session, question) pair it is overwritten.
 func (s *SQLiteStore) SaveGrade(ctx context.Context, sessionID string, questionID string, score int, covered, missed []string, userAnswer string) error {
 	coveredJSON, _ := json.Marshal(covered)
 	missedJSON, _ := json.Marshal(missed)
 
-	_, err := s.db.ExecContext(ctx,
-		"INSERT INTO grades (session_id, question_id, score, covered, missed, user_answer, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO grades (session_id, question_id, score, covered, missed, user_answer, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(session_id, question_id) DO UPDATE SET
+			score = excluded.score,
+			covered = excluded.covered,
+			missed = excluded.missed,
+			user_answer = excluded.user_answer,
+			status = excluded.status`,
 		sessionID, questionID, score, string(coveredJSON), string(missedJSON), userAnswer, GradeStatusSuccess,
 	)
 	if err != nil {
@@ -592,8 +602,15 @@ func (s *SQLiteStore) SaveGradeFailure(ctx context.Context, sessionID string, qu
 	missedJSON, _ := json.Marshal(missed)
 	coveredJSON, _ := json.Marshal([]string{})
 
-	_, err := s.db.ExecContext(ctx,
-		"INSERT INTO grades (session_id, question_id, score, covered, missed, user_answer, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO grades (session_id, question_id, score, covered, missed, user_answer, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(session_id, question_id) DO UPDATE SET
+			score = excluded.score,
+			covered = excluded.covered,
+			missed = excluded.missed,
+			user_answer = excluded.user_answer,
+			status = excluded.status`,
 		sessionID, questionID, 0, string(coveredJSON), string(missedJSON), userAnswer, GradeStatusFailed,
 	)
 	return err
