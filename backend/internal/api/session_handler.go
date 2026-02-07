@@ -11,7 +11,7 @@ import (
 	"github.com/remaimber-it/backend/internal/store"
 )
 
-// ── Request / Response types ────────────────────────────────────────────────
+// Request / Response types
 
 type CreateSessionRequest struct {
 	BankID         string   `json:"bank_id"`
@@ -36,6 +36,7 @@ type SessionQuestion struct {
 
 type CreateSessionResponse struct {
 	ID             string            `json:"id"`
+	Status         string            `json:"status"`
 	Questions      []SessionQuestion `json:"questions"`
 	MaxDurationMin *int              `json:"max_duration_min,omitempty"`
 	FocusOnWeak    bool              `json:"focus_on_weak"`
@@ -67,7 +68,7 @@ type CompleteSessionResponse struct {
 	Results    []GradeDetails `json:"results"`
 }
 
-// ── Handlers ────────────────────────────────────────────────────────────────
+// Handlers
 
 // POST /sessions
 func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
@@ -152,6 +153,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 
 	response := CreateSessionResponse{
 		ID:          session.ID,
+		Status:      string(session.Status),
 		Questions:   questions,
 		FocusOnWeak: session.FocusOnWeak,
 	}
@@ -184,6 +186,7 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, CreateSessionResponse{
 		ID:        session.ID,
+		Status:    string(session.Status),
 		Questions: questions,
 	})
 }
@@ -195,6 +198,11 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.store.GetSession(ctx, sessionID)
 	if h.handleStoreError(w, err, "session") {
+		return
+	}
+
+	if !session.IsActive() {
+		respondError(w, http.StatusConflict, "session is already completed")
 		return
 	}
 
@@ -246,6 +254,17 @@ func (h *Handler) completeSession(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.store.GetSession(ctx, sessionID)
 	if h.handleStoreError(w, err, "session") {
+		return
+	}
+
+	// Transition session to completed — fails if already completed.
+	if err := h.store.CompleteSession(ctx, sessionID); err != nil {
+		if errors.Is(err, store.ErrSessionCompleted) {
+			respondError(w, http.StatusConflict, "session is already completed")
+			return
+		}
+		h.logger.Error("failed to complete session", "error", err)
+		respondError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 

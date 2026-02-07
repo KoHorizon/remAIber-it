@@ -7,13 +7,22 @@ import (
 	"github.com/remaimber-it/backend/internal/id"
 )
 
+// SessionStatus represents the lifecycle state of a practice session.
+type SessionStatus string
+
+const (
+	SessionStatusActive    SessionStatus = "active"
+	SessionStatusCompleted SessionStatus = "completed"
+)
+
 // PracticeSession is the main domain entity for a practice session.
 type PracticeSession struct {
 	ID             string
 	QuestionBankId string
 	Questions      []questionbank.Question
-	MaxDuration    *int // Duration in minutes (optional)
-	FocusOnWeak    bool // Whether this session focuses on weak questions
+	MaxDuration    *int          // Duration in minutes (optional)
+	FocusOnWeak    bool          // Whether this session focuses on weak questions
+	Status         SessionStatus // active or completed
 }
 
 // New creates a practice session with all questions from the bank (randomized).
@@ -54,6 +63,7 @@ func NewWithConfig(bank *questionbank.QuestionBank, config SessionConfig, ordere
 		Questions:      questions,
 		MaxDuration:    maxDurationMin,
 		FocusOnWeak:    config.FocusOnWeak,
+		Status:         SessionStatusActive,
 	}
 }
 
@@ -72,7 +82,13 @@ func NewWithSpecificQuestions(bank *questionbank.QuestionBank, questions []quest
 		Questions:      questions,
 		MaxDuration:    maxDurationMin,
 		FocusOnWeak:    false, // Retry doesn't use focus on weak
+		Status:         SessionStatusActive,
 	}
+}
+
+// IsActive reports whether the session is still accepting answers.
+func (ps *PracticeSession) IsActive() bool {
+	return ps.Status == SessionStatusActive
 }
 
 // shuffleQuestions returns a new slice with questions in random order.

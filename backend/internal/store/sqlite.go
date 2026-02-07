@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 
 	_ "modernc.org/sqlite"
 
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS questions (
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     bank_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
     FOREIGN KEY (bank_id) REFERENCES banks(id)
 );
 
@@ -76,12 +78,6 @@ CREATE TABLE IF NOT EXISTS question_stats (
 );
 `
 
-// migrations adds columns that may not exist in older databases.
-const migrations = `
--- Add status column if it doesn't exist (SQLite doesn't support IF NOT EXISTS for columns,
--- so we catch the error in Go).
-`
-
 type SQLiteStore struct {
 	db *sql.DB
 }
@@ -99,8 +95,9 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	// Run migrations — add status column if missing
+	// Run migrations — add columns if missing for older databases.
 	_ = addColumnIfNotExists(db, "grades", "status", "TEXT NOT NULL DEFAULT 'success'")
+	_ = addColumnIfNotExists(db, "sessions", "status", "TEXT NOT NULL DEFAULT 'active'")
 
 	return &SQLiteStore{
 		db: db,
@@ -111,31 +108,18 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 func addColumnIfNotExists(db *sql.DB, table, column, definition string) error {
 	query := "ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition
 	_, err := db.Exec(query)
-	if err != nil {
-		// SQLite returns "duplicate column name" if it already exists — that's fine.
-		if isColumnExistsError(err) {
-			return nil
-		}
+	if err != nil && !isColumnExistsError(err) {
 		return err
 	}
 	return nil
 }
 
 func isColumnExistsError(err error) bool {
-	return err != nil && (contains(err.Error(), "duplicate column") || contains(err.Error(), "already exists"))
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && searchString(s, substr)
-}
-
-func searchString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
+	if err == nil {
+		return false
 	}
-	return false
+	msg := err.Error()
+	return strings.Contains(msg, "duplicate column") || strings.Contains(msg, "already exists")
 }
 
 func (s *SQLiteStore) Close() error {
@@ -376,39 +360,6 @@ func (s *SQLiteStore) ListBanksByCategory(ctx context.Context, categoryID string
 	return banks, nil
 }
 
-func (s *SQLiteStore) ListUncategorizedBanks(ctx context.Context) ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE category_id IS NULL")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var banks []*questionbank.QuestionBank
-	for rows.Next() {
-		var bank questionbank.QuestionBank
-		var categoryID sql.NullString
-		var gradingPrompt sql.NullString
-		var bankType sql.NullString
-		var language sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt, &bankType, &language); err != nil {
-			return nil, err
-		}
-		if gradingPrompt.Valid {
-			bank.GradingPrompt = &gradingPrompt.String
-		}
-		if bankType.Valid {
-			bank.BankType = questionbank.BankType(bankType.String)
-		} else {
-			bank.BankType = questionbank.BankTypeTheory
-		}
-		if language.Valid {
-			bank.Language = &language.String
-		}
-		banks = append(banks, &bank)
-	}
-	return banks, nil
-}
-
 func (s *SQLiteStore) UpdateBankCategory(ctx context.Context, bankID string, categoryID *string) error {
 	result, err := s.db.ExecContext(ctx, "UPDATE banks SET category_id = ? WHERE id = ?", categoryID, bankID)
 	if err != nil {
@@ -523,7 +474,10 @@ func (s *SQLiteStore) SaveSession(ctx context.Context, session *practicesession.
 	}
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(ctx, "INSERT INTO sessions (id, bank_id) VALUES (?, ?)", session.ID, session.QuestionBankId)
+	_, err = tx.ExecContext(ctx,
+		"INSERT INTO sessions (id, bank_id, status) VALUES (?, ?, ?)",
+		session.ID, session.QuestionBankId, string(session.Status),
+	)
 	if err != nil {
 		return err
 	}
@@ -538,18 +492,17 @@ func (s *SQLiteStore) SaveSession(ctx context.Context, session *practicesession.
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit()
 }
 
 func (s *SQLiteStore) GetSession(ctx context.Context, id string) (*practicesession.PracticeSession, error) {
 	var session practicesession.PracticeSession
 	var bankID string
+	var status string
 
-	err := s.db.QueryRowContext(ctx, "SELECT id, bank_id FROM sessions WHERE id = ?", id).Scan(&session.ID, &bankID)
+	err := s.db.QueryRowContext(ctx,
+		"SELECT id, bank_id, COALESCE(status, 'active') FROM sessions WHERE id = ?", id,
+	).Scan(&session.ID, &bankID, &status)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -557,6 +510,7 @@ func (s *SQLiteStore) GetSession(ctx context.Context, id string) (*practicesessi
 		return nil, err
 	}
 	session.QuestionBankId = bankID
+	session.Status = practicesession.SessionStatus(status)
 
 	rows, err := s.db.QueryContext(ctx,
 		"SELECT question_id, question_subject, expected_answer FROM session_questions WHERE session_id = ? ORDER BY position",
@@ -576,6 +530,38 @@ func (s *SQLiteStore) GetSession(ctx context.Context, id string) (*practicesessi
 	}
 
 	return &session, nil
+}
+
+// CompleteSession transitions a session from active to completed.
+// Returns ErrSessionCompleted if already completed, ErrNotFound if missing.
+func (s *SQLiteStore) CompleteSession(ctx context.Context, id string) error {
+	result, err := s.db.ExecContext(ctx,
+		"UPDATE sessions SET status = ? WHERE id = ? AND status = ?",
+		string(practicesession.SessionStatusCompleted), id, string(practicesession.SessionStatusActive),
+	)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		// Distinguish between "not found" and "already completed"
+		var exists bool
+		err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?)", id).Scan(&exists)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return ErrSessionCompleted
+		}
+		return ErrNotFound
+	}
+
+	return nil
 }
 
 // ============================================================================
