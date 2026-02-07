@@ -1,4 +1,3 @@
-// cmd/server/main.go
 package main
 
 import (
@@ -8,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/remaimber-it/backend/internal/api"
 	"github.com/remaimber-it/backend/internal/grader"
@@ -20,7 +20,7 @@ func main() {
 	cfg := config.Load()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	// ── Dependencies ────────────────────────────────────────────────
+	// Dependencies
 	db, err := store.NewSQLite("remaimber.db")
 	if err != nil {
 		logger.Error("failed to open database", "error", err)
@@ -32,7 +32,7 @@ func main() {
 	gradingSvc := service.NewGradingService(db, llm, logger)
 	handler := api.NewHandler(db, gradingSvc, logger)
 
-	// ── Routes ──────────────────────────────────────────────────────
+	// Routes
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -42,10 +42,17 @@ func main() {
 
 	api.RegisterRoutes(mux, handler)
 
-	// ── Server ──────────────────────────────────────────────────────
+	// Middleware chain: Logging → CORS → mux
+	logged := api.Logging(logger)(api.CORS(mux))
+
+	// Server
 	server := &http.Server{
-		Addr:    cfg.ServerAddress,
-		Handler: api.CORS(mux),
+		Addr:              cfg.ServerAddress,
+		Handler:           logged,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	go func() {
