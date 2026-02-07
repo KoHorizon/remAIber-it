@@ -1,4 +1,402 @@
 basePath: /
+definitions:
+  api.AddQuestionRequest:
+    properties:
+      expected_answer:
+        example: A goroutine is a lightweight thread managed by the Go runtime.
+        type: string
+      subject:
+        example: What is a goroutine?
+        type: string
+    type: object
+  api.AddQuestionResponse:
+    properties:
+      expected_answer:
+        example: A goroutine is a lightweight thread managed by the Go runtime.
+        type: string
+      id:
+        example: q1w2e3r4t5y6u7i8
+        type: string
+      mastery:
+        example: 0
+        type: integer
+      subject:
+        example: What is a goroutine?
+        type: string
+      times_answered:
+        example: 0
+        type: integer
+      times_correct:
+        example: 0
+        type: integer
+    type: object
+  api.BankResponse:
+    properties:
+      bank_type:
+        example: theory
+        type: string
+      category_id:
+        example: a1b2c3d4e5f6g7h8
+        type: string
+      grading_prompt:
+        type: string
+      id:
+        example: x9y8z7w6v5u4t3s2
+        type: string
+      language:
+        example: go
+        type: string
+      mastery:
+        example: 42
+        type: integer
+      subject:
+        example: Go concurrency patterns
+        type: string
+    type: object
+  api.BankStatsResponse:
+    properties:
+      bank_id:
+        example: x9y8z7w6v5u4t3s2
+        type: string
+      mastery:
+        example: 42
+        type: integer
+      question_stats:
+        items:
+          $ref: '#/definitions/api.QuestionStatsResponse'
+        type: array
+      total_questions:
+        example: 10
+        type: integer
+    type: object
+  api.CategoryResponse:
+    properties:
+      id:
+        example: a1b2c3d4e5f6g7h8
+        type: string
+      mastery:
+        example: 42
+        type: integer
+      name:
+        example: Golang
+        type: string
+    type: object
+  api.CategoryStatsResponse:
+    properties:
+      category_id:
+        example: a1b2c3d4e5f6g7h8
+        type: string
+      mastery:
+        example: 42
+        type: integer
+    type: object
+  api.CompleteSessionResponse:
+    properties:
+      max_score:
+        example: 300
+        type: integer
+      results:
+        items:
+          $ref: '#/definitions/api.GradeDetails'
+        type: array
+      session_id:
+        example: s1e2s3s4i5o6n7id
+        type: string
+      total_score:
+        example: 150
+        type: integer
+    type: object
+  api.CreateBankRequest:
+    properties:
+      bank_type:
+        example: theory
+        type: string
+      category_id:
+        example: a1b2c3d4e5f6g7h8
+        type: string
+      language:
+        example: go
+        type: string
+      subject:
+        example: Go concurrency patterns
+        type: string
+    type: object
+  api.CreateBankResponse:
+    properties:
+      bank_type:
+        example: theory
+        type: string
+      category_id:
+        example: a1b2c3d4e5f6g7h8
+        type: string
+      id:
+        example: x9y8z7w6v5u4t3s2
+        type: string
+      language:
+        example: go
+        type: string
+      mastery:
+        example: 0
+        type: integer
+      subject:
+        example: Go concurrency patterns
+        type: string
+    type: object
+  api.CreateCategoryRequest:
+    properties:
+      name:
+        example: Golang
+        type: string
+    type: object
+  api.CreateSessionRequest:
+    properties:
+      bank_id:
+        example: x9y8z7w6v5u4t3s2
+        type: string
+      focus_on_weak:
+        example: false
+        type: boolean
+      max_duration_min:
+        example: 15
+        type: integer
+      max_questions:
+        example: 10
+        type: integer
+      question_ids:
+        items:
+          type: string
+        type: array
+    type: object
+  api.CreateSessionResponse:
+    properties:
+      focus_on_weak:
+        example: false
+        type: boolean
+      id:
+        example: s1e2s3s4i5o6n7id
+        type: string
+      max_duration_min:
+        example: 15
+        type: integer
+      questions:
+        items:
+          $ref: '#/definitions/api.SessionQuestion'
+        type: array
+      status:
+        example: active
+        type: string
+    type: object
+  api.ExportBank:
+    properties:
+      bank_type:
+        example: theory
+        type: string
+      grading_prompt:
+        type: string
+      language:
+        example: go
+        type: string
+      questions:
+        items:
+          $ref: '#/definitions/api.ExportQuestion'
+        type: array
+      subject:
+        example: Go concurrency patterns
+        type: string
+    type: object
+  api.ExportCategory:
+    properties:
+      banks:
+        items:
+          $ref: '#/definitions/api.ExportBank'
+        type: array
+      name:
+        example: Golang
+        type: string
+    type: object
+  api.ExportData:
+    properties:
+      categories:
+        items:
+          $ref: '#/definitions/api.ExportCategory'
+        type: array
+      exported_at:
+        example: "2025-01-15T10:30:00Z"
+        type: string
+      version:
+        example: "1.0"
+        type: string
+    type: object
+  api.ExportQuestion:
+    properties:
+      expected_answer:
+        example: A goroutine is a lightweight thread managed by the Go runtime.
+        type: string
+      subject:
+        example: What is a goroutine?
+        type: string
+    type: object
+  api.GetBankResponse:
+    properties:
+      bank_type:
+        example: theory
+        type: string
+      category_id:
+        example: a1b2c3d4e5f6g7h8
+        type: string
+      grading_prompt:
+        type: string
+      id:
+        example: x9y8z7w6v5u4t3s2
+        type: string
+      language:
+        example: go
+        type: string
+      mastery:
+        example: 42
+        type: integer
+      questions:
+        items:
+          $ref: '#/definitions/api.QuestionResponse'
+        type: array
+      subject:
+        example: Go concurrency patterns
+        type: string
+    type: object
+  api.GetCategoryResponse:
+    properties:
+      banks:
+        items:
+          $ref: '#/definitions/api.BankResponse'
+        type: array
+      id:
+        example: a1b2c3d4e5f6g7h8
+        type: string
+      mastery:
+        example: 42
+        type: integer
+      name:
+        example: Golang
+        type: string
+    type: object
+  api.GradeDetails:
+    properties:
+      covered:
+        example:
+        - goroutines are lightweight
+        items:
+          type: string
+        type: array
+      missed:
+        example:
+        - managed by Go runtime
+        items:
+          type: string
+        type: array
+      score:
+        example: 80
+        type: integer
+      status:
+        description: '"success", "failed", or "not_answered"'
+        example: success
+        type: string
+      user_answer:
+        example: A goroutine is a lightweight thread.
+        type: string
+    type: object
+  api.ImportResult:
+    properties:
+      banks_created:
+        example: 5
+        type: integer
+      categories_created:
+        example: 2
+        type: integer
+      questions_created:
+        example: 42
+        type: integer
+    type: object
+  api.QuestionResponse:
+    properties:
+      expected_answer:
+        example: A goroutine is a lightweight thread managed by the Go runtime.
+        type: string
+      id:
+        example: q1w2e3r4t5y6u7i8
+        type: string
+      mastery:
+        example: 75
+        type: integer
+      subject:
+        example: What is a goroutine?
+        type: string
+      times_answered:
+        example: 3
+        type: integer
+      times_correct:
+        example: 2
+        type: integer
+    type: object
+  api.QuestionStatsResponse:
+    properties:
+      mastery:
+        example: 75
+        type: integer
+      question_id:
+        example: q1w2e3r4t5y6u7i8
+        type: string
+      times_answered:
+        example: 3
+        type: integer
+      times_correct:
+        example: 2
+        type: integer
+    type: object
+  api.SessionQuestion:
+    properties:
+      expected_answer:
+        example: A goroutine is a lightweight thread managed by the Go runtime.
+        type: string
+      id:
+        example: q1w2e3r4t5y6u7i8
+        type: string
+      subject:
+        example: What is a goroutine?
+        type: string
+    type: object
+  api.SubmitAnswerRequest:
+    properties:
+      answer:
+        example: A goroutine is a lightweight concurrent unit of execution.
+        type: string
+      question_id:
+        example: q1w2e3r4t5y6u7i8
+        type: string
+    type: object
+  api.SubmitAnswerResponse:
+    properties:
+      status:
+        example: submitted
+        type: string
+    type: object
+  api.UpdateBankCategoryRequest:
+    properties:
+      category_id:
+        example: a1b2c3d4e5f6g7h8
+        type: string
+    type: object
+  api.UpdateCategoryRequest:
+    properties:
+      name:
+        example: Rust
+        type: string
+    type: object
+  api.UpdateGradingPromptRequest:
+    properties:
+      grading_prompt:
+        example: Be strict about exact terminology.
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -6,5 +404,727 @@ info:
     let AI grade your answers.
   title: Remaimber-it API
   version: "1.0"
-paths: {}
+paths:
+  /banks:
+    get:
+      description: Returns all question banks across all categories.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.CreateBankResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List all banks
+      tags:
+      - Banks
+    post:
+      consumes:
+      - application/json
+      description: Create a new question bank within a category.
+      parameters:
+      - description: Bank to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateBankRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.CreateBankResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: category not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a question bank
+      tags:
+      - Banks
+  /banks/{bankID}:
+    delete:
+      description: Delete a bank and cascade-delete all its questions and stats.
+      parameters:
+      - description: Bank ID
+        in: path
+        name: bankID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a question bank
+      tags:
+      - Banks
+    get:
+      description: Returns a question bank with all its questions and their stats.
+      parameters:
+      - description: Bank ID
+        in: path
+        name: bankID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.GetBankResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a question bank
+      tags:
+      - Banks
+  /banks/{bankID}/category:
+    patch:
+      consumes:
+      - application/json
+      description: Move a question bank to a different category (or set to null).
+      parameters:
+      - description: Bank ID
+        in: path
+        name: bankID
+        required: true
+        type: string
+      - description: New category
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateBankCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CreateBankResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update bank category
+      tags:
+      - Banks
+  /banks/{bankID}/grading-prompt:
+    put:
+      consumes:
+      - application/json
+      description: Set or clear a custom grading prompt for a question bank.
+      parameters:
+      - description: Bank ID
+        in: path
+        name: bankID
+        required: true
+        type: string
+      - description: Grading prompt
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateGradingPromptRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.GetBankResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update grading prompt
+      tags:
+      - Banks
+  /banks/{bankID}/questions:
+    post:
+      consumes:
+      - application/json
+      description: Add a new question with an expected answer to a question bank.
+      parameters:
+      - description: Bank ID
+        in: path
+        name: bankID
+        required: true
+        type: string
+      - description: Question to add
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.AddQuestionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.AddQuestionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Add a question
+      tags:
+      - Questions
+  /banks/{bankID}/questions/{questionID}:
+    delete:
+      description: Delete a question and its statistics.
+      parameters:
+      - description: Bank ID
+        in: path
+        name: bankID
+        required: true
+        type: string
+      - description: Question ID
+        in: path
+        name: questionID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a question
+      tags:
+      - Questions
+  /banks/{bankID}/stats:
+    get:
+      description: Returns mastery and per-question statistics for a bank.
+      parameters:
+      - description: Bank ID
+        in: path
+        name: bankID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.BankStatsResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get bank stats
+      tags:
+      - Banks
+  /categories:
+    get:
+      description: Returns all categories with their mastery scores.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.CategoryResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List categories
+      tags:
+      - Categories
+    post:
+      consumes:
+      - application/json
+      description: Create a new category for organizing question banks.
+      parameters:
+      - description: Category to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.CategoryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a category
+      tags:
+      - Categories
+  /categories/{categoryID}:
+    delete:
+      description: Delete a category and cascade-delete all its banks and questions.
+      parameters:
+      - description: Category ID
+        in: path
+        name: categoryID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a category
+      tags:
+      - Categories
+    get:
+      description: Returns a category with all its question banks.
+      parameters:
+      - description: Category ID
+        in: path
+        name: categoryID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.GetCategoryResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a category
+      tags:
+      - Categories
+    put:
+      consumes:
+      - application/json
+      description: Update the name of an existing category.
+      parameters:
+      - description: Category ID
+        in: path
+        name: categoryID
+        required: true
+        type: string
+      - description: New category data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CategoryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a category
+      tags:
+      - Categories
+  /categories/{categoryID}/banks:
+    get:
+      description: Returns all question banks belonging to a category.
+      parameters:
+      - description: Category ID
+        in: path
+        name: categoryID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.BankResponse'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List banks by category
+      tags:
+      - Categories
+  /categories/{categoryID}/stats:
+    get:
+      description: Returns the aggregate mastery score for a category.
+      parameters:
+      - description: Category ID
+        in: path
+        name: categoryID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CategoryStatsResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get category stats
+      tags:
+      - Categories
+  /export:
+    get:
+      description: Export all categories, banks, and questions as a downloadable JSON
+        file.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ExportData'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Export all data
+      tags:
+      - Import/Export
+  /import:
+    post:
+      consumes:
+      - application/json
+      description: Import categories, banks, and questions from a JSON export. New
+        IDs are generated for all entities.
+      parameters:
+      - description: Export data to import
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.ExportData'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.ImportResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Import data
+      tags:
+      - Import/Export
+  /sessions:
+    post:
+      consumes:
+      - application/json
+      description: Create a practice session from a question bank. Optionally limit
+        question count, set a timer, focus on weak questions, or pick specific question
+        IDs.
+      parameters:
+      - description: Session configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.CreateSessionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: bank not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a practice session
+      tags:
+      - Sessions
+  /sessions/{sessionID}:
+    get:
+      description: Returns a practice session with its questions.
+      parameters:
+      - description: Session ID
+        in: path
+        name: sessionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CreateSessionResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a session
+      tags:
+      - Sessions
+  /sessions/{sessionID}/answers:
+    post:
+      consumes:
+      - application/json
+      description: Submit a user answer for a question in the session. The answer
+        is graded asynchronously by an LLM.
+      parameters:
+      - description: Session ID
+        in: path
+        name: sessionID
+        required: true
+        type: string
+      - description: Answer to submit
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.SubmitAnswerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SubmitAnswerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: session already completed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Submit an answer
+      tags:
+      - Sessions
+  /sessions/{sessionID}/complete:
+    post:
+      description: Mark the session as completed, wait for all pending grading to
+        finish, and return results.
+      parameters:
+      - description: Session ID
+        in: path
+        name: sessionID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CompleteSessionResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: session already completed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Complete a session
+      tags:
+      - Sessions
 swagger: "2.0"

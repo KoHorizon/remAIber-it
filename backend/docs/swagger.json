@@ -8,5 +8,1658 @@
     },
     "host": "localhost:8080",
     "basePath": "/",
-    "paths": {}
+    "paths": {
+        "/banks": {
+            "get": {
+                "description": "Returns all question banks across all categories.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banks"
+                ],
+                "summary": "List all banks",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.CreateBankResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new question bank within a category.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banks"
+                ],
+                "summary": "Create a question bank",
+                "parameters": [
+                    {
+                        "description": "Bank to create",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateBankRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateBankResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "category not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/banks/{bankID}": {
+            "get": {
+                "description": "Returns a question bank with all its questions and their stats.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banks"
+                ],
+                "summary": "Get a question bank",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bank ID",
+                        "name": "bankID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.GetBankResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a bank and cascade-delete all its questions and stats.",
+                "tags": [
+                    "Banks"
+                ],
+                "summary": "Delete a question bank",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bank ID",
+                        "name": "bankID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/banks/{bankID}/category": {
+            "patch": {
+                "description": "Move a question bank to a different category (or set to null).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banks"
+                ],
+                "summary": "Update bank category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bank ID",
+                        "name": "bankID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New category",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateBankCategoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateBankResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/banks/{bankID}/grading-prompt": {
+            "put": {
+                "description": "Set or clear a custom grading prompt for a question bank.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banks"
+                ],
+                "summary": "Update grading prompt",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bank ID",
+                        "name": "bankID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Grading prompt",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateGradingPromptRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.GetBankResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/banks/{bankID}/questions": {
+            "post": {
+                "description": "Add a new question with an expected answer to a question bank.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Questions"
+                ],
+                "summary": "Add a question",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bank ID",
+                        "name": "bankID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Question to add",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.AddQuestionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.AddQuestionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/banks/{bankID}/questions/{questionID}": {
+            "delete": {
+                "description": "Delete a question and its statistics.",
+                "tags": [
+                    "Questions"
+                ],
+                "summary": "Delete a question",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bank ID",
+                        "name": "bankID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Question ID",
+                        "name": "questionID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/banks/{bankID}/stats": {
+            "get": {
+                "description": "Returns mastery and per-question statistics for a bank.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Banks"
+                ],
+                "summary": "Get bank stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bank ID",
+                        "name": "bankID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.BankStatsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/categories": {
+            "get": {
+                "description": "Returns all categories with their mastery scores.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "List categories",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.CategoryResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new category for organizing question banks.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Create a category",
+                "parameters": [
+                    {
+                        "description": "Category to create",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateCategoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.CategoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/categories/{categoryID}": {
+            "get": {
+                "description": "Returns a category with all its question banks.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Get a category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category ID",
+                        "name": "categoryID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.GetCategoryResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update the name of an existing category.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Update a category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category ID",
+                        "name": "categoryID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New category data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateCategoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CategoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a category and cascade-delete all its banks and questions.",
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Delete a category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category ID",
+                        "name": "categoryID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/categories/{categoryID}/banks": {
+            "get": {
+                "description": "Returns all question banks belonging to a category.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "List banks by category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category ID",
+                        "name": "categoryID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.BankResponse"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/categories/{categoryID}/stats": {
+            "get": {
+                "description": "Returns the aggregate mastery score for a category.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Get category stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category ID",
+                        "name": "categoryID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CategoryStatsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/export": {
+            "get": {
+                "description": "Export all categories, banks, and questions as a downloadable JSON file.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import/Export"
+                ],
+                "summary": "Export all data",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ExportData"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/import": {
+            "post": {
+                "description": "Import categories, banks, and questions from a JSON export. New IDs are generated for all entities.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import/Export"
+                ],
+                "summary": "Import data",
+                "parameters": [
+                    {
+                        "description": "Export data to import",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ExportData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.ImportResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sessions": {
+            "post": {
+                "description": "Create a practice session from a question bank. Optionally limit question count, set a timer, focus on weak questions, or pick specific question IDs.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Create a practice session",
+                "parameters": [
+                    {
+                        "description": "Session configuration",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateSessionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "bank not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sessions/{sessionID}": {
+            "get": {
+                "description": "Returns a practice session with its questions.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Get a session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "sessionID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateSessionResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sessions/{sessionID}/answers": {
+            "post": {
+                "description": "Submit a user answer for a question in the session. The answer is graded asynchronously by an LLM.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Submit an answer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "sessionID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Answer to submit",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SubmitAnswerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SubmitAnswerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "session already completed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sessions/{sessionID}/complete": {
+            "post": {
+                "description": "Mark the session as completed, wait for all pending grading to finish, and return results.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Complete a session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "sessionID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CompleteSessionResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "session already completed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.AddQuestionRequest": {
+            "type": "object",
+            "properties": {
+                "expected_answer": {
+                    "type": "string",
+                    "example": "A goroutine is a lightweight thread managed by the Go runtime."
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "What is a goroutine?"
+                }
+            }
+        },
+        "api.AddQuestionResponse": {
+            "type": "object",
+            "properties": {
+                "expected_answer": {
+                    "type": "string",
+                    "example": "A goroutine is a lightweight thread managed by the Go runtime."
+                },
+                "id": {
+                    "type": "string",
+                    "example": "q1w2e3r4t5y6u7i8"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "What is a goroutine?"
+                },
+                "times_answered": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "times_correct": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
+        "api.BankResponse": {
+            "type": "object",
+            "properties": {
+                "bank_type": {
+                    "type": "string",
+                    "example": "theory"
+                },
+                "category_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6g7h8"
+                },
+                "grading_prompt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "x9y8z7w6v5u4t3s2"
+                },
+                "language": {
+                    "type": "string",
+                    "example": "go"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "Go concurrency patterns"
+                }
+            }
+        },
+        "api.BankStatsResponse": {
+            "type": "object",
+            "properties": {
+                "bank_id": {
+                    "type": "string",
+                    "example": "x9y8z7w6v5u4t3s2"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "question_stats": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.QuestionStatsResponse"
+                    }
+                },
+                "total_questions": {
+                    "type": "integer",
+                    "example": 10
+                }
+            }
+        },
+        "api.CategoryResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6g7h8"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Golang"
+                }
+            }
+        },
+        "api.CategoryStatsResponse": {
+            "type": "object",
+            "properties": {
+                "category_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6g7h8"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 42
+                }
+            }
+        },
+        "api.CompleteSessionResponse": {
+            "type": "object",
+            "properties": {
+                "max_score": {
+                    "type": "integer",
+                    "example": 300
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.GradeDetails"
+                    }
+                },
+                "session_id": {
+                    "type": "string",
+                    "example": "s1e2s3s4i5o6n7id"
+                },
+                "total_score": {
+                    "type": "integer",
+                    "example": 150
+                }
+            }
+        },
+        "api.CreateBankRequest": {
+            "type": "object",
+            "properties": {
+                "bank_type": {
+                    "type": "string",
+                    "example": "theory"
+                },
+                "category_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6g7h8"
+                },
+                "language": {
+                    "type": "string",
+                    "example": "go"
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "Go concurrency patterns"
+                }
+            }
+        },
+        "api.CreateBankResponse": {
+            "type": "object",
+            "properties": {
+                "bank_type": {
+                    "type": "string",
+                    "example": "theory"
+                },
+                "category_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6g7h8"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "x9y8z7w6v5u4t3s2"
+                },
+                "language": {
+                    "type": "string",
+                    "example": "go"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "Go concurrency patterns"
+                }
+            }
+        },
+        "api.CreateCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Golang"
+                }
+            }
+        },
+        "api.CreateSessionRequest": {
+            "type": "object",
+            "properties": {
+                "bank_id": {
+                    "type": "string",
+                    "example": "x9y8z7w6v5u4t3s2"
+                },
+                "focus_on_weak": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "max_duration_min": {
+                    "type": "integer",
+                    "example": 15
+                },
+                "max_questions": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "question_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.CreateSessionResponse": {
+            "type": "object",
+            "properties": {
+                "focus_on_weak": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "id": {
+                    "type": "string",
+                    "example": "s1e2s3s4i5o6n7id"
+                },
+                "max_duration_min": {
+                    "type": "integer",
+                    "example": 15
+                },
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.SessionQuestion"
+                    }
+                },
+                "status": {
+                    "type": "string",
+                    "example": "active"
+                }
+            }
+        },
+        "api.ExportBank": {
+            "type": "object",
+            "properties": {
+                "bank_type": {
+                    "type": "string",
+                    "example": "theory"
+                },
+                "grading_prompt": {
+                    "type": "string"
+                },
+                "language": {
+                    "type": "string",
+                    "example": "go"
+                },
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ExportQuestion"
+                    }
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "Go concurrency patterns"
+                }
+            }
+        },
+        "api.ExportCategory": {
+            "type": "object",
+            "properties": {
+                "banks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ExportBank"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Golang"
+                }
+            }
+        },
+        "api.ExportData": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ExportCategory"
+                    }
+                },
+                "exported_at": {
+                    "type": "string",
+                    "example": "2025-01-15T10:30:00Z"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "1.0"
+                }
+            }
+        },
+        "api.ExportQuestion": {
+            "type": "object",
+            "properties": {
+                "expected_answer": {
+                    "type": "string",
+                    "example": "A goroutine is a lightweight thread managed by the Go runtime."
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "What is a goroutine?"
+                }
+            }
+        },
+        "api.GetBankResponse": {
+            "type": "object",
+            "properties": {
+                "bank_type": {
+                    "type": "string",
+                    "example": "theory"
+                },
+                "category_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6g7h8"
+                },
+                "grading_prompt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "x9y8z7w6v5u4t3s2"
+                },
+                "language": {
+                    "type": "string",
+                    "example": "go"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.QuestionResponse"
+                    }
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "Go concurrency patterns"
+                }
+            }
+        },
+        "api.GetCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "banks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.BankResponse"
+                    }
+                },
+                "id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6g7h8"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Golang"
+                }
+            }
+        },
+        "api.GradeDetails": {
+            "type": "object",
+            "properties": {
+                "covered": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "goroutines are lightweight"
+                    ]
+                },
+                "missed": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "managed by Go runtime"
+                    ]
+                },
+                "score": {
+                    "type": "integer",
+                    "example": 80
+                },
+                "status": {
+                    "description": "\"success\", \"failed\", or \"not_answered\"",
+                    "type": "string",
+                    "example": "success"
+                },
+                "user_answer": {
+                    "type": "string",
+                    "example": "A goroutine is a lightweight thread."
+                }
+            }
+        },
+        "api.ImportResult": {
+            "type": "object",
+            "properties": {
+                "banks_created": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "categories_created": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "questions_created": {
+                    "type": "integer",
+                    "example": 42
+                }
+            }
+        },
+        "api.QuestionResponse": {
+            "type": "object",
+            "properties": {
+                "expected_answer": {
+                    "type": "string",
+                    "example": "A goroutine is a lightweight thread managed by the Go runtime."
+                },
+                "id": {
+                    "type": "string",
+                    "example": "q1w2e3r4t5y6u7i8"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 75
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "What is a goroutine?"
+                },
+                "times_answered": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "times_correct": {
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "api.QuestionStatsResponse": {
+            "type": "object",
+            "properties": {
+                "mastery": {
+                    "type": "integer",
+                    "example": 75
+                },
+                "question_id": {
+                    "type": "string",
+                    "example": "q1w2e3r4t5y6u7i8"
+                },
+                "times_answered": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "times_correct": {
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "api.SessionQuestion": {
+            "type": "object",
+            "properties": {
+                "expected_answer": {
+                    "type": "string",
+                    "example": "A goroutine is a lightweight thread managed by the Go runtime."
+                },
+                "id": {
+                    "type": "string",
+                    "example": "q1w2e3r4t5y6u7i8"
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "What is a goroutine?"
+                }
+            }
+        },
+        "api.SubmitAnswerRequest": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "type": "string",
+                    "example": "A goroutine is a lightweight concurrent unit of execution."
+                },
+                "question_id": {
+                    "type": "string",
+                    "example": "q1w2e3r4t5y6u7i8"
+                }
+            }
+        },
+        "api.SubmitAnswerResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "submitted"
+                }
+            }
+        },
+        "api.UpdateBankCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "category_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6g7h8"
+                }
+            }
+        },
+        "api.UpdateCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Rust"
+                }
+            }
+        },
+        "api.UpdateGradingPromptRequest": {
+            "type": "object",
+            "properties": {
+                "grading_prompt": {
+                    "type": "string",
+                    "example": "Be strict about exact terminology."
+                }
+            }
+        }
+    }
 }
