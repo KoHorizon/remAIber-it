@@ -1,4 +1,3 @@
-// internal/service/grading.go
 package service
 
 import (
@@ -25,14 +24,16 @@ type GradeRequest struct {
 
 // GradingService manages asynchronous grading of user answers.
 // It owns the per-session WaitGroups so the store stays a pure
-// persistence layer.
+// persistence layer. A separate inflight WaitGroup tracks every
+// goroutine regardless of session, enabling graceful shutdown.
 type GradingService struct {
 	store  store.Store
 	grader grader.Grader
 	logger *slog.Logger
 
-	mu      sync.RWMutex
-	pending map[string]*sync.WaitGroup // sessionID → WaitGroup
+	mu       sync.RWMutex
+	pending  map[string]*sync.WaitGroup // sessionID → WaitGroup
+	inflight sync.WaitGroup             // tracks all grading goroutines for shutdown
 }
 
 // NewGradingService creates a GradingService.
@@ -67,7 +68,10 @@ func (gs *GradingService) SubmitGrading(req GradeRequest) {
 	}
 	gs.mu.RUnlock()
 
+	gs.inflight.Add(1)
+
 	go func() {
+		defer gs.inflight.Done()
 		if ok {
 			defer wg.Done()
 		}
@@ -90,6 +94,15 @@ func (gs *GradingService) WaitForSession(sessionID string) {
 		delete(gs.pending, sessionID)
 		gs.mu.Unlock()
 	}
+}
+
+// Shutdown waits for every in-flight grading goroutine to finish.
+// Call this during server shutdown so LLM calls in progress are not
+// abandoned and their results are persisted.
+func (gs *GradingService) Shutdown() {
+	gs.logger.Info("waiting for in-flight grading to complete")
+	gs.inflight.Wait()
+	gs.logger.Info("all grading goroutines finished")
 }
 
 // grade does the actual LLM call and persists the result.

@@ -81,6 +81,10 @@ func main() {
 		if err := server.Shutdown(ctx); err != nil {
 			logger.Error("server forced to shutdown", "error", err)
 		}
+
+		// Wait for in-flight LLM grading goroutines to finish
+		// so results are persisted before the process exits.
+		gradingSvc.Shutdown()
 	}()
 
 	logger.Info("starting server", "address", cfg.ServerAddress)
