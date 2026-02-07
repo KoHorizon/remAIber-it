@@ -9,18 +9,29 @@ import (
 	"syscall"
 	"time"
 
+	httpSwagger "github.com/swaggo/http-swagger"
+
 	"github.com/remaimber-it/backend/internal/api"
 	"github.com/remaimber-it/backend/internal/grader"
 	"github.com/remaimber-it/backend/internal/infrastructure/config"
 	"github.com/remaimber-it/backend/internal/service"
 	"github.com/remaimber-it/backend/internal/store"
+
+	_ "github.com/remaimber-it/backend/docs" // generated swagger docs
 )
+
+// @title           Remaimber-it API
+// @version         1.0
+// @description     Personal learning companion — create question banks, practice, and let AI grade your answers.
+
+// @host      localhost:8080
+// @BasePath  /
 
 func main() {
 	cfg := config.Load()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	// Dependencies
+	// ── Dependencies ────────────────────────────────────────────────
 	db, err := store.NewSQLite("remaimber.db")
 	if err != nil {
 		logger.Error("failed to open database", "error", err)
@@ -32,7 +43,7 @@ func main() {
 	gradingSvc := service.NewGradingService(db, llm, logger)
 	handler := api.NewHandler(db, gradingSvc, logger)
 
-	// Routes
+	// ── Routes ──────────────────────────────────────────────────────
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -42,10 +53,13 @@ func main() {
 
 	api.RegisterRoutes(mux, handler)
 
-	// Middleware chain: Logging → CORS → mux
+	// Swagger UI served at /swagger/
+	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
+
+	// ── Middleware chain: Logging → CORS → mux ──────────────────────
 	logged := api.Logging(logger)(api.CORS(mux))
 
-	// Server
+	// ── Server ──────────────────────────────────────────────────────
 	server := &http.Server{
 		Addr:              cfg.ServerAddress,
 		Handler:           logged,

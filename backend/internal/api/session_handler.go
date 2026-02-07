@@ -11,13 +11,13 @@ import (
 	"github.com/remaimber-it/backend/internal/store"
 )
 
-// Request / Response types
+// ── Request / Response types ────────────────────────────────────────────────
 
 type CreateSessionRequest struct {
-	BankID         string   `json:"bank_id"`
-	MaxQuestions   *int     `json:"max_questions,omitempty"`
-	MaxDurationMin *int     `json:"max_duration_min,omitempty"`
-	FocusOnWeak    bool     `json:"focus_on_weak"`
+	BankID         string   `json:"bank_id" example:"x9y8z7w6v5u4t3s2"`
+	MaxQuestions   *int     `json:"max_questions,omitempty" example:"10"`
+	MaxDurationMin *int     `json:"max_duration_min,omitempty" example:"15"`
+	FocusOnWeak    bool     `json:"focus_on_weak" example:"false"`
 	QuestionIDs    []string `json:"question_ids,omitempty"`
 }
 
@@ -29,22 +29,22 @@ func (r *CreateSessionRequest) Validate() error {
 }
 
 type SessionQuestion struct {
-	ID             string `json:"id"`
-	Subject        string `json:"subject"`
-	ExpectedAnswer string `json:"expected_answer"`
+	ID             string `json:"id" example:"q1w2e3r4t5y6u7i8"`
+	Subject        string `json:"subject" example:"What is a goroutine?"`
+	ExpectedAnswer string `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
 }
 
 type CreateSessionResponse struct {
-	ID             string            `json:"id"`
-	Status         string            `json:"status"`
+	ID             string            `json:"id" example:"s1e2s3s4i5o6n7id"`
+	Status         string            `json:"status" example:"active"`
 	Questions      []SessionQuestion `json:"questions"`
-	MaxDurationMin *int              `json:"max_duration_min,omitempty"`
-	FocusOnWeak    bool              `json:"focus_on_weak"`
+	MaxDurationMin *int              `json:"max_duration_min,omitempty" example:"15"`
+	FocusOnWeak    bool              `json:"focus_on_weak" example:"false"`
 }
 
 type SubmitAnswerRequest struct {
-	QuestionID string `json:"question_id"`
-	Answer     string `json:"answer"`
+	QuestionID string `json:"question_id" example:"q1w2e3r4t5y6u7i8"`
+	Answer     string `json:"answer" example:"A goroutine is a lightweight concurrent unit of execution."`
 }
 
 func (r *SubmitAnswerRequest) Validate() error {
@@ -58,19 +58,30 @@ func (r *SubmitAnswerRequest) Validate() error {
 }
 
 type SubmitAnswerResponse struct {
-	Status string `json:"status"`
+	Status string `json:"status" example:"submitted"`
 }
 
 type CompleteSessionResponse struct {
-	SessionID  string         `json:"session_id"`
-	TotalScore int            `json:"total_score"`
-	MaxScore   int            `json:"max_score"`
+	SessionID  string         `json:"session_id" example:"s1e2s3s4i5o6n7id"`
+	TotalScore int            `json:"total_score" example:"150"`
+	MaxScore   int            `json:"max_score" example:"300"`
 	Results    []GradeDetails `json:"results"`
 }
 
-// Handlers
+// ── Handlers ────────────────────────────────────────────────────────────────
 
-// POST /sessions
+// createSession starts a new practice session.
+// @Summary      Create a practice session
+// @Description  Create a practice session from a question bank. Optionally limit question count, set a timer, focus on weak questions, or pick specific question IDs.
+// @Tags         Sessions
+// @Accept       json
+// @Produce      json
+// @Param        body  body      CreateSessionRequest  true  "Session configuration"
+// @Success      201   {object}  CreateSessionResponse
+// @Failure      400   {object}  map[string]string
+// @Failure      404   {object}  map[string]string  "bank not found"
+// @Failure      500   {object}  map[string]string
+// @Router       /sessions [post]
 func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req CreateSessionRequest
@@ -165,7 +176,15 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusCreated, response)
 }
 
-// GET /sessions/{sessionID}
+// getSession returns a session and its questions.
+// @Summary      Get a session
+// @Description  Returns a practice session with its questions.
+// @Tags         Sessions
+// @Produce      json
+// @Param        sessionID  path      string  true  "Session ID"
+// @Success      200        {object}  CreateSessionResponse
+// @Failure      404        {object}  map[string]string
+// @Router       /sessions/{sessionID} [get]
 func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sessionID := r.PathValue("sessionID")
@@ -191,7 +210,19 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /sessions/{sessionID}/answers
+// submitAnswer submits an answer for async LLM grading.
+// @Summary      Submit an answer
+// @Description  Submit a user answer for a question in the session. The answer is graded asynchronously by an LLM.
+// @Tags         Sessions
+// @Accept       json
+// @Produce      json
+// @Param        sessionID  path      string               true  "Session ID"
+// @Param        body       body      SubmitAnswerRequest   true  "Answer to submit"
+// @Success      200        {object}  SubmitAnswerResponse
+// @Failure      400        {object}  map[string]string
+// @Failure      404        {object}  map[string]string
+// @Failure      409        {object}  map[string]string  "session already completed"
+// @Router       /sessions/{sessionID}/answers [post]
 func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sessionID := r.PathValue("sessionID")
@@ -247,7 +278,17 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /sessions/{sessionID}/complete
+// completeSession finalises a session and returns grading results.
+// @Summary      Complete a session
+// @Description  Mark the session as completed, wait for all pending grading to finish, and return results.
+// @Tags         Sessions
+// @Produce      json
+// @Param        sessionID  path      string  true  "Session ID"
+// @Success      200        {object}  CompleteSessionResponse
+// @Failure      404        {object}  map[string]string
+// @Failure      409        {object}  map[string]string  "session already completed"
+// @Failure      500        {object}  map[string]string
+// @Router       /sessions/{sessionID}/complete [post]
 func (h *Handler) completeSession(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sessionID := r.PathValue("sessionID")

@@ -1,0 +1,10 @@
+basePath: /
+host: localhost:8080
+info:
+  contact: {}
+  description: Personal learning companion — create question banks, practice, and
+    let AI grade your answers.
+  title: Remaimber-it API
+  version: "1.0"
+paths: {}
+swagger: "2.0"

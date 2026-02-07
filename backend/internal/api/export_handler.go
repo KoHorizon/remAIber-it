@@ -12,38 +12,45 @@ import (
 // ── Request / Response types ────────────────────────────────────────────────
 
 type ExportQuestion struct {
-	Subject        string `json:"subject"`
-	ExpectedAnswer string `json:"expected_answer"`
+	Subject        string `json:"subject" example:"What is a goroutine?"`
+	ExpectedAnswer string `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
 }
 
 type ExportBank struct {
-	Subject       string           `json:"subject"`
+	Subject       string           `json:"subject" example:"Go concurrency patterns"`
 	GradingPrompt *string          `json:"grading_prompt,omitempty"`
-	BankType      string           `json:"bank_type"`
-	Language      *string          `json:"language,omitempty"`
+	BankType      string           `json:"bank_type" example:"theory"`
+	Language      *string          `json:"language,omitempty" example:"go"`
 	Questions     []ExportQuestion `json:"questions"`
 }
 
 type ExportCategory struct {
-	Name  string       `json:"name"`
+	Name  string       `json:"name" example:"Golang"`
 	Banks []ExportBank `json:"banks"`
 }
 
 type ExportData struct {
-	Version    string           `json:"version"`
-	ExportedAt string           `json:"exported_at"`
+	Version    string           `json:"version" example:"1.0"`
+	ExportedAt string           `json:"exported_at" example:"2025-01-15T10:30:00Z"`
 	Categories []ExportCategory `json:"categories"`
 }
 
 type ImportResult struct {
-	CategoriesCreated int `json:"categories_created"`
-	BanksCreated      int `json:"banks_created"`
-	QuestionsCreated  int `json:"questions_created"`
+	CategoriesCreated int `json:"categories_created" example:"2"`
+	BanksCreated      int `json:"banks_created" example:"5"`
+	QuestionsCreated  int `json:"questions_created" example:"42"`
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
-// GET /export
+// exportAll exports all data as a JSON file.
+// @Summary      Export all data
+// @Description  Export all categories, banks, and questions as a downloadable JSON file.
+// @Tags         Import/Export
+// @Produce      json
+// @Success      200  {object}  ExportData
+// @Failure      500  {object}  map[string]string
+// @Router       /export [get]
 func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	categories, err := h.store.ListCategories(ctx)
@@ -61,6 +68,7 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 	for _, cat := range categories {
 		banks, err := h.store.ListBanksByCategory(ctx, cat.ID)
 		if err != nil {
+			h.logger.Error("failed to list banks for category", "category_id", cat.ID, "error", err)
 			continue
 		}
 
@@ -72,6 +80,7 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 		for _, bank := range banks {
 			fullBank, err := h.store.GetBank(ctx, bank.ID)
 			if err != nil {
+				h.logger.Error("failed to get bank", "bank_id", bank.ID, "error", err)
 				continue
 			}
 
@@ -101,7 +110,17 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(exportData)
 }
 
-// POST /import
+// importAll imports data from a previously exported JSON payload.
+// @Summary      Import data
+// @Description  Import categories, banks, and questions from a JSON export. New IDs are generated for all entities.
+// @Tags         Import/Export
+// @Accept       json
+// @Produce      json
+// @Param        body  body      ExportData    true  "Export data to import"
+// @Success      201   {object}  ImportResult
+// @Failure      400   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /import [post]
 func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var importData ExportData
