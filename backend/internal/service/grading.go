@@ -55,14 +55,17 @@ func (gs *GradingService) TrackSession(sessionID string) {
 
 // SubmitGrading sends an answer for async grading.
 // The goroutine calls the LLM, parses the result, and persists the grade.
+//
+// wg.Add(1) is called while holding the read-lock so that a concurrent
+// WaitForSession cannot observe a "zero" WaitGroup between the unlock
+// and the Add — eliminating the TOCTOU race.
 func (gs *GradingService) SubmitGrading(req GradeRequest) {
 	gs.mu.RLock()
 	wg, ok := gs.pending[req.SessionID]
-	gs.mu.RUnlock()
-
 	if ok {
 		wg.Add(1)
 	}
+	gs.mu.RUnlock()
 
 	go func() {
 		if ok {
@@ -72,7 +75,9 @@ func (gs *GradingService) SubmitGrading(req GradeRequest) {
 	}()
 }
 
-// WaitForSession blocks until all grading goroutines for a session have finished.
+// WaitForSession blocks until all grading goroutines for a session have
+// finished, then removes the session from the pending map to prevent
+// memory leaks.
 func (gs *GradingService) WaitForSession(sessionID string) {
 	gs.mu.RLock()
 	wg, ok := gs.pending[sessionID]
@@ -80,6 +85,10 @@ func (gs *GradingService) WaitForSession(sessionID string) {
 
 	if ok {
 		wg.Wait()
+
+		gs.mu.Lock()
+		delete(gs.pending, sessionID)
+		gs.mu.Unlock()
 	}
 }
 
