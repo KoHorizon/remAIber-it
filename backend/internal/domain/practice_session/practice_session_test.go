@@ -11,7 +11,7 @@ import (
 func createBankWithQuestions(n int) *questionbank.QuestionBank {
 	bank := questionbank.New("Test Bank")
 	for i := 0; i < n; i++ {
-		bank.AddQuestions(
+		bank.AddQuestion(
 			"Question "+string(rune('A'+i)),
 			"Answer "+string(rune('A'+i)),
 		)
@@ -195,6 +195,19 @@ func TestNewWithConfig_FocusOnWeakWithLimit(t *testing.T) {
 	// Should take the first 5 from the ordered list
 	if !sameOrder(orderedQuestions[:5], session.Questions) {
 		t.Error("expected first 5 questions from ordered list")
+	}
+}
+
+func TestNew_SessionStatusIsActive(t *testing.T) {
+	bank := createBankWithQuestions(5)
+	session := practicesession.New(bank)
+
+	if session.Status != practicesession.SessionStatusActive {
+		t.Errorf("expected status %q, got %q", practicesession.SessionStatusActive, session.Status)
+	}
+
+	if !session.IsActive() {
+		t.Error("expected IsActive() to return true for new session")
 	}
 }
 

@@ -156,7 +156,7 @@ func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 			result.BanksCreated++
 
 			for _, q := range bank.Questions {
-				if err := newBank.AddQuestions(q.Subject, q.ExpectedAnswer); err != nil {
+				if err := newBank.AddQuestion(q.Subject, q.ExpectedAnswer); err != nil {
 					h.logger.Error("failed to add question", "error", err)
 					continue
 				}

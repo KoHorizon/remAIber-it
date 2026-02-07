@@ -60,7 +60,7 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := bank.AddQuestions(req.Subject, req.ExpectedAnswer); err != nil {
+	if err := bank.AddQuestion(req.Subject, req.ExpectedAnswer); err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}

@@ -2,11 +2,13 @@ package id
 
 import "crypto/rand"
 
-// generateID creates a unique ID for questions
+// GenerateID creates a unique 16-character alphanumeric ID.
 func GenerateID() string {
 	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, 16)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand failed: " + err.Error())
+	}
 	for i := range b {
 		b[i] = chars[b[i]%byte(len(chars))]
 	}
