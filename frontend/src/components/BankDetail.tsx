@@ -38,9 +38,9 @@ const DEFAULT_GRADING_RULES: Record<string, string> = {
 
   code: `- Compare logic and structure, not variable names or formatting
 - Functionally equivalent approaches are equally correct
-- Minor syntax errors that don't affect core logic = COVERED
 - Code that wouldn't compile or produces wrong results = MISSED
-- Don't penalize missing imports unless critical to the logic`,
+- Don't penalize missing imports unless critical to the logic
+- If the question explicitly specifies a function name or signature, mismatching it is MISSED.`,
 
   cli: `- Accept alternative commands that achieve the same goal
 - Flag order doesn't matter

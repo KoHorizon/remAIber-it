@@ -255,19 +255,18 @@ func extractJSON(s string) string {
 // *** NEW: semantic code grading ***
 func buildSemanticCodePrompt(question, expected, user, customRules string) string {
 	rules := `SEMANTIC GRADING RULES:
-- Judge BEHAVIOR and LOGIC, not formatting or line structure.
-- Inline error checks vs separate assignment are equivalent.
-- Different but correct control flow is COVERED.
-- Only mark MISSED if compilation fails or behavior differs.
-- If unsure, prefer COVERED over MISSED.
-- Output MUST reference logical elements, not line numbers.`
+- Compare structure and logic, not exact variable names.
+- The code must be syntactically valid and achieve the same result.
+- If a key element is partially correct (right idea, small typo), mark it COVERED.
+- If a key element is completely wrong or missing, mark it MISSED.
+- Do NOT check for imports unless they are critical to the logic.`
 
 	if customRules != "" {
 		rules = customRules
 	}
 
 	return fmt.Sprintf(`/no_think
-You are grading a Go coding exercise.
+You are grading a coding syntax,
 
 %s
 
