@@ -14,9 +14,16 @@ import (
 )
 
 const schema = `
-CREATE TABLE IF NOT EXISTS categories (
+CREATE TABLE IF NOT EXISTS folders (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    folder_id TEXT,
+    FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS banks (
@@ -98,6 +105,11 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	_ = addColumnIfNotExists(db, "grades", "status", "TEXT NOT NULL DEFAULT 'success'")
 	_ = addColumnIfNotExists(db, "sessions", "status", "TEXT NOT NULL DEFAULT 'active'")
 
+	// Folder support migration for existing databases
+	if err := migrateForFolders(db); err != nil {
+		return nil, err
+	}
+
 	// Ensure only one grade per question per session.
 	_, _ = db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_grades_session_question ON grades (session_id, question_id)")
 
@@ -133,24 +145,33 @@ func (s *SQLiteStore) Close() error {
 // ============================================================================
 
 func (s *SQLiteStore) SaveCategory(ctx context.Context, cat *category.Category) error {
-	_, err := s.db.ExecContext(ctx, "INSERT INTO categories (id, name) VALUES (?, ?)", cat.ID, cat.Name)
+	_, err := s.db.ExecContext(ctx,
+		"INSERT INTO categories (id, name, folder_id) VALUES (?, ?, ?)",
+		cat.ID, cat.Name, cat.FolderID,
+	)
 	return err
 }
 
 func (s *SQLiteStore) GetCategory(ctx context.Context, id string) (*category.Category, error) {
 	var cat category.Category
-	err := s.db.QueryRowContext(ctx, "SELECT id, name FROM categories WHERE id = ?", id).Scan(&cat.ID, &cat.Name)
+	var folderID sql.NullString
+	err := s.db.QueryRowContext(ctx,
+		"SELECT id, name, folder_id FROM categories WHERE id = ?", id,
+	).Scan(&cat.ID, &cat.Name, &folderID)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
+	if folderID.Valid {
+		cat.FolderID = &folderID.String
+	}
 	return &cat, nil
 }
 
 func (s *SQLiteStore) ListCategories(ctx context.Context) ([]*category.Category, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, name FROM categories")
+	rows, err := s.db.QueryContext(ctx, "SELECT id, name, folder_id FROM categories")
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +180,12 @@ func (s *SQLiteStore) ListCategories(ctx context.Context) ([]*category.Category,
 	var categories []*category.Category
 	for rows.Next() {
 		var cat category.Category
-		if err := rows.Scan(&cat.ID, &cat.Name); err != nil {
+		var folderID sql.NullString
+		if err := rows.Scan(&cat.ID, &cat.Name, &folderID); err != nil {
 			return nil, err
+		}
+		if folderID.Valid {
+			cat.FolderID = &folderID.String
 		}
 		categories = append(categories, &cat)
 	}
@@ -660,9 +685,6 @@ func (s *SQLiteStore) updateQuestionStats(ctx context.Context, questionID string
 	}
 
 	if exists {
-		// Update existing stats
-		// Mastery formula (Option 3): latest_score * 0.6 + historical_average * 0.4
-		// historical_average = total_score / times_answered (before adding new score)
 		_, err = s.db.ExecContext(ctx, `
 			UPDATE question_stats 
 			SET times_answered = times_answered + 1,
@@ -676,7 +698,6 @@ func (s *SQLiteStore) updateQuestionStats(ctx context.Context, questionID string
 			WHERE question_id = ?
 		`, isCorrect, score, score, score, questionID)
 	} else {
-		// Insert new stats - first attempt, so mastery = latest score
 		_, err = s.db.ExecContext(ctx, `
 			INSERT INTO question_stats (question_id, times_answered, times_correct, total_score, latest_score, mastery)
 			VALUES (?, 1, ?, ?, ?, ?)
@@ -694,7 +715,6 @@ func (s *SQLiteStore) GetQuestionStats(ctx context.Context, questionID string) (
 	`, questionID).Scan(&stats.QuestionID, &stats.TimesAnswered, &stats.TimesCorrect, &stats.TotalScore, &stats.LatestScore, &stats.Mastery)
 
 	if err == sql.ErrNoRows {
-		// Return zero stats for unanswered questions
 		return &questionbank.QuestionStats{QuestionID: questionID}, nil
 	}
 	if err != nil {

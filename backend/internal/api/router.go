@@ -4,12 +4,22 @@ import "net/http"
 
 // RegisterRoutes wires all HTTP routes to the handler methods.
 func RegisterRoutes(mux *http.ServeMux, h *Handler) {
+	// Folders
+	mux.HandleFunc("POST /folders", h.createFolder)
+	mux.HandleFunc("GET /folders", h.listFolders)
+	mux.HandleFunc("GET /folders/{folderID}", h.getFolder)
+	mux.HandleFunc("PUT /folders/{folderID}", h.updateFolder)
+	mux.HandleFunc("DELETE /folders/{folderID}", h.deleteFolder)
+	mux.HandleFunc("GET /folders/{folderID}/categories", h.listCategoriesByFolder)
+	mux.HandleFunc("GET /folders/{folderID}/stats", h.getFolderStats)
+
 	// Categories
 	mux.HandleFunc("POST /categories", h.createCategory)
 	mux.HandleFunc("GET /categories", h.listCategories)
 	mux.HandleFunc("GET /categories/{categoryID}", h.getCategory)
 	mux.HandleFunc("PUT /categories/{categoryID}", h.updateCategory)
 	mux.HandleFunc("DELETE /categories/{categoryID}", h.deleteCategory)
+	mux.HandleFunc("PATCH /categories/{categoryID}/folder", h.updateCategoryFolder)
 	mux.HandleFunc("GET /categories/{categoryID}/banks", h.listBanksByCategory)
 	mux.HandleFunc("GET /categories/{categoryID}/stats", h.getCategoryStats)
 

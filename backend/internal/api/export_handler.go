@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/remaimber-it/backend/internal/domain/category"
+	"github.com/remaimber-it/backend/internal/domain/folder"
 	"github.com/remaimber-it/backend/internal/domain/questionbank"
 )
 
@@ -29,13 +31,20 @@ type ExportCategory struct {
 	Banks []ExportBank `json:"banks"`
 }
 
-type ExportData struct {
-	Version    string           `json:"version" example:"1.0"`
-	ExportedAt string           `json:"exported_at" example:"2025-01-15T10:30:00Z"`
+type ExportFolder struct {
+	Name       string           `json:"name" example:"Programming"`
 	Categories []ExportCategory `json:"categories"`
 }
 
+type ExportData struct {
+	Version    string           `json:"version" example:"1.1"`
+	ExportedAt string           `json:"exported_at" example:"2025-01-15T10:30:00Z"`
+	Folders    []ExportFolder   `json:"folders,omitempty"`
+	Categories []ExportCategory `json:"categories"` // Categories without a folder
+}
+
 type ImportResult struct {
+	FoldersCreated    int `json:"folders_created" example:"3"`
 	CategoriesCreated int `json:"categories_created" example:"2"`
 	BanksCreated      int `json:"banks_created" example:"5"`
 	QuestionsCreated  int `json:"questions_created" example:"42"`
@@ -45,7 +54,7 @@ type ImportResult struct {
 
 // exportAll exports all data as a JSON file.
 // @Summary      Export all data
-// @Description  Export all categories, banks, and questions as a downloadable JSON file.
+// @Description  Export all folders, categories, banks, and questions as a downloadable JSON file.
 // @Tags         Import/Export
 // @Produce      json
 // @Success      200  {object}  ExportData
@@ -53,55 +62,56 @@ type ImportResult struct {
 // @Router       /export [get]
 func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	categories, err := h.store.ListCategories(ctx)
+
+	exportData := ExportData{
+		Version:    "1.1",
+		ExportedAt: time.Now().UTC().Format(time.RFC3339),
+		Folders:    make([]ExportFolder, 0),
+		Categories: make([]ExportCategory, 0),
+	}
+
+	// Export folders with their categories
+	folders, err := h.store.ListFolders(ctx)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to load folders")
+		return
+	}
+
+	categoriesInFolders := make(map[string]bool)
+
+	for _, f := range folders {
+		categories, err := h.store.ListCategoriesByFolder(ctx, f.ID)
+		if err != nil {
+			h.logger.Error("failed to list categories for folder", "folder_id", f.ID, "error", err)
+			continue
+		}
+
+		exportFolder := ExportFolder{
+			Name:       f.Name,
+			Categories: make([]ExportCategory, 0),
+		}
+
+		for _, cat := range categories {
+			categoriesInFolders[cat.ID] = true
+			exportCat := h.buildExportCategory(ctx, cat)
+			exportFolder.Categories = append(exportFolder.Categories, exportCat)
+		}
+
+		exportData.Folders = append(exportData.Folders, exportFolder)
+	}
+
+	// Export categories that are NOT in any folder
+	allCategories, err := h.store.ListCategories(ctx)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to load categories")
 		return
 	}
 
-	exportData := ExportData{
-		Version:    "1.0",
-		ExportedAt: time.Now().UTC().Format(time.RFC3339),
-		Categories: make([]ExportCategory, 0),
-	}
-
-	for _, cat := range categories {
-		banks, err := h.store.ListBanksByCategory(ctx, cat.ID)
-		if err != nil {
-			h.logger.Error("failed to list banks for category", "category_id", cat.ID, "error", err)
+	for _, cat := range allCategories {
+		if categoriesInFolders[cat.ID] {
 			continue
 		}
-
-		exportCat := ExportCategory{
-			Name:  cat.Name,
-			Banks: make([]ExportBank, 0),
-		}
-
-		for _, bank := range banks {
-			fullBank, err := h.store.GetBank(ctx, bank.ID)
-			if err != nil {
-				h.logger.Error("failed to get bank", "bank_id", bank.ID, "error", err)
-				continue
-			}
-
-			exportBank := ExportBank{
-				Subject:       fullBank.Subject,
-				GradingPrompt: fullBank.GradingPrompt,
-				BankType:      string(fullBank.BankType),
-				Language:      fullBank.Language,
-				Questions:     make([]ExportQuestion, len(fullBank.Questions)),
-			}
-
-			for i, q := range fullBank.Questions {
-				exportBank.Questions[i] = ExportQuestion{
-					Subject:        q.Subject,
-					ExpectedAnswer: q.ExpectedAnswer,
-				}
-			}
-
-			exportCat.Banks = append(exportCat.Banks, exportBank)
-		}
-
+		exportCat := h.buildExportCategory(ctx, cat)
 		exportData.Categories = append(exportData.Categories, exportCat)
 	}
 
@@ -110,9 +120,50 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(exportData)
 }
 
+// buildExportCategory creates an ExportCategory from a category entity.
+func (h *Handler) buildExportCategory(ctx context.Context, cat *category.Category) ExportCategory {
+	banks, err := h.store.ListBanksByCategory(ctx, cat.ID)
+	if err != nil {
+		h.logger.Error("failed to list banks for category", "category_id", cat.ID, "error", err)
+		return ExportCategory{Name: cat.Name, Banks: make([]ExportBank, 0)}
+	}
+
+	exportCat := ExportCategory{
+		Name:  cat.Name,
+		Banks: make([]ExportBank, 0),
+	}
+
+	for _, bank := range banks {
+		fullBank, err := h.store.GetBank(ctx, bank.ID)
+		if err != nil {
+			h.logger.Error("failed to get bank", "bank_id", bank.ID, "error", err)
+			continue
+		}
+
+		exportBank := ExportBank{
+			Subject:       fullBank.Subject,
+			GradingPrompt: fullBank.GradingPrompt,
+			BankType:      string(fullBank.BankType),
+			Language:      fullBank.Language,
+			Questions:     make([]ExportQuestion, len(fullBank.Questions)),
+		}
+
+		for i, q := range fullBank.Questions {
+			exportBank.Questions[i] = ExportQuestion{
+				Subject:        q.Subject,
+				ExpectedAnswer: q.ExpectedAnswer,
+			}
+		}
+
+		exportCat.Banks = append(exportCat.Banks, exportBank)
+	}
+
+	return exportCat
+}
+
 // importAll imports data from a previously exported JSON payload.
 // @Summary      Import data
-// @Description  Import categories, banks, and questions from a JSON export. New IDs are generated for all entities.
+// @Description  Import folders, categories, banks, and questions from a JSON export. New IDs are generated for all entities.
 // @Tags         Import/Export
 // @Accept       json
 // @Produce      json
@@ -130,6 +181,28 @@ func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 
 	result := ImportResult{}
 
+	// Import folders and their categories
+	for _, f := range importData.Folders {
+		newFolder := folder.New(f.Name)
+		if err := h.store.SaveFolder(ctx, newFolder); err != nil {
+			h.logger.Error("failed to create folder", "name", f.Name, "error", err)
+			continue
+		}
+		result.FoldersCreated++
+
+		for _, cat := range f.Categories {
+			newCat := category.NewWithFolder(cat.Name, newFolder.ID)
+			if err := h.store.SaveCategory(ctx, newCat); err != nil {
+				h.logger.Error("failed to create category", "name", cat.Name, "error", err)
+				continue
+			}
+			result.CategoriesCreated++
+
+			h.importBanks(ctx, cat.Banks, newCat.ID, &result)
+		}
+	}
+
+	// Import unfiled categories (backward compatible with v1.0 exports)
 	for _, cat := range importData.Categories {
 		newCat := category.New(cat.Name)
 		if err := h.store.SaveCategory(ctx, newCat); err != nil {
@@ -138,37 +211,42 @@ func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 		}
 		result.CategoriesCreated++
 
-		for _, bank := range cat.Banks {
-			bankType := questionbank.BankType(bank.BankType)
-			if bankType == "" {
-				bankType = questionbank.BankTypeTheory
-			}
-
-			newBank := questionbank.NewWithOptions(bank.Subject, &newCat.ID, bankType, bank.Language)
-			if bank.GradingPrompt != nil {
-				newBank.SetGradingPrompt(bank.GradingPrompt)
-			}
-
-			if err := h.store.SaveBank(ctx, newBank); err != nil {
-				h.logger.Error("failed to create bank", "subject", bank.Subject, "error", err)
-				continue
-			}
-			result.BanksCreated++
-
-			for _, q := range bank.Questions {
-				if err := newBank.AddQuestion(q.Subject, q.ExpectedAnswer); err != nil {
-					h.logger.Error("failed to add question", "error", err)
-					continue
-				}
-				newQuestion := newBank.Questions[len(newBank.Questions)-1]
-				if err := h.store.AddQuestion(ctx, newBank.ID, newQuestion); err != nil {
-					h.logger.Error("failed to save question", "error", err)
-					continue
-				}
-				result.QuestionsCreated++
-			}
-		}
+		h.importBanks(ctx, cat.Banks, newCat.ID, &result)
 	}
 
 	respondJSON(w, http.StatusCreated, result)
+}
+
+// importBanks imports banks and their questions into a category.
+func (h *Handler) importBanks(ctx context.Context, banks []ExportBank, categoryID string, result *ImportResult) {
+	for _, bank := range banks {
+		bankType := questionbank.BankType(bank.BankType)
+		if bankType == "" {
+			bankType = questionbank.BankTypeTheory
+		}
+
+		newBank := questionbank.NewWithOptions(bank.Subject, &categoryID, bankType, bank.Language)
+		if bank.GradingPrompt != nil {
+			newBank.SetGradingPrompt(bank.GradingPrompt)
+		}
+
+		if err := h.store.SaveBank(ctx, newBank); err != nil {
+			h.logger.Error("failed to create bank", "subject", bank.Subject, "error", err)
+			continue
+		}
+		result.BanksCreated++
+
+		for _, q := range bank.Questions {
+			if err := newBank.AddQuestion(q.Subject, q.ExpectedAnswer); err != nil {
+				h.logger.Error("failed to add question", "error", err)
+				continue
+			}
+			newQuestion := newBank.Questions[len(newBank.Questions)-1]
+			if err := h.store.AddQuestion(ctx, newBank.ID, newQuestion); err != nil {
+				h.logger.Error("failed to save question", "error", err)
+				continue
+			}
+			result.QuestionsCreated++
+		}
+	}
 }
