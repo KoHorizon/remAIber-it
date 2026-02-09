@@ -71,6 +71,9 @@ definitions:
     type: object
   api.CategoryResponse:
     properties:
+      folder_id:
+        example: f1o2l3d4e5r6i7d8
+        type: string
       id:
         example: a1b2c3d4e5f6g7h8
         type: string
@@ -144,8 +147,17 @@ definitions:
     type: object
   api.CreateCategoryRequest:
     properties:
+      folder_id:
+        example: f1o2l3d4e5r6i7d8
+        type: string
       name:
         example: Golang
+        type: string
+    type: object
+  api.CreateFolderRequest:
+    properties:
+      name:
+        example: Programming
         type: string
     type: object
   api.CreateSessionRequest:
@@ -217,14 +229,29 @@ definitions:
   api.ExportData:
     properties:
       categories:
+        description: Categories without a folder
         items:
           $ref: '#/definitions/api.ExportCategory'
         type: array
       exported_at:
         example: "2025-01-15T10:30:00Z"
         type: string
+      folders:
+        items:
+          $ref: '#/definitions/api.ExportFolder'
+        type: array
       version:
-        example: "1.0"
+        example: "1.1"
+        type: string
+    type: object
+  api.ExportFolder:
+    properties:
+      categories:
+        items:
+          $ref: '#/definitions/api.ExportCategory'
+        type: array
+      name:
+        example: Programming
         type: string
     type: object
   api.ExportQuestion:
@@ -235,6 +262,27 @@ definitions:
       subject:
         example: What is a goroutine?
         type: string
+    type: object
+  api.FolderResponse:
+    properties:
+      id:
+        example: f1o2l3d4e5r6i7d8
+        type: string
+      mastery:
+        example: 42
+        type: integer
+      name:
+        example: Programming
+        type: string
+    type: object
+  api.FolderStatsResponse:
+    properties:
+      folder_id:
+        example: f1o2l3d4e5r6i7d8
+        type: string
+      mastery:
+        example: 42
+        type: integer
     type: object
   api.GetBankResponse:
     properties:
@@ -269,6 +317,9 @@ definitions:
         items:
           $ref: '#/definitions/api.BankResponse'
         type: array
+      folder_id:
+        example: f1o2l3d4e5r6i7d8
+        type: string
       id:
         example: a1b2c3d4e5f6g7h8
         type: string
@@ -277,6 +328,22 @@ definitions:
         type: integer
       name:
         example: Golang
+        type: string
+    type: object
+  api.GetFolderResponse:
+    properties:
+      categories:
+        items:
+          $ref: '#/definitions/api.CategoryResponse'
+        type: array
+      id:
+        example: f1o2l3d4e5r6i7d8
+        type: string
+      mastery:
+        example: 42
+        type: integer
+      name:
+        example: Programming
         type: string
     type: object
   api.GradeDetails:
@@ -311,6 +378,9 @@ definitions:
         type: integer
       categories_created:
         example: 2
+        type: integer
+      folders_created:
+        example: 3
         type: integer
       questions_created:
         example: 42
@@ -385,10 +455,22 @@ definitions:
         example: a1b2c3d4e5f6g7h8
         type: string
     type: object
+  api.UpdateCategoryFolderRequest:
+    properties:
+      folder_id:
+        example: f1o2l3d4e5r6i7d8
+        type: string
+    type: object
   api.UpdateCategoryRequest:
     properties:
       name:
         example: Rust
+        type: string
+    type: object
+  api.UpdateFolderRequest:
+    properties:
+      name:
+        example: DevOps
         type: string
     type: object
   api.UpdateGradingPromptRequest:
@@ -732,7 +814,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new category for organizing question banks.
+      description: Create a new category for organizing question banks. Optionally
+        assign to a folder.
       parameters:
       - description: Category to create
         in: body
@@ -749,6 +832,12 @@ paths:
             $ref: '#/definitions/api.CategoryResponse'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: folder not found
           schema:
             additionalProperties:
               type: string
@@ -890,6 +979,45 @@ paths:
       summary: List banks by category
       tags:
       - Categories
+  /categories/{categoryID}/folder:
+    patch:
+      consumes:
+      - application/json
+      description: Move a category to a different folder (or set to null to unfiled).
+      parameters:
+      - description: Category ID
+        in: path
+        name: categoryID
+        required: true
+        type: string
+      - description: New folder
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateCategoryFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CategoryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update category folder
+      tags:
+      - Categories
   /categories/{categoryID}/stats:
     get:
       description: Returns the aggregate mastery score for a category.
@@ -923,8 +1051,8 @@ paths:
       - Categories
   /export:
     get:
-      description: Export all categories, banks, and questions as a downloadable JSON
-        file.
+      description: Export all folders, categories, banks, and questions as a downloadable
+        JSON file.
       produces:
       - application/json
       responses:
@@ -941,12 +1069,226 @@ paths:
       summary: Export all data
       tags:
       - Import/Export
+  /folders:
+    get:
+      description: Returns all folders with their mastery scores.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.FolderResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List folders
+      tags:
+      - Folders
+    post:
+      consumes:
+      - application/json
+      description: Create a new folder for grouping categories.
+      parameters:
+      - description: Folder to create
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.FolderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a folder
+      tags:
+      - Folders
+  /folders/{folderID}:
+    delete:
+      description: Delete a folder. Categories inside are NOT deleted — their folder_id
+        is set to null.
+      parameters:
+      - description: Folder ID
+        in: path
+        name: folderID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a folder
+      tags:
+      - Folders
+    get:
+      description: Returns a folder with all its categories.
+      parameters:
+      - description: Folder ID
+        in: path
+        name: folderID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.GetFolderResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a folder
+      tags:
+      - Folders
+    put:
+      consumes:
+      - application/json
+      description: Update the name of an existing folder.
+      parameters:
+      - description: Folder ID
+        in: path
+        name: folderID
+        required: true
+        type: string
+      - description: New folder data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.FolderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a folder
+      tags:
+      - Folders
+  /folders/{folderID}/categories:
+    get:
+      description: Returns all categories belonging to a folder.
+      parameters:
+      - description: Folder ID
+        in: path
+        name: folderID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.CategoryResponse'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List categories by folder
+      tags:
+      - Folders
+  /folders/{folderID}/stats:
+    get:
+      description: Returns the aggregate mastery score for a folder.
+      parameters:
+      - description: Folder ID
+        in: path
+        name: folderID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.FolderStatsResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get folder stats
+      tags:
+      - Folders
   /import:
     post:
       consumes:
       - application/json
-      description: Import categories, banks, and questions from a JSON export. New
-        IDs are generated for all entities.
+      description: Import folders, categories, banks, and questions from a JSON export.
+        New IDs are generated for all entities.
       parameters:
       - description: Export data to import
         in: body

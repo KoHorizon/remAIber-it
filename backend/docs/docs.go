@@ -505,7 +505,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Create a new category for organizing question banks.",
+                "description": "Create a new category for organizing question banks. Optionally assign to a folder.",
                 "consumes": [
                     "application/json"
                 ],
@@ -536,6 +536,15 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "folder not found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -748,6 +757,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/categories/{categoryID}/folder": {
+            "patch": {
+                "description": "Move a category to a different folder (or set to null to unfiled).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Update category folder",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category ID",
+                        "name": "categoryID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New folder",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateCategoryFolderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CategoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/categories/{categoryID}/stats": {
             "get": {
                 "description": "Returns the aggregate mastery score for a category.",
@@ -797,7 +865,7 @@ const docTemplate = `{
         },
         "/export": {
             "get": {
-                "description": "Export all categories, banks, and questions as a downloadable JSON file.",
+                "description": "Export all folders, categories, banks, and questions as a downloadable JSON file.",
                 "produces": [
                     "application/json"
                 ],
@@ -824,9 +892,331 @@ const docTemplate = `{
                 }
             }
         },
+        "/folders": {
+            "get": {
+                "description": "Returns all folders with their mastery scores.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Folders"
+                ],
+                "summary": "List folders",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.FolderResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new folder for grouping categories.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Folders"
+                ],
+                "summary": "Create a folder",
+                "parameters": [
+                    {
+                        "description": "Folder to create",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateFolderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.FolderResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/folders/{folderID}": {
+            "get": {
+                "description": "Returns a folder with all its categories.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Folders"
+                ],
+                "summary": "Get a folder",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Folder ID",
+                        "name": "folderID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.GetFolderResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update the name of an existing folder.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Folders"
+                ],
+                "summary": "Update a folder",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Folder ID",
+                        "name": "folderID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New folder data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateFolderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.FolderResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a folder. Categories inside are NOT deleted — their folder_id is set to null.",
+                "tags": [
+                    "Folders"
+                ],
+                "summary": "Delete a folder",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Folder ID",
+                        "name": "folderID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/folders/{folderID}/categories": {
+            "get": {
+                "description": "Returns all categories belonging to a folder.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Folders"
+                ],
+                "summary": "List categories by folder",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Folder ID",
+                        "name": "folderID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.CategoryResponse"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/folders/{folderID}/stats": {
+            "get": {
+                "description": "Returns the aggregate mastery score for a folder.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Folders"
+                ],
+                "summary": "Get folder stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Folder ID",
+                        "name": "folderID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.FolderStatsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/import": {
             "post": {
-                "description": "Import categories, banks, and questions from a JSON export. New IDs are generated for all entities.",
+                "description": "Import folders, categories, banks, and questions from a JSON export. New IDs are generated for all entities.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1201,6 +1591,10 @@ const docTemplate = `{
         "api.CategoryResponse": {
             "type": "object",
             "properties": {
+                "folder_id": {
+                    "type": "string",
+                    "example": "f1o2l3d4e5r6i7d8"
+                },
                 "id": {
                     "type": "string",
                     "example": "a1b2c3d4e5f6g7h8"
@@ -1304,9 +1698,22 @@ const docTemplate = `{
         "api.CreateCategoryRequest": {
             "type": "object",
             "properties": {
+                "folder_id": {
+                    "type": "string",
+                    "example": "f1o2l3d4e5r6i7d8"
+                },
                 "name": {
                     "type": "string",
                     "example": "Golang"
+                }
+            }
+        },
+        "api.CreateFolderRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Programming"
                 }
             }
         },
@@ -1409,6 +1816,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "categories": {
+                    "description": "Categories without a folder",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/api.ExportCategory"
@@ -1418,9 +1826,30 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2025-01-15T10:30:00Z"
                 },
+                "folders": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ExportFolder"
+                    }
+                },
                 "version": {
                     "type": "string",
-                    "example": "1.0"
+                    "example": "1.1"
+                }
+            }
+        },
+        "api.ExportFolder": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ExportCategory"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Programming"
                 }
             }
         },
@@ -1434,6 +1863,36 @@ const docTemplate = `{
                 "subject": {
                     "type": "string",
                     "example": "What is a goroutine?"
+                }
+            }
+        },
+        "api.FolderResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "f1o2l3d4e5r6i7d8"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Programming"
+                }
+            }
+        },
+        "api.FolderStatsResponse": {
+            "type": "object",
+            "properties": {
+                "folder_id": {
+                    "type": "string",
+                    "example": "f1o2l3d4e5r6i7d8"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 42
                 }
             }
         },
@@ -1484,6 +1943,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/api.BankResponse"
                     }
                 },
+                "folder_id": {
+                    "type": "string",
+                    "example": "f1o2l3d4e5r6i7d8"
+                },
                 "id": {
                     "type": "string",
                     "example": "a1b2c3d4e5f6g7h8"
@@ -1495,6 +1958,29 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Golang"
+                }
+            }
+        },
+        "api.GetFolderResponse": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.CategoryResponse"
+                    }
+                },
+                "id": {
+                    "type": "string",
+                    "example": "f1o2l3d4e5r6i7d8"
+                },
+                "mastery": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Programming"
                 }
             }
         },
@@ -1544,6 +2030,10 @@ const docTemplate = `{
                 "categories_created": {
                     "type": "integer",
                     "example": 2
+                },
+                "folders_created": {
+                    "type": "integer",
+                    "example": 3
                 },
                 "questions_created": {
                     "type": "integer",
@@ -1649,12 +2139,30 @@ const docTemplate = `{
                 }
             }
         },
+        "api.UpdateCategoryFolderRequest": {
+            "type": "object",
+            "properties": {
+                "folder_id": {
+                    "type": "string",
+                    "example": "f1o2l3d4e5r6i7d8"
+                }
+            }
+        },
         "api.UpdateCategoryRequest": {
             "type": "object",
             "properties": {
                 "name": {
                     "type": "string",
                     "example": "Rust"
+                }
+            }
+        },
+        "api.UpdateFolderRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "DevOps"
                 }
             }
         },
