@@ -8,12 +8,12 @@ import (
 	"github.com/remaimber-it/backend/internal/domain/folder"
 )
 
-// folderSchema creates the folders table and adds folder_id to categories.
-// Called from NewSQLite after the base schema.
+// folderSchema creates the folders table.
 const folderSchema = `
 CREATE TABLE IF NOT EXISTS folders (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    is_system BOOLEAN NOT NULL DEFAULT FALSE
 );
 `
 
@@ -22,8 +22,10 @@ func migrateForFolders(db *sql.DB) error {
 	if _, err := db.Exec(folderSchema); err != nil {
 		return err
 	}
-	// Add folder_id column to categories if it doesn't exist
 	_ = addColumnIfNotExists(db, "categories", "folder_id", "TEXT REFERENCES folders(id) ON DELETE SET NULL")
+	_ = addColumnIfNotExists(db, "folders", "is_system", "BOOLEAN NOT NULL DEFAULT FALSE")
+	// Clean up old is_deleted column if it exists from previous iteration
+	// (no-op if it doesn't exist — SQLite doesn't support DROP COLUMN before 3.35)
 	return nil
 }
 
@@ -32,13 +34,18 @@ func migrateForFolders(db *sql.DB) error {
 // ============================================================================
 
 func (s *SQLiteStore) SaveFolder(ctx context.Context, f *folder.Folder) error {
-	_, err := s.db.ExecContext(ctx, "INSERT INTO folders (id, name) VALUES (?, ?)", f.ID, f.Name)
+	_, err := s.db.ExecContext(ctx,
+		"INSERT INTO folders (id, name, is_system) VALUES (?, ?, ?)",
+		f.ID, f.Name, f.IsSystem,
+	)
 	return err
 }
 
 func (s *SQLiteStore) GetFolder(ctx context.Context, id string) (*folder.Folder, error) {
 	var f folder.Folder
-	err := s.db.QueryRowContext(ctx, "SELECT id, name FROM folders WHERE id = ?", id).Scan(&f.ID, &f.Name)
+	err := s.db.QueryRowContext(ctx,
+		"SELECT id, name, COALESCE(is_system, FALSE) FROM folders WHERE id = ?", id,
+	).Scan(&f.ID, &f.Name, &f.IsSystem)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -48,8 +55,11 @@ func (s *SQLiteStore) GetFolder(ctx context.Context, id string) (*folder.Folder,
 	return &f, nil
 }
 
+// ListFolders returns all folders (including the system "Deleted" folder).
 func (s *SQLiteStore) ListFolders(ctx context.Context) ([]*folder.Folder, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, name FROM folders")
+	rows, err := s.db.QueryContext(ctx,
+		"SELECT id, name, COALESCE(is_system, FALSE) FROM folders",
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +68,7 @@ func (s *SQLiteStore) ListFolders(ctx context.Context) ([]*folder.Folder, error)
 	var folders []*folder.Folder
 	for rows.Next() {
 		var f folder.Folder
-		if err := rows.Scan(&f.ID, &f.Name); err != nil {
+		if err := rows.Scan(&f.ID, &f.Name, &f.IsSystem); err != nil {
 			return nil, err
 		}
 		folders = append(folders, &f)
@@ -67,7 +77,19 @@ func (s *SQLiteStore) ListFolders(ctx context.Context) ([]*folder.Folder, error)
 }
 
 func (s *SQLiteStore) UpdateFolder(ctx context.Context, f *folder.Folder) error {
-	result, err := s.db.ExecContext(ctx, "UPDATE folders SET name = ? WHERE id = ?", f.Name, f.ID)
+	// Prevent renaming system folders
+	existing, err := s.GetFolder(context.Background(), f.ID)
+	if err != nil {
+		return err
+	}
+	if existing.IsSystem {
+		return ErrSystemFolder
+	}
+
+	result, err := s.db.ExecContext(ctx,
+		"UPDATE folders SET name = ? WHERE id = ? AND COALESCE(is_system, FALSE) = FALSE",
+		f.Name, f.ID,
+	)
 	if err != nil {
 		return err
 	}
@@ -81,32 +103,151 @@ func (s *SQLiteStore) UpdateFolder(ctx context.Context, f *folder.Folder) error 
 	return nil
 }
 
-// DeleteFolder removes a folder. Categories in the folder have their
-// folder_id set to NULL (they become "unfiled"), they are NOT deleted.
+// DeleteFolder handles folder deletion:
+//   - System "Deleted" folder: cascade-delete all its content (categories, banks, questions, stats)
+//   - Regular folder: move its categories to the "Deleted" folder, then remove the folder
 func (s *SQLiteStore) DeleteFolder(ctx context.Context, id string) error {
+	f, err := s.GetFolder(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if f.IsDeletedFolder() {
+		return s.EmptyDeletedFolder(ctx)
+	}
+
+	// Regular folder: move categories to Deleted folder, then delete the folder
+	deletedFolder, err := s.GetOrCreateDeletedFolder(ctx)
+	if err != nil {
+		return err
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	// Unlink categories from this folder
-	_, err = tx.ExecContext(ctx, "UPDATE categories SET folder_id = NULL WHERE folder_id = ?", id)
+	// Move all categories from this folder to the Deleted folder
+	_, err = tx.ExecContext(ctx,
+		"UPDATE categories SET folder_id = ? WHERE folder_id = ?",
+		deletedFolder.ID, id,
+	)
 	if err != nil {
 		return err
 	}
 
-	result, err := tx.ExecContext(ctx, "DELETE FROM folders WHERE id = ?", id)
+	// Delete the folder itself
+	result, err := tx.ExecContext(ctx, "DELETE FROM folders WHERE id = ? AND COALESCE(is_system, FALSE) = FALSE", id)
 	if err != nil {
 		return err
 	}
-
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
 	if rowsAffected == 0 {
 		return ErrNotFound
+	}
+
+	return tx.Commit()
+}
+
+// ============================================================================
+// System "Deleted" folder
+// ============================================================================
+
+// GetOrCreateDeletedFolder returns the system "Deleted" folder, creating it if needed.
+func (s *SQLiteStore) GetOrCreateDeletedFolder(ctx context.Context) (*folder.Folder, error) {
+	var f folder.Folder
+	err := s.db.QueryRowContext(ctx,
+		"SELECT id, name, is_system FROM folders WHERE is_system = TRUE AND name = ?",
+		folder.SystemDeletedFolderName,
+	).Scan(&f.ID, &f.Name, &f.IsSystem)
+
+	if err == nil {
+		return &f, nil
+	}
+	if err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	// Create it
+	f = *folder.NewSystem(folder.SystemDeletedFolderName)
+	_, err = s.db.ExecContext(ctx,
+		"INSERT INTO folders (id, name, is_system) VALUES (?, ?, ?)",
+		f.ID, f.Name, f.IsSystem,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &f, nil
+}
+
+// EmptyDeletedFolder cascade-deletes all categories, banks, questions, and stats
+// inside the system "Deleted" folder. The folder itself is NOT removed.
+func (s *SQLiteStore) EmptyDeletedFolder(ctx context.Context) error {
+	deletedFolder, err := s.GetOrCreateDeletedFolder(ctx)
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	folderID := deletedFolder.ID
+
+	// 1. Delete question stats
+	_, err = tx.ExecContext(ctx, `
+		DELETE FROM question_stats
+		WHERE question_id IN (
+			SELECT q.id FROM questions q
+			JOIN banks b ON q.bank_id = b.id
+			JOIN categories c ON b.category_id = c.id
+			WHERE c.folder_id = ?
+		)
+	`, folderID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Delete questions
+	_, err = tx.ExecContext(ctx, `
+		DELETE FROM questions
+		WHERE bank_id IN (
+			SELECT b.id FROM banks b
+			JOIN categories c ON b.category_id = c.id
+			WHERE c.folder_id = ?
+		)
+	`, folderID)
+	if err != nil {
+		return err
+	}
+
+	// 3. Delete banks
+	_, err = tx.ExecContext(ctx, `
+		DELETE FROM banks
+		WHERE category_id IN (
+			SELECT id FROM categories WHERE folder_id = ?
+		)
+	`, folderID)
+	if err != nil {
+		return err
+	}
+
+	// 4. Delete categories
+	_, err = tx.ExecContext(ctx, "DELETE FROM categories WHERE folder_id = ?", folderID)
+	if err != nil {
+		return err
+	}
+
+	// 5. Delete the "Deleted" folder itself — it will be recreated on next folder delete
+	_, err = tx.ExecContext(ctx, "DELETE FROM folders WHERE id = ?", folderID)
+	if err != nil {
+		return err
 	}
 
 	return tx.Commit()

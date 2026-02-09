@@ -268,6 +268,9 @@ definitions:
       id:
         example: f1o2l3d4e5r6i7d8
         type: string
+      is_system:
+        example: false
+        type: boolean
       mastery:
         example: 42
         type: integer
@@ -339,6 +342,9 @@ definitions:
       id:
         example: f1o2l3d4e5r6i7d8
         type: string
+      is_system:
+        example: false
+        type: boolean
       mastery:
         example: 42
         type: integer
@@ -1052,7 +1058,7 @@ paths:
   /export:
     get:
       description: Export all folders, categories, banks, and questions as a downloadable
-        JSON file.
+        JSON file. The system "Deleted" folder and its contents are excluded.
       produces:
       - application/json
       responses:
@@ -1071,7 +1077,8 @@ paths:
       - Import/Export
   /folders:
     get:
-      description: Returns all folders with their mastery scores.
+      description: Returns all folders with their mastery scores. Includes the system
+        "Deleted" folder if it exists and has content.
       produces:
       - application/json
       responses:
@@ -1125,8 +1132,9 @@ paths:
       - Folders
   /folders/{folderID}:
     delete:
-      description: Delete a folder. Categories inside are NOT deleted — their folder_id
-        is set to null.
+      description: 'For regular folders: moves categories to the system "Deleted"
+        folder, then removes the folder. For the "Deleted" folder: cascade-deletes
+        all categories, banks, questions, and stats inside it (empties the trash).'
       parameters:
       - description: Folder ID
         in: path
@@ -1184,7 +1192,8 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update the name of an existing folder.
+      description: Update the name of an existing folder. System folders cannot be
+        renamed.
       parameters:
       - description: Folder ID
         in: path
@@ -1206,6 +1215,12 @@ paths:
             $ref: '#/definitions/api.FolderResponse'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: cannot rename system folder
           schema:
             additionalProperties:
               type: string

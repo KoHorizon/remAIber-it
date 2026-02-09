@@ -865,7 +865,7 @@ const docTemplate = `{
         },
         "/export": {
             "get": {
-                "description": "Export all folders, categories, banks, and questions as a downloadable JSON file.",
+                "description": "Export all folders, categories, banks, and questions as a downloadable JSON file. The system \"Deleted\" folder and its contents are excluded.",
                 "produces": [
                     "application/json"
                 ],
@@ -894,7 +894,7 @@ const docTemplate = `{
         },
         "/folders": {
             "get": {
-                "description": "Returns all folders with their mastery scores.",
+                "description": "Returns all folders with their mastery scores. Includes the system \"Deleted\" folder if it exists and has content.",
                 "produces": [
                     "application/json"
                 ],
@@ -1021,7 +1021,7 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Update the name of an existing folder.",
+                "description": "Update the name of an existing folder. System folders cannot be renamed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1066,6 +1066,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "403": {
+                        "description": "cannot rename system folder",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -1078,7 +1087,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete a folder. Categories inside are NOT deleted — their folder_id is set to null.",
+                "description": "For regular folders: moves categories to the system \"Deleted\" folder, then removes the folder. For the \"Deleted\" folder: cascade-deletes all categories, banks, questions, and stats inside it (empties the trash).",
                 "tags": [
                     "Folders"
                 ],
@@ -1873,6 +1882,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "f1o2l3d4e5r6i7d8"
                 },
+                "is_system": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "mastery": {
                     "type": "integer",
                     "example": 42
@@ -1973,6 +1986,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string",
                     "example": "f1o2l3d4e5r6i7d8"
+                },
+                "is_system": {
+                    "type": "boolean",
+                    "example": false
                 },
                 "mastery": {
                     "type": "integer",

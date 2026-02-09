@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/remaimber-it/backend/internal/domain/folder"
+	"github.com/remaimber-it/backend/internal/store"
 )
 
 // ── Request / Response types ────────────────────────────────────────────────
@@ -21,14 +22,16 @@ func (r *CreateFolderRequest) Validate() error {
 }
 
 type FolderResponse struct {
-	ID      string `json:"id" example:"f1o2l3d4e5r6i7d8"`
-	Name    string `json:"name" example:"Programming"`
-	Mastery int    `json:"mastery" example:"42"`
+	ID       string `json:"id" example:"f1o2l3d4e5r6i7d8"`
+	Name     string `json:"name" example:"Programming"`
+	IsSystem bool   `json:"is_system" example:"false"`
+	Mastery  int    `json:"mastery" example:"42"`
 }
 
 type GetFolderResponse struct {
 	ID         string             `json:"id" example:"f1o2l3d4e5r6i7d8"`
 	Name       string             `json:"name" example:"Programming"`
+	IsSystem   bool               `json:"is_system" example:"false"`
 	Mastery    int                `json:"mastery" example:"42"`
 	Categories []CategoryResponse `json:"categories"`
 }
@@ -76,15 +79,16 @@ func (h *Handler) createFolder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusCreated, FolderResponse{
-		ID:      f.ID,
-		Name:    f.Name,
-		Mastery: 0,
+		ID:       f.ID,
+		Name:     f.Name,
+		IsSystem: false,
+		Mastery:  0,
 	})
 }
 
 // listFolders lists all folders.
 // @Summary      List folders
-// @Description  Returns all folders with their mastery scores.
+// @Description  Returns all folders with their mastery scores. Includes the system "Deleted" folder if it exists and has content.
 // @Tags         Folders
 // @Produce      json
 // @Success      200  {array}   FolderResponse
@@ -102,9 +106,10 @@ func (h *Handler) listFolders(w http.ResponseWriter, r *http.Request) {
 	for i, f := range folders {
 		mastery, _ := h.store.GetFolderMastery(ctx, f.ID)
 		response[i] = FolderResponse{
-			ID:      f.ID,
-			Name:    f.Name,
-			Mastery: mastery,
+			ID:       f.ID,
+			Name:     f.Name,
+			IsSystem: f.IsSystem,
+			Mastery:  mastery,
 		}
 	}
 
@@ -151,6 +156,7 @@ func (h *Handler) getFolder(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, GetFolderResponse{
 		ID:         f.ID,
 		Name:       f.Name,
+		IsSystem:   f.IsSystem,
 		Mastery:    folderMastery,
 		Categories: catResponses,
 	})
@@ -158,7 +164,7 @@ func (h *Handler) getFolder(w http.ResponseWriter, r *http.Request) {
 
 // updateFolder renames an existing folder.
 // @Summary      Update a folder
-// @Description  Update the name of an existing folder.
+// @Description  Update the name of an existing folder. System folders cannot be renamed.
 // @Tags         Folders
 // @Accept       json
 // @Produce      json
@@ -166,6 +172,7 @@ func (h *Handler) getFolder(w http.ResponseWriter, r *http.Request) {
 // @Param        body      body      UpdateFolderRequest   true  "New folder data"
 // @Success      200       {object}  FolderResponse
 // @Failure      400       {object}  map[string]string
+// @Failure      403       {object}  map[string]string  "cannot rename system folder"
 // @Failure      404       {object}  map[string]string
 // @Router       /folders/{folderID} [put]
 func (h *Handler) updateFolder(w http.ResponseWriter, r *http.Request) {
@@ -182,22 +189,28 @@ func (h *Handler) updateFolder(w http.ResponseWriter, r *http.Request) {
 		Name: req.Name,
 	}
 
-	if h.handleStoreError(w, h.store.UpdateFolder(ctx, f), "folder") {
+	err := h.store.UpdateFolder(ctx, f)
+	if errors.Is(err, store.ErrSystemFolder) {
+		respondError(w, http.StatusForbidden, "cannot rename system folder")
+		return
+	}
+	if h.handleStoreError(w, err, "folder") {
 		return
 	}
 
 	mastery, _ := h.store.GetFolderMastery(ctx, folderID)
 
 	respondJSON(w, http.StatusOK, FolderResponse{
-		ID:      f.ID,
-		Name:    f.Name,
-		Mastery: mastery,
+		ID:       f.ID,
+		Name:     f.Name,
+		IsSystem: false,
+		Mastery:  mastery,
 	})
 }
 
-// deleteFolder removes a folder. Categories in the folder become uncategorized (folder_id set to NULL).
+// deleteFolder deletes a folder.
 // @Summary      Delete a folder
-// @Description  Delete a folder. Categories inside are NOT deleted — their folder_id is set to null.
+// @Description  For regular folders: moves categories to the system "Deleted" folder, then removes the folder. For the "Deleted" folder: cascade-deletes all categories, banks, questions, and stats inside it (empties the trash).
 // @Tags         Folders
 // @Param        folderID  path  string  true  "Folder ID"
 // @Success      204

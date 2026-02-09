@@ -54,7 +54,7 @@ type ImportResult struct {
 
 // exportAll exports all data as a JSON file.
 // @Summary      Export all data
-// @Description  Export all folders, categories, banks, and questions as a downloadable JSON file.
+// @Description  Export all folders, categories, banks, and questions as a downloadable JSON file. The system "Deleted" folder and its contents are excluded.
 // @Tags         Import/Export
 // @Produce      json
 // @Success      200  {object}  ExportData
@@ -70,7 +70,7 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 		Categories: make([]ExportCategory, 0),
 	}
 
-	// Export folders with their categories
+	// Export folders with their categories (skip system folders)
 	folders, err := h.store.ListFolders(ctx)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to load folders")
@@ -80,6 +80,16 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 	categoriesInFolders := make(map[string]bool)
 
 	for _, f := range folders {
+		// Skip the system "Deleted" folder
+		if f.IsSystem {
+			// Still mark its categories as handled so they don't appear in unfiled
+			cats, _ := h.store.ListCategoriesByFolder(ctx, f.ID)
+			for _, cat := range cats {
+				categoriesInFolders[cat.ID] = true
+			}
+			continue
+		}
+
 		categories, err := h.store.ListCategoriesByFolder(ctx, f.ID)
 		if err != nil {
 			h.logger.Error("failed to list categories for folder", "folder_id", f.ID, "error", err)

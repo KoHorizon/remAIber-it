@@ -13,11 +13,10 @@ import (
 var (
 	ErrNotFound         = errors.New("not found")
 	ErrSessionCompleted = errors.New("session already completed")
+	ErrSystemFolder     = errors.New("cannot modify system folder")
 )
 
 // Store defines the persistence contract for the application.
-// Any backing implementation (SQLite, Postgres, in-memory for tests, …)
-// must satisfy this interface.
 type Store interface {
 	// Folders
 	SaveFolder(ctx context.Context, f *folder.Folder) error
@@ -26,6 +25,10 @@ type Store interface {
 	UpdateFolder(ctx context.Context, f *folder.Folder) error
 	DeleteFolder(ctx context.Context, id string) error
 	GetFolderMastery(ctx context.Context, folderID string) (int, error)
+
+	// System "Deleted" folder
+	GetOrCreateDeletedFolder(ctx context.Context) (*folder.Folder, error)
+	EmptyDeletedFolder(ctx context.Context) error // Cascade-delete all content inside the Deleted folder
 
 	// Categories
 	SaveCategory(ctx context.Context, cat *category.Category) error
