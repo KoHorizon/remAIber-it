@@ -5,10 +5,18 @@ import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
 import "./App.css";
 
+// ── Folder type (NEW) ──────────────────────────────────────────────
+export type Folder = {
+  id: string;
+  name: string;
+  mastery: number;
+};
+
 export type Category = {
   id: string;
   name: string;
   mastery: number;
+  folder_id?: string | null; // ← NEW FIELD
   banks?: Bank[];
 };
 
@@ -85,13 +93,20 @@ export type ExportCategory = {
   banks: ExportBank[];
 };
 
+export type ExportFolder = {
+  name: string;
+  categories: string[];
+};
+
 export type ExportData = {
   version: string;
   exported_at: string;
+  folders?: ExportFolder[];
   categories: ExportCategory[];
 };
 
 export type ImportResult = {
+  folders_created?: number;
   categories_created: number;
   banks_created: number;
   questions_created: number;
@@ -121,6 +136,65 @@ type View =
 const API_BASE = "http://localhost:8080";
 
 export const api = {
+  // ── Folders (NEW) ───────────────────────────────────────────────
+  async getFolders(): Promise<Folder[]> {
+    try {
+      const res = await fetch(`${API_BASE}/folders`);
+      if (res.status === 404) return []; // backend doesn't support folders yet
+      if (!res.ok) throw new Error("Failed to fetch folders");
+      return res.json();
+    } catch {
+      return []; // graceful fallback
+    }
+  },
+
+  async getFolder(id: string): Promise<Folder & { categories: Category[] }> {
+    const res = await fetch(`${API_BASE}/folders/${id}`);
+    if (!res.ok) throw new Error("Folder not found");
+    return res.json();
+  },
+
+  async createFolder(name: string): Promise<Folder> {
+    const res = await fetch(`${API_BASE}/folders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error("Failed to create folder");
+    return res.json();
+  },
+
+  async updateFolder(id: string, name: string): Promise<Folder> {
+    const res = await fetch(`${API_BASE}/folders/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error("Failed to rename folder");
+    return res.json();
+  },
+
+  async deleteFolder(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/folders/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete folder");
+  },
+
+  // ── Category ↔ Folder assignment (NEW) ─────────────────────────
+  async updateCategoryFolder(
+    categoryId: string,
+    folderId: string | null,
+  ): Promise<Category> {
+    const res = await fetch(`${API_BASE}/categories/${categoryId}/folder`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder_id: folderId }),
+    });
+    if (!res.ok) throw new Error("Failed to update category folder");
+    return res.json();
+  },
+
   // Categories
   async getCategories(): Promise<Category[]> {
     const res = await fetch(`${API_BASE}/categories`);
@@ -134,11 +208,13 @@ export const api = {
     return res.json();
   },
 
-  async createCategory(name: string): Promise<Category> {
+  async createCategory(name: string, folderId?: string): Promise<Category> {
+    const body: Record<string, unknown> = { name };
+    if (folderId) body.folder_id = folderId;
     const res = await fetch(`${API_BASE}/categories`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error("Failed to create category");
     return res.json();

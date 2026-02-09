@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/remaimber-it/backend/internal/domain/category"
+	"github.com/remaimber-it/backend/internal/domain/folder"
 	practicesession "github.com/remaimber-it/backend/internal/domain/practice_session"
 	"github.com/remaimber-it/backend/internal/domain/questionbank"
 )
@@ -18,11 +19,21 @@ var (
 // Any backing implementation (SQLite, Postgres, in-memory for tests, …)
 // must satisfy this interface.
 type Store interface {
+	// Folders
+	SaveFolder(ctx context.Context, f *folder.Folder) error
+	GetFolder(ctx context.Context, id string) (*folder.Folder, error)
+	ListFolders(ctx context.Context) ([]*folder.Folder, error)
+	UpdateFolder(ctx context.Context, f *folder.Folder) error
+	DeleteFolder(ctx context.Context, id string) error
+	GetFolderMastery(ctx context.Context, folderID string) (int, error)
+
 	// Categories
 	SaveCategory(ctx context.Context, cat *category.Category) error
 	GetCategory(ctx context.Context, id string) (*category.Category, error)
 	ListCategories(ctx context.Context) ([]*category.Category, error)
+	ListCategoriesByFolder(ctx context.Context, folderID string) ([]*category.Category, error)
 	UpdateCategory(ctx context.Context, cat *category.Category) error
+	UpdateCategoryFolder(ctx context.Context, categoryID string, folderID *string) error
 	DeleteCategory(ctx context.Context, id string) error
 	GetCategoryMastery(ctx context.Context, categoryID string) (int, error)
 

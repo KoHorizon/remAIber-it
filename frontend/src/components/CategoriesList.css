@@ -24,7 +24,266 @@
     gap: 0.75rem;
 }
 
-/* Categories Section */
+/* ════════════════════════════════════════════════════════════════════
+   FOLDERS BAR — horizontal scrollable row at top
+   ════════════════════════════════════════════════════════════════════ */
+
+.folders-bar {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.folders-scroll {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding: 0.25rem 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.folders-scroll::-webkit-scrollbar {
+    height: 4px;
+}
+
+.folders-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.folders-scroll::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
+
+/* Folder Card */
+.folder-card {
+    position: relative;
+    flex-shrink: 0;
+    min-width: 150px;
+    max-width: 200px;
+    padding: 1rem 1.25rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.folder-card:hover {
+    background: var(--bg-elevated);
+    border-color: var(--border);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.folder-card-active {
+    border-color: var(--accent);
+    background: var(--bg-elevated);
+    box-shadow:
+        0 0 0 1px var(--accent),
+        0 0 20px var(--accent-glow);
+}
+
+.folder-card-active:hover {
+    border-color: var(--accent);
+}
+
+.folder-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.folder-icon {
+    font-size: 1.25rem;
+}
+
+.folder-card-actions {
+    display: flex;
+    gap: 0.125rem;
+    opacity: 0;
+    transition: opacity var(--transition);
+}
+
+.folder-card:hover .folder-card-actions {
+    opacity: 1;
+}
+
+.folder-action-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+}
+
+.folder-action-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.folder-action-danger:hover {
+    background: var(--error);
+    color: white;
+}
+
+.folder-name {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.folder-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+}
+
+.folder-mastery {
+    font-weight: 600;
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-sm);
+}
+
+.folder-cat-count {
+    color: var(--text-muted);
+}
+
+.folder-edit-input {
+    font-size: 0.9375rem;
+    padding: 0.25rem 0.5rem;
+    width: 100%;
+}
+
+/* Add Folder Button */
+.folder-card-add {
+    border-style: dashed;
+    border-color: var(--border);
+    background: transparent;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    min-width: 130px;
+}
+
+.folder-card-add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+}
+
+.folder-add-icon {
+    font-size: 1.5rem;
+    font-weight: 300;
+    line-height: 1;
+}
+
+.folder-add-label {
+    font-size: 0.8125rem;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   FOLDER CONTEXT BAR — shows which folder is selected
+   ════════════════════════════════════════════════════════════════════ */
+
+.folder-context-bar {
+    margin-bottom: 1.5rem;
+}
+
+.folder-context-info {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+}
+
+.folder-context-icon {
+    font-size: 1rem;
+}
+
+.folder-context-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.folder-context-count {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}
+
+.folder-context-clear {
+    margin-left: auto;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   FOLDER PICKER (in create category / move modals)
+   ════════════════════════════════════════════════════════════════════ */
+
+.folder-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.folder-picker-move {
+    flex-direction: column;
+}
+
+.folder-pick-btn {
+    padding: 0.5rem 0.875rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: all var(--transition);
+    text-align: left;
+}
+
+.folder-pick-btn:hover {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+}
+
+.folder-pick-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+}
+
+.folder-picker-move .folder-pick-btn {
+    width: 100%;
+    padding: 0.75rem 1rem;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   CATEGORIES SECTION (unchanged, kept from original)
+   ════════════════════════════════════════════════════════════════════ */
+
 .categories-section {
     display: flex;
     flex-direction: column;
@@ -587,7 +846,10 @@
     color: var(--accent);
 }
 
-/* Mobile */
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════════════ */
+
 @media (max-width: 640px) {
     .page-header-row {
         flex-direction: column;
@@ -636,6 +898,16 @@
     .type-icon {
         font-size: 1.25rem;
     }
+
+    /* Folders bar: smaller cards on mobile */
+    .folder-card {
+        min-width: 120px;
+        padding: 0.75rem 1rem;
+    }
+
+    .folder-card-add {
+        min-width: 100px;
+    }
 }
 
 /* Import Result Modal */
@@ -644,6 +916,7 @@
     justify-content: center;
     gap: 2rem;
     padding: 1.5rem 0;
+    flex-wrap: wrap;
 }
 
 .import-stat {

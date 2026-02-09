@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   api,
+  Folder,
   Category,
   Bank,
   BankType,
@@ -14,9 +15,11 @@ type Props = {
 };
 
 export function CategoriesList({ onSelectBank }: Props) {
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(),
   );
@@ -24,6 +27,7 @@ export function CategoriesList({ onSelectBank }: Props) {
   // Modal states
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [showCreateBank, setShowCreateBank] = useState(false);
+  const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newBankSubject, setNewBankSubject] = useState("");
   const [newBankCategoryId, setNewBankCategoryId] = useState<
@@ -31,22 +35,29 @@ export function CategoriesList({ onSelectBank }: Props) {
   >(undefined);
   const [newBankType, setNewBankType] = useState<BankType>("theory");
   const [newBankLanguage, setNewBankLanguage] = useState("");
+  const [newFolderName, setNewFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
-  // Edit category state
+  // Edit states
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
     null,
   );
   const [editCategoryName, setEditCategoryName] = useState("");
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [editFolderName, setEditFolderName] = useState("");
 
   // Delete confirmation modal state
   const [deleteModal, setDeleteModal] = useState<{
-    type: "category" | "bank";
+    type: "category" | "bank" | "folder";
     id: string;
     name: string;
     bankCount?: number;
+    categoryCount?: number;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Move category to folder state
+  const [movingCategoryId, setMovingCategoryId] = useState<string | null>(null);
 
   // Import/Export state
   const [isExporting, setIsExporting] = useState(false);
@@ -60,10 +71,12 @@ export function CategoriesList({ onSelectBank }: Props) {
 
   async function loadData() {
     try {
-      const [categoriesData, banksData] = await Promise.all([
+      const [foldersData, categoriesData, banksData] = await Promise.all([
+        api.getFolders(),
         api.getCategories(),
         api.getBanks(),
       ]);
+      setFolders(foldersData || []);
       setCategories(categoriesData || []);
       setBanks(banksData || []);
     } catch (err) {
@@ -85,14 +98,84 @@ export function CategoriesList({ onSelectBank }: Props) {
     });
   }
 
-  // Category CRUD
+  // ── Folder CRUD ─────────────────────────────────────────────────
+
+  async function handleCreateFolder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newFolderName.trim() || isCreating) return;
+
+    setIsCreating(true);
+    try {
+      const folder = await api.createFolder(newFolderName.trim());
+      setFolders([...folders, folder]);
+      setNewFolderName("");
+      setShowCreateFolder(false);
+      setSelectedFolderId(folder.id);
+    } catch (err) {
+      console.error("Failed to create folder:", err);
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  async function handleUpdateFolder(folderId: string) {
+    if (!editFolderName.trim()) return;
+
+    try {
+      const updated = await api.updateFolder(folderId, editFolderName.trim());
+      setFolders(folders.map((f) => (f.id === folderId ? updated : f)));
+      setEditingFolderId(null);
+      setEditFolderName("");
+    } catch (err) {
+      console.error("Failed to update folder:", err);
+    }
+  }
+
+  function openDeleteFolderModal(e: React.MouseEvent, folder: Folder) {
+    e.stopPropagation();
+    const folderCategories = categories.filter(
+      (c) => c.folder_id === folder.id,
+    );
+    setDeleteModal({
+      type: "folder",
+      id: folder.id,
+      name: folder.name,
+      categoryCount: folderCategories.length,
+    });
+  }
+
+  function selectFolder(folderId: string | null) {
+    setSelectedFolderId(folderId);
+  }
+
+  // ── Move category to folder ─────────────────────────────────────
+
+  async function handleMoveCategory(
+    categoryId: string,
+    folderId: string | null,
+  ) {
+    try {
+      const updated = await api.updateCategoryFolder(categoryId, folderId);
+      setCategories(categories.map((c) => (c.id === categoryId ? updated : c)));
+      setMovingCategoryId(null);
+    } catch (err) {
+      console.error("Failed to move category:", err);
+    }
+  }
+
+  // ── Category CRUD ───────────────────────────────────────────────
+
   async function handleCreateCategory(e: React.FormEvent) {
     e.preventDefault();
     if (!newCategoryName.trim() || isCreating) return;
 
     setIsCreating(true);
     try {
-      const category = await api.createCategory(newCategoryName.trim());
+      // Create category in the currently selected folder
+      const category = await api.createCategory(
+        newCategoryName.trim(),
+        selectedFolderId || undefined,
+      );
       setCategories([...categories, category]);
       setNewCategoryName("");
       setShowCreateCategory(false);
@@ -144,11 +227,23 @@ export function CategoriesList({ onSelectBank }: Props) {
 
     setIsDeleting(true);
     try {
-      if (deleteModal.type === "category") {
+      if (deleteModal.type === "folder") {
+        const folderId = deleteModal.id;
+        await api.deleteFolder(folderId);
+        setFolders(folders.filter((f) => f.id !== folderId));
+        // Categories become unfiled
+        setCategories(
+          categories.map((c) =>
+            c.folder_id === folderId ? { ...c, folder_id: null } : c,
+          ),
+        );
+        if (selectedFolderId === folderId) {
+          setSelectedFolderId(null);
+        }
+      } else if (deleteModal.type === "category") {
         const categoryId = deleteModal.id;
         await api.deleteCategory(categoryId);
         setCategories(categories.filter((c) => c.id !== categoryId));
-        // Remove banks that were in this category (they're deleted on backend now)
         setBanks((prevBanks) =>
           prevBanks.filter((b) => b.category_id !== categoryId),
         );
@@ -165,7 +260,8 @@ export function CategoriesList({ onSelectBank }: Props) {
     }
   }
 
-  // Bank CRUD
+  // ── Bank CRUD ───────────────────────────────────────────────────
+
   async function handleCreateBank(e: React.FormEvent) {
     e.preventDefault();
     if (!newBankSubject.trim() || !newBankCategoryId || isCreating) return;
@@ -205,6 +301,12 @@ export function CategoriesList({ onSelectBank }: Props) {
     setEditCategoryName(category.name);
   }
 
+  function startEditFolder(e: React.MouseEvent, folder: Folder) {
+    e.stopPropagation();
+    setEditingFolderId(folder.id);
+    setEditFolderName(folder.name);
+  }
+
   function getMasteryColor(mastery: number): string {
     if (mastery >= 80) return "mastery-excellent";
     if (mastery >= 60) return "mastery-good";
@@ -230,7 +332,8 @@ export function CategoriesList({ onSelectBank }: Props) {
     return { icon: "📝", label: "Theory", className: "badge-theory" };
   }
 
-  // Export/Import handlers
+  // ── Export/Import handlers ──────────────────────────────────────
+
   async function handleExport() {
     setIsExporting(true);
     try {
@@ -267,24 +370,41 @@ export function CategoriesList({ onSelectBank }: Props) {
       const data: ExportData = JSON.parse(text);
       const result = await api.importAll(data);
       setImportResult(result);
-      // Reload data
       await loadData();
     } catch (err) {
       console.error("Failed to import:", err);
       alert("Failed to import file. Please check the file format.");
     } finally {
       setIsImporting(false);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     }
   }
 
-  // Filter banks
+  // ── Derived data ────────────────────────────────────────────────
+
+  const hasFolders = folders.length > 0;
+
+  // Categories for the current view
+  const getVisibleCategories = (): Category[] => {
+    if (!hasFolders) return categories; // no folders → show all
+    if (selectedFolderId === null) {
+      // "All" tab selected → show unfiled categories
+      return categories.filter((c) => !c.folder_id);
+    }
+    return categories.filter((c) => c.folder_id === selectedFolderId);
+  };
+
+  const visibleCategories = getVisibleCategories();
   const uncategorizedBanks = banks.filter((b) => !b.category_id);
   const getBanksForCategory = (categoryId: string) =>
     banks.filter((b) => b.category_id === categoryId);
+
+  // Get selected folder object
+  const selectedFolder = selectedFolderId
+    ? folders.find((f) => f.id === selectedFolderId)
+    : null;
 
   if (isLoading) {
     return (
@@ -311,6 +431,15 @@ export function CategoriesList({ onSelectBank }: Props) {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>✅ Import Complete</h2>
             <div className="import-result">
+              {importResult.folders_created !== undefined &&
+                importResult.folders_created > 0 && (
+                  <div className="import-stat">
+                    <span className="import-stat-value">
+                      {importResult.folders_created}
+                    </span>
+                    <span className="import-stat-label">Folders</span>
+                  </div>
+                )}
               <div className="import-stat">
                 <span className="import-stat-value">
                   {importResult.categories_created}
@@ -342,6 +471,7 @@ export function CategoriesList({ onSelectBank }: Props) {
         </div>
       )}
 
+      {/* Page Header */}
       <div className="page-header">
         <div className="page-header-row">
           <div>
@@ -349,7 +479,7 @@ export function CategoriesList({ onSelectBank }: Props) {
             <p className="page-subtitle">
               {categories.length === 0 && banks.length === 0
                 ? "Create categories to organize your question banks"
-                : `${categories.length} categories, ${banks.length} banks`}
+                : `${folders.length > 0 ? `${folders.length} folder${folders.length !== 1 ? "s" : ""}, ` : ""}${categories.length} categor${categories.length !== 1 ? "ies" : "y"}, ${banks.length} bank${banks.length !== 1 ? "s" : ""}`}
             </p>
           </div>
           <div className="header-actions">
@@ -381,6 +511,163 @@ export function CategoriesList({ onSelectBank }: Props) {
         </div>
       </div>
 
+      {/* ════════════════════════════════════════════════════════════
+          FOLDERS BAR (horizontal row at top, like the wireframe)
+         ════════════════════════════════════════════════════════════ */}
+      <div className="folders-bar">
+        <div className="folders-scroll">
+          {folders.map((folder) => (
+            <div
+              key={folder.id}
+              className={`folder-card ${selectedFolderId === folder.id ? "folder-card-active" : ""}`}
+              onClick={() =>
+                selectFolder(selectedFolderId === folder.id ? null : folder.id)
+              }
+            >
+              {editingFolderId === folder.id ? (
+                <input
+                  type="text"
+                  className="input folder-edit-input"
+                  value={editFolderName}
+                  onChange={(e) => setEditFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleUpdateFolder(folder.id);
+                    else if (e.key === "Escape") setEditingFolderId(null);
+                  }}
+                  onBlur={() => handleUpdateFolder(folder.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  autoFocus
+                />
+              ) : (
+                <>
+                  <div className="folder-card-top">
+                    <span className="folder-icon">📁</span>
+                    <div className="folder-card-actions">
+                      <button
+                        className="folder-action-btn"
+                        onClick={(e) => startEditFolder(e, folder)}
+                        title="Rename folder"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        className="folder-action-btn folder-action-danger"
+                        onClick={(e) => openDeleteFolderModal(e, folder)}
+                        title="Delete folder"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                  <span className="folder-name">{folder.name}</span>
+                  <div className="folder-meta">
+                    <span
+                      className={`folder-mastery ${getMasteryColor(folder.mastery)}`}
+                    >
+                      {folder.mastery}%
+                    </span>
+                    <span className="folder-cat-count">
+                      {
+                        categories.filter((c) => c.folder_id === folder.id)
+                          .length
+                      }{" "}
+                      cat.
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+
+          {/* Add Folder Button */}
+          <button
+            className="folder-card folder-card-add"
+            onClick={() => setShowCreateFolder(true)}
+          >
+            <span className="folder-add-icon">+</span>
+            <span className="folder-add-label">New Folder</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Folder context indicator */}
+      {hasFolders && selectedFolder && (
+        <div className="folder-context-bar">
+          <div className="folder-context-info">
+            <span className="folder-context-icon">📁</span>
+            <span className="folder-context-name">{selectedFolder.name}</span>
+            <span className="folder-context-count">
+              {visibleCategories.length} categor
+              {visibleCategories.length !== 1 ? "ies" : "y"}
+            </span>
+            <button
+              className="btn btn-ghost folder-context-clear"
+              onClick={() => setSelectedFolderId(null)}
+            >
+              Show Unfiled
+            </button>
+          </div>
+        </div>
+      )}
+      {hasFolders && !selectedFolderId && visibleCategories.length > 0 && (
+        <div className="folder-context-bar">
+          <div className="folder-context-info">
+            <span className="folder-context-icon">📋</span>
+            <span className="folder-context-name">Unfiled Categories</span>
+            <span className="folder-context-count">
+              {visibleCategories.length} categor
+              {visibleCategories.length !== 1 ? "ies" : "y"}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════
+          MODALS
+         ════════════════════════════════════════════════════════════ */}
+
+      {/* Create Folder Modal */}
+      {showCreateFolder && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowCreateFolder(false)}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>New Folder</h2>
+            <form onSubmit={handleCreateFolder}>
+              <label className="input-label" htmlFor="folder-name">
+                Folder Name
+              </label>
+              <input
+                id="folder-name"
+                type="text"
+                className="input"
+                placeholder="e.g., Backend, Frontend, DevOps"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                autoFocus
+              />
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowCreateFolder(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!newFolderName.trim() || isCreating}
+                >
+                  {isCreating ? "Creating..." : "Create Folder"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Create Category Modal */}
       {showCreateCategory && (
         <div
@@ -402,6 +689,32 @@ export function CategoriesList({ onSelectBank }: Props) {
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 autoFocus
               />
+              {hasFolders && (
+                <div className="input-group" style={{ marginTop: "1rem" }}>
+                  <label className="input-label">
+                    Folder {selectedFolderId && "(pre-selected)"}
+                  </label>
+                  <div className="folder-picker">
+                    <button
+                      type="button"
+                      className={`folder-pick-btn ${!selectedFolderId ? "active" : ""}`}
+                      onClick={() => setSelectedFolderId(null)}
+                    >
+                      None (unfiled)
+                    </button>
+                    {folders.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        className={`folder-pick-btn ${selectedFolderId === f.id ? "active" : ""}`}
+                        onClick={() => setSelectedFolderId(f.id)}
+                      >
+                        📁 {f.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="modal-actions">
                 <button
                   type="button"
@@ -556,7 +869,13 @@ export function CategoriesList({ onSelectBank }: Props) {
           >
             <div className="delete-modal-icon">⚠️</div>
             <h2>
-              Delete {deleteModal.type === "category" ? "Category" : "Bank"}?
+              Delete{" "}
+              {deleteModal.type === "folder"
+                ? "Folder"
+                : deleteModal.type === "category"
+                  ? "Category"
+                  : "Bank"}
+              ?
             </h2>
 
             <div className="delete-modal-content">
@@ -564,7 +883,24 @@ export function CategoriesList({ onSelectBank }: Props) {
                 <strong>"{deleteModal.name}"</strong>
               </p>
 
-              {deleteModal.type === "category" ? (
+              {deleteModal.type === "folder" ? (
+                <div className="delete-warning">
+                  <p className="warning-text">
+                    This will delete the folder. Categories inside will become
+                    <strong> unfiled</strong> — they won't be deleted.
+                  </p>
+                  <ul className="warning-list">
+                    <li>
+                      <span className="warning-count">
+                        {deleteModal.categoryCount}
+                      </span>{" "}
+                      categor{deleteModal.categoryCount !== 1 ? "ies" : "y"}{" "}
+                      will become unfiled
+                    </li>
+                    <li>No banks or questions will be deleted</li>
+                  </ul>
+                </div>
+              ) : deleteModal.type === "category" ? (
                 <div className="delete-warning">
                   <p className="warning-text">
                     This will permanently delete this category and all its
@@ -615,9 +951,57 @@ export function CategoriesList({ onSelectBank }: Props) {
         </div>
       )}
 
-      {/* Categories */}
+      {/* Move Category Modal */}
+      {movingCategoryId && (
+        <div
+          className="modal-overlay"
+          onClick={() => setMovingCategoryId(null)}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Move Category</h2>
+            <p style={{ color: "var(--text-secondary)", marginBottom: "1rem" }}>
+              Choose a folder for "
+              {categories.find((c) => c.id === movingCategoryId)?.name}":
+            </p>
+            <div className="folder-picker folder-picker-move">
+              <button
+                className="folder-pick-btn"
+                onClick={() => handleMoveCategory(movingCategoryId, null)}
+              >
+                📋 Unfiled (no folder)
+              </button>
+              {folders.map((f) => (
+                <button
+                  key={f.id}
+                  className={`folder-pick-btn ${
+                    categories.find((c) => c.id === movingCategoryId)
+                      ?.folder_id === f.id
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() => handleMoveCategory(movingCategoryId, f.id)}
+                >
+                  📁 {f.name}
+                </button>
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setMovingCategoryId(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════
+          CATEGORIES LIST
+         ════════════════════════════════════════════════════════════ */}
       <div className="categories-section">
-        {categories.map((category, i) => {
+        {visibleCategories.map((category, i) => {
           const categoryBanks = getBanksForCategory(category.id);
           const isExpanded = expandedCategories.has(category.id);
           const isEditing = editingCategoryId === category.id;
@@ -674,6 +1058,18 @@ export function CategoriesList({ onSelectBank }: Props) {
                   </div>
                 </div>
                 <div className="category-actions">
+                  {hasFolders && (
+                    <button
+                      className="btn-icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMovingCategoryId(category.id);
+                      }}
+                      title="Move to folder"
+                    >
+                      ↗
+                    </button>
+                  )}
                   <button
                     className="btn-icon"
                     onClick={(e) => startEditCategory(e, category)}
@@ -785,15 +1181,29 @@ export function CategoriesList({ onSelectBank }: Props) {
       )}
 
       {/* Empty State */}
-      {categories.length === 0 && banks.length === 0 && (
-        <div className="empty-state">
-          <div className="empty-state-icon">📖</div>
-          <p className="empty-state-text">
-            Start by creating a category to organize your question banks, or
-            create a bank directly to begin adding questions.
-          </p>
-        </div>
-      )}
+      {categories.length === 0 &&
+        banks.length === 0 &&
+        folders.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">📖</div>
+            <p className="empty-state-text">
+              Start by creating a folder to group your categories, or create a
+              category directly to begin adding question banks.
+            </p>
+          </div>
+        )}
+
+      {/* Empty folder state */}
+      {visibleCategories.length === 0 &&
+        (categories.length > 0 || banks.length > 0) && (
+          <div className="empty-state" style={{ padding: "2rem" }}>
+            <p className="empty-state-text">
+              {selectedFolderId
+                ? "No categories in this folder yet. Create one or move an existing category here."
+                : "No unfiled categories. Select a folder above or create a new category."}
+            </p>
+          </div>
+        )}
     </div>
   );
 }

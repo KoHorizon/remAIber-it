@@ -10,7 +10,8 @@ import (
 // ── Request / Response types ────────────────────────────────────────────────
 
 type CreateCategoryRequest struct {
-	Name string `json:"name" example:"Golang"`
+	Name     string  `json:"name" example:"Golang"`
+	FolderID *string `json:"folder_id,omitempty" example:"f1o2l3d4e5r6i7d8"`
 }
 
 func (r *CreateCategoryRequest) Validate() error {
@@ -21,16 +22,18 @@ func (r *CreateCategoryRequest) Validate() error {
 }
 
 type CategoryResponse struct {
-	ID      string `json:"id" example:"a1b2c3d4e5f6g7h8"`
-	Name    string `json:"name" example:"Golang"`
-	Mastery int    `json:"mastery" example:"42"`
+	ID       string  `json:"id" example:"a1b2c3d4e5f6g7h8"`
+	Name     string  `json:"name" example:"Golang"`
+	FolderID *string `json:"folder_id,omitempty" example:"f1o2l3d4e5r6i7d8"`
+	Mastery  int     `json:"mastery" example:"42"`
 }
 
 type GetCategoryResponse struct {
-	ID      string         `json:"id" example:"a1b2c3d4e5f6g7h8"`
-	Name    string         `json:"name" example:"Golang"`
-	Mastery int            `json:"mastery" example:"42"`
-	Banks   []BankResponse `json:"banks"`
+	ID       string         `json:"id" example:"a1b2c3d4e5f6g7h8"`
+	Name     string         `json:"name" example:"Golang"`
+	FolderID *string        `json:"folder_id,omitempty" example:"f1o2l3d4e5r6i7d8"`
+	Mastery  int            `json:"mastery" example:"42"`
+	Banks    []BankResponse `json:"banks"`
 }
 
 type UpdateCategoryRequest struct {
@@ -44,6 +47,10 @@ func (r *UpdateCategoryRequest) Validate() error {
 	return nil
 }
 
+type UpdateCategoryFolderRequest struct {
+	FolderID *string `json:"folder_id" example:"f1o2l3d4e5r6i7d8"`
+}
+
 type CategoryStatsResponse struct {
 	CategoryID string `json:"category_id" example:"a1b2c3d4e5f6g7h8"`
 	Mastery    int    `json:"mastery" example:"42"`
@@ -53,13 +60,14 @@ type CategoryStatsResponse struct {
 
 // createCategory creates a new category.
 // @Summary      Create a category
-// @Description  Create a new category for organizing question banks.
+// @Description  Create a new category for organizing question banks. Optionally assign to a folder.
 // @Tags         Categories
 // @Accept       json
 // @Produce      json
 // @Param        body  body      CreateCategoryRequest  true  "Category to create"
 // @Success      201   {object}  CategoryResponse
 // @Failure      400   {object}  map[string]string
+// @Failure      404   {object}  map[string]string  "folder not found"
 // @Failure      500   {object}  map[string]string
 // @Router       /categories [post]
 func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
@@ -69,16 +77,29 @@ func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate folder exists if provided
+	if req.FolderID != nil && *req.FolderID != "" {
+		_, err := h.store.GetFolder(ctx, *req.FolderID)
+		if h.handleStoreError(w, err, "folder") {
+			return
+		}
+	}
+
 	cat := category.New(req.Name)
+	if req.FolderID != nil && *req.FolderID != "" {
+		cat.FolderID = req.FolderID
+	}
+
 	if err := h.store.SaveCategory(ctx, cat); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to save category")
 		return
 	}
 
 	respondJSON(w, http.StatusCreated, CategoryResponse{
-		ID:      cat.ID,
-		Name:    cat.Name,
-		Mastery: 0,
+		ID:       cat.ID,
+		Name:     cat.Name,
+		FolderID: cat.FolderID,
+		Mastery:  0,
 	})
 }
 
@@ -102,9 +123,10 @@ func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
 	for i, cat := range categories {
 		mastery, _ := h.store.GetCategoryMastery(ctx, cat.ID)
 		response[i] = CategoryResponse{
-			ID:      cat.ID,
-			Name:    cat.Name,
-			Mastery: mastery,
+			ID:       cat.ID,
+			Name:     cat.Name,
+			FolderID: cat.FolderID,
+			Mastery:  mastery,
 		}
 	}
 
@@ -152,10 +174,11 @@ func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
 	categoryMastery, _ := h.store.GetCategoryMastery(ctx, categoryID)
 
 	respondJSON(w, http.StatusOK, GetCategoryResponse{
-		ID:      cat.ID,
-		Name:    cat.Name,
-		Mastery: categoryMastery,
-		Banks:   bankResponses,
+		ID:       cat.ID,
+		Name:     cat.Name,
+		FolderID: cat.FolderID,
+		Mastery:  categoryMastery,
+		Banks:    bankResponses,
 	})
 }
 
@@ -180,9 +203,16 @@ func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fetch existing to preserve folder_id
+	existing, err := h.store.GetCategory(ctx, categoryID)
+	if h.handleStoreError(w, err, "category") {
+		return
+	}
+
 	cat := &category.Category{
-		ID:   categoryID,
-		Name: req.Name,
+		ID:       categoryID,
+		Name:     req.Name,
+		FolderID: existing.FolderID,
 	}
 
 	if h.handleStoreError(w, h.store.UpdateCategory(ctx, cat), "category") {
@@ -192,9 +222,54 @@ func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
 	mastery, _ := h.store.GetCategoryMastery(ctx, categoryID)
 
 	respondJSON(w, http.StatusOK, CategoryResponse{
-		ID:      cat.ID,
-		Name:    cat.Name,
-		Mastery: mastery,
+		ID:       cat.ID,
+		Name:     cat.Name,
+		FolderID: cat.FolderID,
+		Mastery:  mastery,
+	})
+}
+
+// updateCategoryFolder moves a category to a different folder.
+// @Summary      Update category folder
+// @Description  Move a category to a different folder (or set to null to unfiled).
+// @Tags         Categories
+// @Accept       json
+// @Produce      json
+// @Param        categoryID  path      string                       true  "Category ID"
+// @Param        body        body      UpdateCategoryFolderRequest   true  "New folder"
+// @Success      200         {object}  CategoryResponse
+// @Failure      400         {object}  map[string]string
+// @Failure      404         {object}  map[string]string
+// @Router       /categories/{categoryID}/folder [patch]
+func (h *Handler) updateCategoryFolder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	categoryID := r.PathValue("categoryID")
+
+	var req UpdateCategoryFolderRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+
+	// Validate folder exists if provided
+	if req.FolderID != nil && *req.FolderID != "" {
+		_, err := h.store.GetFolder(ctx, *req.FolderID)
+		if h.handleStoreError(w, err, "folder") {
+			return
+		}
+	}
+
+	if h.handleStoreError(w, h.store.UpdateCategoryFolder(ctx, categoryID, req.FolderID), "category") {
+		return
+	}
+
+	cat, _ := h.store.GetCategory(ctx, categoryID)
+	mastery, _ := h.store.GetCategoryMastery(ctx, categoryID)
+
+	respondJSON(w, http.StatusOK, CategoryResponse{
+		ID:       cat.ID,
+		Name:     cat.Name,
+		FolderID: cat.FolderID,
+		Mastery:  mastery,
 	})
 }
 
