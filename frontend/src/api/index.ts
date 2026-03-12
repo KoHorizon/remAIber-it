@@ -200,12 +200,20 @@ export async function deleteBank(id: string): Promise<void> {
 export async function addQuestion(
   bankId: string,
   subject: string,
-  expectedAnswer: string
+  expectedAnswer: string,
+  gradingPrompt?: string | null
 ): Promise<Question> {
+  const body: { subject: string; expected_answer: string; grading_prompt?: string } = {
+    subject,
+    expected_answer: expectedAnswer,
+  };
+  if (gradingPrompt) {
+    body.grading_prompt = gradingPrompt;
+  }
   const res = await fetch(`${API_BASE}/banks/${bankId}/questions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ subject, expected_answer: expectedAnswer }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("Failed to add question");
   return res.json();

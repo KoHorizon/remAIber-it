@@ -1,16 +1,123 @@
-.code-editor-container {
+.code-editor-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.code-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.code-editor-tab {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    padding: 0.75rem 0;
+    border-bottom: 2px solid var(--accent);
+}
+
+/* Theme Selector */
+.theme-selector {
+    position: relative;
+}
+
+.theme-selector-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 4px;
+    background: transparent;
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.theme-selector-btn:hover {
+    border-color: var(--accent);
+}
+
+.theme-color-preview {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.theme-current-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* Theme Dropdown */
+.theme-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px 6px 10px 10px;
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+}
+
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: transparent;
+    border: 1.5px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.theme-option:hover {
+    background: var(--bg-elevated);
+}
+
+.theme-option.active {
+    border-color: var(--accent);
+    background: var(--accent-muted);
+}
+
+.theme-color-square {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.theme-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+/* Editor Container */
+.code-editor-container {
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
-    background: #1e1e1e;
+    background: #2d2a24;
 }
 
 .code-editor-container .monaco-editor {
     padding: 0;
-}
-
-.code-editor-container .monaco-editor .margin {
-    background: #1e1e1e;
 }
 
 /* CLI-specific styling */

@@ -47,6 +47,7 @@ type View =
       bankSubject: string;
       bankType: BankType;
       bankLanguage?: string | null;
+      bankGradingPrompt?: string | null;
       returnTo: MainView;
     }
   | {
@@ -83,6 +84,7 @@ function App() {
       bankSubject: string,
       bankType: BankType,
       bankLanguage?: string | null,
+      bankGradingPrompt?: string | null,
       returnTo: MainView = currentMainView
     ) =>
       setView({
@@ -91,6 +93,7 @@ function App() {
         bankSubject,
         bankType,
         bankLanguage,
+        bankGradingPrompt,
         returnTo,
       }),
     toPractice: (
@@ -222,8 +225,8 @@ function App() {
           <BankDetail
             bankId={view.bankId}
             onBack={() => navigate.toMain(view.returnTo)}
-            onAddQuestion={(bankId, subject, bankType, language) =>
-              navigate.toAddQuestion(bankId, subject, bankType, language, view.returnTo)
+            onAddQuestion={(bankId, subject, bankType, language, gradingPrompt) =>
+              navigate.toAddQuestion(bankId, subject, bankType, language, gradingPrompt, view.returnTo)
             }
             onStartPractice={(session, bankId, subject, bankType, language) =>
               navigate.toPractice(
@@ -244,8 +247,9 @@ function App() {
             bankSubject={view.bankSubject}
             bankType={view.bankType}
             bankLanguage={view.bankLanguage}
-            onSave={async (question, answer) => {
-              await api.addQuestion(view.bankId, question, answer);
+            bankGradingPrompt={view.bankGradingPrompt}
+            onSave={async (question, answer, gradingPrompt) => {
+              await api.addQuestion(view.bankId, question, answer, gradingPrompt);
               navigate.toBank(view.bankId, view.returnTo);
             }}
             onCancel={() => navigate.toBank(view.bankId, view.returnTo)}

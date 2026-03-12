@@ -232,6 +232,7 @@ export function PracticeSession({
                   onChange={setAnswer}
                   language={getEditorLanguage()}
                   height="100%"
+                  showThemeSelector
                 />
               )}
             </div>
@@ -264,20 +265,18 @@ export function PracticeSession({
     );
   }
 
-  // Theory mode: Original vertical layout
+  // Theory mode: Split layout like code mode
   return (
-    <div className="practice-session animate-fade-in">
-      <div className="practice-header">
+    <div className="practice-session-split animate-fade-in">
+      {/* Header */}
+      <div className="practice-header-split">
         <div className="practice-meta">
           <span className="practice-subject">{currentBankSubject}</span>
           <span className="practice-count">
             Question {currentIndex + 1} of {questions.length}
           </span>
           {session.focus_on_weak && (
-            <span className="practice-mode">🎯 Focus on weak</span>
-          )}
-          {session.is_multi_bank && (
-            <span className="practice-mode">📚 Multi-bank</span>
+            <span className="practice-mode">Focus mode</span>
           )}
         </div>
         <div className="practice-header-right">
@@ -294,53 +293,70 @@ export function PracticeSession({
         </div>
       </div>
 
+      {/* Progress bar */}
       <div className="progress-bar">
         <div className="progress-fill" style={{ width: `${progress}%` }} />
       </div>
 
-      <div className="practice-content">
-        <div
-          className="question-display animate-slide-up"
-          key={currentQuestion.id}
-        >
-          <h2 className="question-prompt">{currentQuestion.subject}</h2>
+      {/* Split content */}
+      <div className="split-container">
+        {/* Left panel - Question */}
+        <div className="split-panel split-panel-left">
+          <div className="panel-header">
+            <span className="panel-tab active">Description</span>
+          </div>
+          <div className="panel-content">
+            <div className="question-content-split" key={currentQuestion.id}>
+              <div className="question-type-badge">
+                <span>Theory</span>
+              </div>
+              <div className="question-text">
+                <p className="question-paragraph">{currentQuestion.subject}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="answer-section">
-          <label className="input-label" htmlFor="answer">
-            Your Answer
-          </label>
-          <textarea
-            id="answer"
-            className="input textarea answer-input"
-            placeholder="Write your answer from memory..."
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            onKeyDown={handleKeyDown}
-            autoFocus
-          />
-          <p className="answer-hint">Press ⌘+Enter to submit</p>
-        </div>
-
-        <div className="practice-actions">
-          <button
-            className="btn btn-secondary"
-            onClick={handleSkip}
-            disabled={isSubmitting}
-          >
-            Skip
-          </button>
-          <button
-            className="btn btn-primary btn-large"
-            onClick={handleSubmit}
-            disabled={!answer.trim() || isSubmitting}
-          >
-            {isSubmitting
-              ? "Submitting..."
-              : isLastQuestion
-                ? "Submit & See Results"
-                : "Submit & Next"}
-          </button>
+        {/* Right panel - Answer */}
+        <div className="split-panel split-panel-right">
+          <div className="panel-header">
+            <span className="panel-tab active">Your Answer</span>
+          </div>
+          <div className="panel-content panel-content-theory">
+            <textarea
+              className="theory-answer-textarea"
+              placeholder="Write your answer from memory..."
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+            />
+          </div>
+          <div className="panel-footer">
+            <span className="submit-hint">
+              {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to submit
+            </span>
+            <div className="panel-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={handleSkip}
+                disabled={isSubmitting}
+              >
+                Skip
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSubmit}
+                disabled={!answer.trim() || isSubmitting}
+              >
+                {isSubmitting
+                  ? "Submitting..."
+                  : isLastQuestion
+                    ? "Submit & Finish"
+                    : "Next"}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

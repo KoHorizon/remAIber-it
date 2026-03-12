@@ -15,7 +15,8 @@ type Props = {
     bankId: string,
     bankSubject: string,
     bankType: BankType,
-    bankLanguage?: string | null
+    bankLanguage?: string | null,
+    bankGradingPrompt?: string | null
   ) => void;
   onStartPractice: (
     session: Session,
@@ -167,7 +168,7 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
           </button>
           <button
             className="btn btn-secondary"
-            onClick={() => onAddQuestion(bankId, bank.subject, bank.bank_type, bank.language)}
+            onClick={() => onAddQuestion(bankId, bank.subject, bank.bank_type, bank.language, bank.grading_prompt)}
           >
             + Add Question
           </button>

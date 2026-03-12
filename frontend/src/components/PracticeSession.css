@@ -1,6 +1,26 @@
-.practice-session {
-    max-width: 700px;
-    margin: 0 auto;
+/* Theory mode textarea in split layout */
+.panel-content-theory {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.theory-answer-textarea {
+    flex: 1;
+    width: 100%;
+    padding: 1.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    border: none;
+    resize: none;
+    outline: none;
+}
+
+.theory-answer-textarea::placeholder {
+    color: var(--text-muted);
 }
 
 /* Split layout for code mode - FULL WIDTH like LeetCode */
@@ -30,10 +50,12 @@
 }
 
 .practice-header {
-    margin-bottom: 1rem;
+    margin-bottom: 2rem;
     padding: 0;
+    padding-bottom: 1rem;
     background: none;
     border: none;
+    border-bottom: 3px solid var(--accent);
 }
 
 .practice-meta {
@@ -363,6 +385,15 @@
     min-height: 180px;
     font-size: 1rem;
     line-height: 1.7;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.answer-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-muted);
+    outline: none;
 }
 
 .answer-hint {

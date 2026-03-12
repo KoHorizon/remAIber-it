@@ -32,6 +32,7 @@ export type Question = {
   id: string;
   subject: string;
   expected_answer?: string;
+  grading_prompt?: string | null;
   mastery: number;
   times_answered: number;
   times_correct: number;

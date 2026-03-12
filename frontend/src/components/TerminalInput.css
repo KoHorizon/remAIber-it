@@ -1,5 +1,5 @@
 .terminal-input {
-    background: #0d1117;
+    background: #2d2a24;
     border-radius: var(--radius-md);
     overflow: hidden;
     font-family: "SF Mono", "Fira Code", "Consolas", monospace;
@@ -16,8 +16,8 @@
     align-items: center;
     gap: 6px;
     padding: 8px 12px;
-    background: #161b22;
-    border-bottom: 1px solid #30363d;
+    background: #252219;
+    border-bottom: 1px solid #3d3830;
 }
 
 .terminal-input .terminal-dot {
@@ -27,22 +27,22 @@
 }
 
 .terminal-input .terminal-dot.red {
-    background: #ff5f56;
+    background: #e07a5f;
 }
 
 .terminal-input .terminal-dot.yellow {
-    background: #ffbd2e;
+    background: #e9c46a;
 }
 
 .terminal-input .terminal-dot.green {
-    background: #27ca40;
+    background: #81b29a;
 }
 
 .terminal-input .terminal-title {
     margin-left: 8px;
     font-size: 0.75rem;
-    color: #8b949e;
-    font-family: var(--font-body);
+    color: #8a7a68;
+    font-family: var(--font-sans);
 }
 
 .terminal-input-body {
@@ -54,7 +54,7 @@
 }
 
 .terminal-input .terminal-prompt {
-    color: #7ee787;
+    color: #81b29a;
     font-weight: 600;
     user-select: none;
     flex-shrink: 0;
@@ -66,7 +66,7 @@
     background: transparent;
     border: none;
     outline: none;
-    color: #e6edf3;
+    color: #e8e0d4;
     font-family: "SF Mono", "Fira Code", "Consolas", monospace;
     font-size: 0.875rem;
     line-height: 1.6;
@@ -76,5 +76,5 @@
 }
 
 .terminal-textarea::placeholder {
-    color: #6e7681;
+    color: #6b6358;
 }
