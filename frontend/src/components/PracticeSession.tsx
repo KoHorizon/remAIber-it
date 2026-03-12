@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { api, Session, SessionResult, BankType } from "../App";
+import { api } from "../api";
+import type { Session, SessionResult, BankType } from "../types";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalInput } from "./TerminalInput";
 import "./PracticeSession.css";
@@ -68,7 +69,7 @@ export function PracticeSession({
       }
       const results = await api.completeSession(session.id);
       onComplete(results);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to complete session:", err);
       completingRef.current = false;
     }
@@ -90,7 +91,7 @@ export function PracticeSession({
         setAnswer("");
         setCurrentIndex(currentIndex + 1);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to submit answer:", err);
     } finally {
       setIsSubmitting(false);

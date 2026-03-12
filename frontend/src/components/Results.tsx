@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SessionResult, BankType } from "../App";
+import type { SessionResult, BankType } from "../types";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalDisplay } from "./TerminalDisplay";
 import "./Results.css";

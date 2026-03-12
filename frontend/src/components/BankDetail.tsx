@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { api, Bank, Session, Category, BankType } from "../App";
+import { api } from "../api";
+import type { Bank, Session, Category, BankType } from "../types";
+import { getMasteryColor, getMasteryLabel, getBankTypeBadge } from "../utils/mastery";
 import { SessionConfigModal } from "./SessionConfigModal";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalDisplay } from "./TerminalDisplay";
@@ -139,7 +141,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
       ]);
       setBank(bankData);
       setCategories(categoriesData || []);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to load data:", err);
     } finally {
       setIsLoading(false);
@@ -168,7 +170,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
       setNewQuestion("");
       setNewAnswer("");
       setShowAddQuestion(false);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to add question:", err);
     } finally {
       setIsAdding(false);
@@ -183,7 +185,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
       await api.deleteQuestion(bankId, questionId);
       const updatedBank = await api.getBank(bankId);
       setBank(updatedBank);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to delete question:", err);
     } finally {
       setIsDeleting(false);
@@ -214,7 +216,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
         bank.bank_type,
         bank.language,
       );
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to start session:", err);
     } finally {
       setIsStartingSession(false);
@@ -239,7 +241,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
       await api.updateBankGradingPrompt(bankId, trimmed || null);
       setBank({ ...bank, grading_prompt: trimmed || null });
       setShowGradingSettings(false);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to save grading prompt:", err);
     } finally {
       setIsSavingPrompt(false);
@@ -252,21 +254,6 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
     return category?.name || null;
   }
 
-  function getMasteryColor(mastery: number): string {
-    if (mastery >= 80) return "mastery-excellent";
-    if (mastery >= 60) return "mastery-good";
-    if (mastery >= 40) return "mastery-fair";
-    if (mastery > 0) return "mastery-needs-work";
-    return "mastery-none";
-  }
-
-  function getMasteryLabel(mastery: number): string {
-    if (mastery >= 80) return "Mastered";
-    if (mastery >= 60) return "Good";
-    if (mastery >= 40) return "Learning";
-    if (mastery > 0) return "Needs work";
-    return "Not practiced";
-  }
 
   // Render question text with formatting support
   function renderFormattedText(text: string) {
@@ -344,24 +331,9 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
 
   const questions = bank.questions || [];
   const categoryName = getCategoryName();
-  const currentBank = bank;
   const isCodeMode = bank.bank_type === "code" || bank.bank_type === "cli";
 
-  function getBankTypeBadge() {
-    if (currentBank.bank_type === "code") {
-      const langLabel = currentBank.language
-        ? currentBank.language.charAt(0).toUpperCase() +
-          currentBank.language.slice(1)
-        : "Code";
-      return { icon: "💻", label: langLabel, className: "badge-code" };
-    }
-    if (currentBank.bank_type === "cli") {
-      return { icon: "⌨️", label: "CLI", className: "badge-cli" };
-    }
-    return { icon: "📝", label: "Theory", className: "badge-theory" };
-  }
-
-  const typeBadge = getBankTypeBadge();
+  const typeBadge = getBankTypeBadge(bank);
   const bankType = bank.bank_type || "theory";
   const extraTemplates = getAvailableTemplates(bankType);
 

@@ -3,114 +3,35 @@ import { CategoriesList } from "./components/CategoriesList";
 import { BankDetail } from "./components/BankDetail";
 import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
+import { api } from "./api";
+import type {
+  BankType,
+  Session,
+  SessionQuestion,
+  SessionResult,
+} from "./types";
 import "./App.css";
 
-// ── Folder type (NEW) ──────────────────────────────────────────────
-export type Folder = {
-  id: string;
-  name: string;
-  mastery: number;
-};
-
-export type Category = {
-  id: string;
-  name: string;
-  mastery: number;
-  folder_id?: string | null; // ← NEW FIELD
-  banks?: Bank[];
-};
-
-export type BankType = "theory" | "code" | "cli";
-
-export type Bank = {
-  id: string;
-  subject: string;
-  category_id?: string | null;
-  grading_prompt?: string | null;
-  bank_type: BankType;
-  language?: string | null;
-  mastery: number;
-  questions?: Question[];
-};
-
-export type Question = {
-  id: string;
-  subject: string;
-  expected_answer?: string;
-  mastery: number;
-  times_answered: number;
-  times_correct: number;
-};
-
-export type SessionQuestion = {
-  id: string;
-  subject: string;
-  expected_answer?: string;
-};
-
-export type SessionConfig = {
-  max_questions?: number;
-  max_duration_min?: number;
-  focus_on_weak?: boolean;
-  question_ids?: string[]; // For retry functionality
-};
-
-export type Session = {
-  id: string;
-  questions: SessionQuestion[];
-  max_duration_min?: number;
-  focus_on_weak?: boolean;
-};
-
-export type SessionResult = {
-  session_id: string;
-  total_score: number;
-  max_score: number;
-  results: {
-    score: number;
-    covered: string[];
-    missed: string[];
-    user_answer: string;
-  }[];
-};
-
-// Export/Import types
-export type ExportQuestion = {
-  subject: string;
-  expected_answer: string;
-};
-
-export type ExportBank = {
-  subject: string;
-  grading_prompt?: string | null;
-  bank_type: string;
-  language?: string | null;
-  questions: ExportQuestion[];
-};
-
-export type ExportCategory = {
-  name: string;
-  banks: ExportBank[];
-};
-
-export type ExportFolder = {
-  name: string;
-  categories: string[];
-};
-
-export type ExportData = {
-  version: string;
-  exported_at: string;
-  folders?: ExportFolder[];
-  categories: ExportCategory[];
-};
-
-export type ImportResult = {
-  folders_created?: number;
-  categories_created: number;
-  banks_created: number;
-  questions_created: number;
-};
+// Re-export types and api for backward compatibility with existing components
+export type {
+  Folder,
+  Category,
+  Bank,
+  BankType,
+  Question,
+  SessionQuestion,
+  SessionConfig,
+  Session,
+  SessionResult,
+  QuestionResult,
+  ExportQuestion,
+  ExportBank,
+  ExportCategory,
+  ExportFolder,
+  ExportData,
+  ImportResult,
+} from "./types";
+export { api } from "./api";
 
 type View =
   | { type: "home" }
@@ -133,260 +54,6 @@ type View =
       bankLanguage?: string | null;
     };
 
-const API_BASE = "http://localhost:8080";
-
-export const api = {
-  // ── Folders (NEW) ───────────────────────────────────────────────
-  async getFolders(): Promise<Folder[]> {
-    try {
-      const res = await fetch(`${API_BASE}/folders`);
-      if (res.status === 404) return []; // backend doesn't support folders yet
-      if (!res.ok) throw new Error("Failed to fetch folders");
-      return res.json();
-    } catch {
-      return []; // graceful fallback
-    }
-  },
-
-  async getFolder(id: string): Promise<Folder & { categories: Category[] }> {
-    const res = await fetch(`${API_BASE}/folders/${id}`);
-    if (!res.ok) throw new Error("Folder not found");
-    return res.json();
-  },
-
-  async createFolder(name: string): Promise<Folder> {
-    const res = await fetch(`${API_BASE}/folders`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) throw new Error("Failed to create folder");
-    return res.json();
-  },
-
-  async updateFolder(id: string, name: string): Promise<Folder> {
-    const res = await fetch(`${API_BASE}/folders/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) throw new Error("Failed to rename folder");
-    return res.json();
-  },
-
-  async deleteFolder(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/folders/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Failed to delete folder");
-  },
-
-  // ── Category ↔ Folder assignment (NEW) ─────────────────────────
-  async updateCategoryFolder(
-    categoryId: string,
-    folderId: string | null,
-  ): Promise<Category> {
-    const res = await fetch(`${API_BASE}/categories/${categoryId}/folder`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folder_id: folderId }),
-    });
-    if (!res.ok) throw new Error("Failed to update category folder");
-    return res.json();
-  },
-
-  // Categories
-  async getCategories(): Promise<Category[]> {
-    const res = await fetch(`${API_BASE}/categories`);
-    if (!res.ok) throw new Error("Failed to fetch categories");
-    return res.json();
-  },
-
-  async getCategory(id: string): Promise<Category> {
-    const res = await fetch(`${API_BASE}/categories/${id}`);
-    if (!res.ok) throw new Error("Category not found");
-    return res.json();
-  },
-
-  async createCategory(name: string, folderId?: string): Promise<Category> {
-    const body: Record<string, unknown> = { name };
-    if (folderId) body.folder_id = folderId;
-    const res = await fetch(`${API_BASE}/categories`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error("Failed to create category");
-    return res.json();
-  },
-
-  async updateCategory(id: string, name: string): Promise<Category> {
-    const res = await fetch(`${API_BASE}/categories/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) throw new Error("Failed to update category");
-    return res.json();
-  },
-
-  async deleteCategory(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/categories/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Failed to delete category");
-  },
-
-  // Banks
-  async getBanks(): Promise<Bank[]> {
-    const res = await fetch(`${API_BASE}/banks`);
-    if (!res.ok) throw new Error("Failed to fetch banks");
-    return res.json();
-  },
-
-  async getBank(id: string): Promise<Bank> {
-    const res = await fetch(`${API_BASE}/banks/${id}`);
-    if (!res.ok) throw new Error("Bank not found");
-    return res.json();
-  },
-
-  async createBank(
-    subject: string,
-    categoryId?: string,
-    bankType?: BankType,
-    language?: string,
-  ): Promise<Bank> {
-    const res = await fetch(`${API_BASE}/banks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subject,
-        category_id: categoryId || null,
-        bank_type: bankType || "theory",
-        language: language || null,
-      }),
-    });
-    if (!res.ok) throw new Error("Failed to create bank");
-    return res.json();
-  },
-
-  async updateBankCategory(
-    bankId: string,
-    categoryId: string | null,
-  ): Promise<Bank> {
-    const res = await fetch(`${API_BASE}/banks/${bankId}/category`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category_id: categoryId }),
-    });
-    if (!res.ok) throw new Error("Failed to update bank category");
-    return res.json();
-  },
-
-  async updateBankGradingPrompt(
-    bankId: string,
-    gradingPrompt: string | null,
-  ): Promise<Bank> {
-    const res = await fetch(`${API_BASE}/banks/${bankId}/grading-prompt`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grading_prompt: gradingPrompt }),
-    });
-    if (!res.ok) throw new Error("Failed to update grading prompt");
-    return res.json();
-  },
-
-  async deleteBank(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/banks/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Failed to delete bank");
-  },
-
-  // Questions
-  async addQuestion(
-    bankId: string,
-    subject: string,
-    expected_answer: string,
-  ): Promise<Question> {
-    const res = await fetch(`${API_BASE}/banks/${bankId}/questions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, expected_answer }),
-    });
-    if (!res.ok) throw new Error("Failed to add question");
-    return res.json();
-  },
-
-  async deleteQuestion(bankId: string, questionId: string): Promise<void> {
-    const res = await fetch(
-      `${API_BASE}/banks/${bankId}/questions/${questionId}`,
-      {
-        method: "DELETE",
-      },
-    );
-    if (!res.ok) throw new Error("Failed to delete question");
-  },
-
-  // Sessions
-  async createSession(
-    bankId: string,
-    config?: SessionConfig,
-  ): Promise<Session> {
-    const res = await fetch(`${API_BASE}/sessions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        bank_id: bankId,
-        max_questions: config?.max_questions,
-        max_duration_min: config?.max_duration_min,
-        focus_on_weak: config?.focus_on_weak || false,
-        question_ids: config?.question_ids,
-      }),
-    });
-    if (!res.ok) throw new Error("Failed to create session");
-    return res.json();
-  },
-
-  async submitAnswer(
-    sessionId: string,
-    questionId: string,
-    answer: string,
-  ): Promise<void> {
-    const res = await fetch(`${API_BASE}/sessions/${sessionId}/answers`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question_id: questionId, answer }),
-    });
-    if (!res.ok) throw new Error("Failed to submit answer");
-  },
-
-  async completeSession(sessionId: string): Promise<SessionResult> {
-    const res = await fetch(`${API_BASE}/sessions/${sessionId}/complete`, {
-      method: "POST",
-    });
-    if (!res.ok) throw new Error("Failed to complete session");
-    return res.json();
-  },
-
-  // Export/Import
-  async exportAll(): Promise<ExportData> {
-    const res = await fetch(`${API_BASE}/export`);
-    if (!res.ok) throw new Error("Failed to export data");
-    return res.json();
-  },
-
-  async importAll(data: ExportData): Promise<ImportResult> {
-    const res = await fetch(`${API_BASE}/import`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Failed to import data");
-    return res.json();
-  },
-};
-
 function App() {
   const [view, setView] = useState<View>({ type: "home" });
 
@@ -398,7 +65,7 @@ function App() {
       bankId: string,
       bankSubject: string,
       bankType: BankType,
-      bankLanguage?: string | null,
+      bankLanguage?: string | null
     ) =>
       setView({
         type: "practice",
@@ -414,7 +81,7 @@ function App() {
       bankId: string,
       bankSubject: string,
       bankType: BankType,
-      bankLanguage?: string | null,
+      bankLanguage?: string | null
     ) =>
       setView({
         type: "results",
@@ -432,14 +99,14 @@ function App() {
     questionIds: string[],
     bankSubject: string,
     bankType: BankType,
-    bankLanguage?: string | null,
+    bankLanguage?: string | null
   ) {
     try {
       const session = await api.createSession(bankId, {
         question_ids: questionIds,
       });
       navigate.toPractice(session, bankId, bankSubject, bankType, bankLanguage);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to create retry session:", err);
     }
   }
@@ -477,7 +144,7 @@ function App() {
                 view.bankId,
                 view.bankSubject,
                 view.bankType,
-                view.bankLanguage,
+                view.bankLanguage
               )
             }
             onCancel={navigate.toHome}
@@ -497,7 +164,7 @@ function App() {
                 view.questions.map((q) => q.id),
                 view.bankSubject,
                 view.bankType,
-                view.bankLanguage,
+                view.bankLanguage
               )
             }
           />
