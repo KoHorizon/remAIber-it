@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "../api";
 import type { Session, SessionResult, BankType } from "../types";
+import { renderFormattedText } from "../utils/formatText";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalInput } from "./TerminalInput";
 import "./PracticeSession.css";
@@ -129,62 +130,6 @@ export function PracticeSession({
     return bankLanguage || "plaintext";
   }
 
-  // Parse question text to support markdown-like formatting
-  function renderQuestionContent(text: string) {
-    const lines = text.split("\n");
-    const elements: React.ReactNode[] = [];
-    let listItems: string[] = [];
-
-    const flushList = () => {
-      if (listItems.length > 0) {
-        elements.push(
-          <ul key={`list-${elements.length}`} className="question-list">
-            {listItems.map((item, i) => (
-              <li key={i}>{item}</li>
-            ))}
-          </ul>,
-        );
-        listItems = [];
-      }
-    };
-
-    lines.forEach((line, index) => {
-      const trimmed = line.trim();
-
-      // Check for list items (- item or * item)
-      if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-        listItems.push(trimmed.substring(2));
-      } else if (trimmed === "") {
-        flushList();
-        // Add spacing for empty lines
-        elements.push(
-          <div key={`space-${index}`} className="question-spacer" />,
-        );
-      } else {
-        flushList();
-        // Check for code blocks (text wrapped in backticks)
-        const parts = trimmed.split(/(`[^`]+`)/g);
-        const formattedParts = parts.map((part, i) => {
-          if (part.startsWith("`") && part.endsWith("`")) {
-            return (
-              <code key={i} className="inline-code">
-                {part.slice(1, -1)}
-              </code>
-            );
-          }
-          return part;
-        });
-        elements.push(
-          <p key={`p-${index}`} className="question-paragraph">
-            {formattedParts}
-          </p>,
-        );
-      }
-    });
-
-    flushList();
-    return elements;
-  }
 
   if (isCompleting) {
     return (
@@ -246,7 +191,7 @@ export function PracticeSession({
                   )}
                 </div>
                 <div className="question-text">
-                  {renderQuestionContent(currentQuestion.subject)}
+                  {renderFormattedText(currentQuestion.subject)}
                 </div>
               </div>
             </div>

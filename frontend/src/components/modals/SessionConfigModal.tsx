@@ -20,7 +20,7 @@ export function SessionConfigModal({
   const [useTimeLimit, setUseTimeLimit] = useState(false);
   const [focusOnWeak, setFocusOnWeak] = useState(false);
   const [maxQuestions, setMaxQuestions] = useState(
-    Math.min(20, totalQuestions),
+    Math.min(20, totalQuestions)
   );
   const [maxDurationMin, setMaxDurationMin] = useState(10);
 
@@ -106,7 +106,7 @@ export function SessionConfigModal({
                   onClick={() => setMaxQuestions((q) => Math.max(1, q - 1))}
                   disabled={maxQuestions <= 1}
                 >
-                  −
+                  -
                 </button>
                 <input
                   type="number"
@@ -155,7 +155,7 @@ export function SessionConfigModal({
                   onClick={() => setMaxDurationMin((t) => Math.max(1, t - 5))}
                   disabled={maxDurationMin <= 1}
                 >
-                  −
+                  -
                 </button>
                 <input
                   type="number"
@@ -186,14 +186,14 @@ export function SessionConfigModal({
               ? "s"
               : ""}
           </span>
-          <span className="config-summary-dot">·</span>
+          <span className="config-summary-dot">.</span>
           <span>
             {useTimeLimit ? `${maxDurationMin} min` : "No time limit"}
           </span>
           {focusOnWeak && (
             <>
-              <span className="config-summary-dot">·</span>
-              <span className="config-summary-focus">🎯 Weak focus</span>
+              <span className="config-summary-dot">.</span>
+              <span className="config-summary-focus">Weak focus</span>
             </>
           )}
         </div>
