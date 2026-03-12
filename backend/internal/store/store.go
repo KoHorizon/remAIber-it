@@ -55,11 +55,13 @@ type Store interface {
 	DeleteQuestion(ctx context.Context, id string) error
 	GetQuestionStatsByBank(ctx context.Context, bankID string) ([]questionbank.QuestionStats, error)
 	GetQuestionsOrderedByMastery(ctx context.Context, bankID string, ascending bool) ([]questionbank.Question, error)
+	GetWeakQuestionsAcrossBanks(ctx context.Context, bankIDs []string, maxPerBank int) ([]QuestionWithBank, error)
 
 	// Sessions
 	SaveSession(ctx context.Context, session *practicesession.PracticeSession) error
 	GetSession(ctx context.Context, id string) (*practicesession.PracticeSession, error)
 	CompleteSession(ctx context.Context, id string) error
+	GetSessionQuestionBankID(ctx context.Context, sessionID, questionID string) (string, error)
 
 	// Grades
 	SaveGrade(ctx context.Context, sessionID string, questionID string, score int, covered, missed []string, userAnswer string) error
@@ -84,4 +86,13 @@ type StoredGrade struct {
 	Missed     []string
 	UserAnswer string
 	Status     GradeStatus
+}
+
+// QuestionWithBank holds a question along with its bank ID and mastery score
+type QuestionWithBank struct {
+	ID             string
+	Subject        string
+	ExpectedAnswer string
+	BankID         string
+	Mastery        int
 }

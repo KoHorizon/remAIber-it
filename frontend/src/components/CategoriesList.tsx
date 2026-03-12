@@ -256,40 +256,48 @@ export function CategoriesList({ onSelectBank }: Props) {
       )}
 
       {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header-row">
-          <div>
-            <h1>Your Learning Library</h1>
-            <p className="page-subtitle">
-              {categories.length === 0 && banks.length === 0
-                ? "Create categories to organize your question banks"
-                : `${folders.length > 0 ? `${folders.length} folder${folders.length !== 1 ? "s" : ""}, ` : ""}${categories.length} categor${categories.length !== 1 ? "ies" : "y"}, ${banks.length} bank${banks.length !== 1 ? "s" : ""}`}
-            </p>
-          </div>
-          <div className="header-actions">
-            <button
-              className="btn btn-ghost"
-              onClick={handleImportClick}
-              disabled={isImporting}
-              title="Import from file"
-            >
-              {isImporting ? "Importing..." : "Import"}
-            </button>
-            <button
-              className="btn btn-ghost"
-              onClick={handleExport}
-              disabled={isExporting || (categories.length === 0 && banks.length === 0)}
-              title="Export all data"
-            >
-              {isExporting ? "Exporting..." : "Export"}
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowCreateCategory(true)}
-            >
-              + Category
-            </button>
-          </div>
+      <div className="library-header">
+        <div className="library-header-left">
+          <h1 className="library-title">Library</h1>
+          <span className="library-stats">
+            {categories.length === 0 && banks.length === 0
+              ? "No content yet"
+              : `${categories.length} categor${categories.length !== 1 ? "ies" : "y"}, ${banks.length} bank${banks.length !== 1 ? "s" : ""}`}
+          </span>
+        </div>
+        <div className="library-actions">
+          <button
+            className="btn btn-ghost btn-icon-text"
+            onClick={handleImportClick}
+            disabled={isImporting}
+            title="Import from file"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            {isImporting ? "..." : "Import"}
+          </button>
+          <button
+            className="btn btn-ghost btn-icon-text"
+            onClick={handleExport}
+            disabled={isExporting || (categories.length === 0 && banks.length === 0)}
+            title="Export all data"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {isExporting ? "..." : "Export"}
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowCreateCategory(true)}
+          >
+            + Category
+          </button>
         </div>
       </div>
 

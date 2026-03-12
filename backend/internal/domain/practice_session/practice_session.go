@@ -17,12 +17,13 @@ const (
 
 // PracticeSession is the main domain entity for a practice session.
 type PracticeSession struct {
-	ID             string
-	QuestionBankId string
-	Questions      []questionbank.Question
-	MaxDuration    *int          // Duration in minutes (optional)
-	FocusOnWeak    bool          // Whether this session focuses on weak questions
-	Status         SessionStatus // active or completed
+	ID              string
+	QuestionBankId  string                  // Primary bank ID (for single-bank sessions)
+	QuestionBankMap map[string]string       // Maps question_id -> bank_id (for multi-bank sessions)
+	Questions       []questionbank.Question
+	MaxDuration     *int          // Duration in minutes (optional)
+	FocusOnWeak     bool          // Whether this session focuses on weak questions
+	Status          SessionStatus // active or completed
 }
 
 // New creates a practice session with all questions from the bank (randomized).
@@ -83,6 +84,41 @@ func NewWithSpecificQuestions(bank *questionbank.QuestionBank, questions []quest
 		MaxDuration:    maxDurationMin,
 		FocusOnWeak:    false, // Retry doesn't use focus on weak
 		Status:         SessionStatusActive,
+	}
+}
+
+// QuestionWithBankID represents a question along with its source bank ID.
+type QuestionWithBankID struct {
+	Question questionbank.Question
+	BankID   string
+}
+
+// NewMultiBankSession creates a practice session from questions from multiple banks.
+// Used for quick practice across weak banks.
+func NewMultiBankSession(questionsWithBanks []QuestionWithBankID, config SessionConfig) *PracticeSession {
+	questions := make([]questionbank.Question, len(questionsWithBanks))
+	bankMap := make(map[string]string)
+
+	for i, qwb := range questionsWithBanks {
+		questions[i] = qwb.Question
+		bankMap[qwb.Question.ID] = qwb.BankID
+	}
+
+	var maxDurationMin *int
+	if config.MaxDuration != nil {
+		mins := int(config.MaxDuration.Minutes())
+		maxDurationMin = &mins
+	}
+
+	// Use "multi" as a marker for multi-bank sessions
+	return &PracticeSession{
+		ID:              id.GenerateID(),
+		QuestionBankId:  "multi",
+		QuestionBankMap: bankMap,
+		Questions:       questions,
+		MaxDuration:     maxDurationMin,
+		FocusOnWeak:     true,
+		Status:          SessionStatusActive,
 	}
 }
 

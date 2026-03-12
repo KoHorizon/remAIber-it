@@ -27,6 +27,7 @@
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
     --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.6);
     --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --sidebar-width: 220px;
 }
 
 *:not(ol):not(ul) {
@@ -62,55 +63,40 @@ body::before {
     z-index: 0;
 }
 
+/* App Layout */
 .app {
     position: relative;
     z-index: 1;
     min-height: 100vh;
+}
+
+.app-with-sidebar {
+    display: flex;
+}
+
+.app-fullscreen {
     display: flex;
     flex-direction: column;
-}
-
-/* Header */
-.header {
-    padding: 1.25rem 2rem;
-    border-bottom: 1px solid var(--border-subtle);
-    background: rgba(10, 10, 11, 0.8);
-    backdrop-filter: blur(12px);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-}
-
-.logo-icon {
-    font-size: 1.5rem;
-    color: var(--accent);
-    filter: drop-shadow(0 0 8px var(--accent-glow));
-}
-
-.logo-text {
-    font-family: var(--font-logo);
-    font-size: 1.375rem;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
 }
 
 /* Main content */
 .main-content {
     flex: 1;
-    padding: 2.5rem 2rem 4rem;
-    max-width: 900px;
+    padding: 2rem;
+    max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+}
+
+.app-with-sidebar .main-content {
+    margin-left: var(--sidebar-width);
+    padding: 2rem 2.5rem;
+}
+
+.main-fullscreen {
+    margin-left: 0;
+    padding: 0;
+    max-width: 100%;
 }
 
 /* Typography */
@@ -482,13 +468,18 @@ h3 {
 }
 
 /* Responsive */
-@media (max-width: 640px) {
-    .header {
-        padding: 1rem 1.25rem;
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 0;
+    }
+
+    .app-with-sidebar .main-content {
+        margin-left: 0;
+        padding: 1.5rem 1rem 6rem; /* Extra bottom padding for mobile nav */
     }
 
     .main-content {
-        padding: 1.5rem 1.25rem 3rem;
+        padding: 1.5rem 1rem 3rem;
     }
 
     h1 {
@@ -505,8 +496,10 @@ h3 {
     }
 }
 
+/* Full width for code mode results */
 .main-content:has(.results-code-mode) {
     max-width: 100%;
     width: 100%;
     padding: 0;
+    margin-left: 0;
 }

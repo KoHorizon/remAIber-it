@@ -37,7 +37,15 @@ export function PracticeSession({
   const isLastQuestion = currentIndex === questions.length - 1;
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
-  const isCodeMode = bankType === "code" || bankType === "cli";
+  // For multi-bank sessions, get the current question's bank type
+  const currentBankType = session.is_multi_bank && currentQuestion.bank_type
+    ? currentQuestion.bank_type as BankType
+    : bankType;
+  const currentBankSubject = session.is_multi_bank && currentQuestion.bank_subject
+    ? currentQuestion.bank_subject
+    : bankSubject;
+
+  const isCodeMode = currentBankType === "code" || currentBankType === "cli";
 
   // Timer effect
   useEffect(() => {
@@ -126,7 +134,7 @@ export function PracticeSession({
   }
 
   function getEditorLanguage(): string {
-    if (bankType === "cli") return "shell";
+    if (currentBankType === "cli") return "shell";
     return bankLanguage || "plaintext";
   }
 
@@ -149,12 +157,15 @@ export function PracticeSession({
         {/* Header */}
         <div className="practice-header-split">
           <div className="practice-meta">
-            <span className="practice-subject">{bankSubject}</span>
+            <span className="practice-subject">{currentBankSubject}</span>
             <span className="practice-count">
               Question {currentIndex + 1} of {questions.length}
             </span>
             {session.focus_on_weak && (
               <span className="practice-mode">🎯 Focus on weak</span>
+            )}
+            {session.is_multi_bank && (
+              <span className="practice-mode">📚 Multi-bank</span>
             )}
           </div>
           <div className="practice-header-right">
@@ -185,8 +196,8 @@ export function PracticeSession({
             <div className="panel-content">
               <div className="question-content-split animate-slide-up">
                 <div className="question-type-badge">
-                  {bankType === "code" ? "💻" : "⌨️"} {bankType.toUpperCase()}
-                  {bankType === "code" && bankLanguage && (
+                  {currentBankType === "code" ? "💻" : "⌨️"} {currentBankType.toUpperCase()}
+                  {currentBankType === "code" && bankLanguage && (
                     <span className="language-badge">{bankLanguage}</span>
                   )}
                 </div>
@@ -204,11 +215,11 @@ export function PracticeSession({
           <div className="split-panel split-panel-right">
             <div className="panel-header">
               <span className="panel-tab active">
-                {bankType === "code" ? "Code" : "Terminal"}
+                {currentBankType === "code" ? "Code" : "Terminal"}
               </span>
             </div>
             <div className="panel-content panel-content-editor">
-              {bankType === "cli" ? (
+              {currentBankType === "cli" ? (
                 <TerminalInput
                   value={answer}
                   onChange={setAnswer}
@@ -258,12 +269,15 @@ export function PracticeSession({
     <div className="practice-session animate-fade-in">
       <div className="practice-header">
         <div className="practice-meta">
-          <span className="practice-subject">{bankSubject}</span>
+          <span className="practice-subject">{currentBankSubject}</span>
           <span className="practice-count">
             Question {currentIndex + 1} of {questions.length}
           </span>
           {session.focus_on_weak && (
             <span className="practice-mode">🎯 Focus on weak</span>
+          )}
+          {session.is_multi_bank && (
+            <span className="practice-mode">📚 Multi-bank</span>
           )}
         </div>
         <div className="practice-header-right">

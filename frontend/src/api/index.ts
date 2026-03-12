@@ -263,6 +263,44 @@ export async function completeSession(sessionId: string): Promise<SessionResult>
   return res.json();
 }
 
+// Quick Practice (multi-bank session)
+
+export type QuickSessionConfig = {
+  bank_ids: string[];
+  max_per_bank?: number;
+  max_duration_min?: number;
+};
+
+export type QuickSessionQuestion = {
+  id: string;
+  subject: string;
+  expected_answer: string;
+  bank_id: string;
+  bank_subject: string;
+  bank_type: string;
+};
+
+export type QuickSession = {
+  id: string;
+  status: string;
+  questions: QuickSessionQuestion[];
+  focus_on_weak: boolean;
+  is_multi_bank: boolean;
+  max_duration_min?: number;
+};
+
+export async function createQuickSession(
+  config: QuickSessionConfig
+): Promise<QuickSession> {
+  const res = await fetch(`${API_BASE}/sessions/quick`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) throw new Error("Failed to create quick session");
+  return res.json();
+}
+
 // Export/Import
 
 export async function exportAll(): Promise<ExportData> {
@@ -303,6 +341,7 @@ export const api = {
   addQuestion,
   deleteQuestion,
   createSession,
+  createQuickSession,
   submitAnswer,
   completeSession,
   exportAll,

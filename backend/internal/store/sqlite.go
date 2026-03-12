@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS session_questions (
     question_subject TEXT NOT NULL,
     expected_answer TEXT NOT NULL,
     position INTEGER NOT NULL,
+    bank_id TEXT,
     PRIMARY KEY (session_id, question_id),
     FOREIGN KEY (session_id) REFERENCES sessions(id)
 );
@@ -109,6 +110,9 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	if err := migrateForFolders(db); err != nil {
 		return nil, err
 	}
+
+	// Add bank_id to session_questions for cross-bank sessions
+	_ = addColumnIfNotExists(db, "session_questions", "bank_id", "TEXT")
 
 	// Ensure only one grade per question per session.
 	_, _ = db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_grades_session_question ON grades (session_id, question_id)")
@@ -510,9 +514,16 @@ func (s *SQLiteStore) SaveSession(ctx context.Context, session *practicesession.
 	}
 
 	for i, q := range session.Questions {
+		// Get bank_id from QuestionBankMap if available, otherwise use session's QuestionBankId
+		bankID := session.QuestionBankId
+		if session.QuestionBankMap != nil {
+			if bid, ok := session.QuestionBankMap[q.ID]; ok {
+				bankID = bid
+			}
+		}
 		_, err = tx.ExecContext(ctx,
-			"INSERT INTO session_questions (session_id, question_id, question_subject, expected_answer, position) VALUES (?, ?, ?, ?, ?)",
-			session.ID, q.ID, q.Subject, q.ExpectedAnswer, i,
+			"INSERT INTO session_questions (session_id, question_id, question_subject, expected_answer, position, bank_id) VALUES (?, ?, ?, ?, ?, ?)",
+			session.ID, q.ID, q.Subject, q.ExpectedAnswer, i, bankID,
 		)
 		if err != nil {
 			return err
@@ -782,6 +793,71 @@ func (s *SQLiteStore) GetCategoryMastery(ctx context.Context, categoryID string)
 		return 0, nil
 	}
 	return int(mastery.Float64), nil
+}
+
+// GetWeakQuestionsAcrossBanks returns weak questions from multiple banks, sorted by mastery ascending
+func (s *SQLiteStore) GetWeakQuestionsAcrossBanks(ctx context.Context, bankIDs []string, maxPerBank int) ([]QuestionWithBank, error) {
+	if len(bankIDs) == 0 {
+		return nil, nil
+	}
+
+	// Build placeholders for IN clause
+	placeholders := make([]string, len(bankIDs))
+	args := make([]interface{}, len(bankIDs))
+	for i, id := range bankIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := `
+		WITH ranked AS (
+			SELECT q.id, q.subject, q.expected_answer, q.bank_id, COALESCE(qs.mastery, 0) as mastery,
+			       ROW_NUMBER() OVER (PARTITION BY q.bank_id ORDER BY COALESCE(qs.mastery, 0) ASC) as rn
+			FROM questions q
+			LEFT JOIN question_stats qs ON q.id = qs.question_id
+			WHERE q.bank_id IN (` + strings.Join(placeholders, ",") + `)
+		)
+		SELECT id, subject, expected_answer, bank_id, mastery
+		FROM ranked
+		WHERE rn <= ?
+		ORDER BY mastery ASC
+	`
+	args = append(args, maxPerBank)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []QuestionWithBank
+	for rows.Next() {
+		var q QuestionWithBank
+		if err := rows.Scan(&q.ID, &q.Subject, &q.ExpectedAnswer, &q.BankID, &q.Mastery); err != nil {
+			return nil, err
+		}
+		results = append(results, q)
+	}
+	return results, nil
+}
+
+// GetSessionQuestionBankID returns the bank_id for a specific question in a session
+func (s *SQLiteStore) GetSessionQuestionBankID(ctx context.Context, sessionID, questionID string) (string, error) {
+	var bankID sql.NullString
+	err := s.db.QueryRowContext(ctx,
+		"SELECT COALESCE(sq.bank_id, s.bank_id) FROM session_questions sq JOIN sessions s ON sq.session_id = s.id WHERE sq.session_id = ? AND sq.question_id = ?",
+		sessionID, questionID,
+	).Scan(&bankID)
+	if err == sql.ErrNoRows {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	if bankID.Valid {
+		return bankID.String, nil
+	}
+	return "", nil
 }
 
 // GetQuestionsOrderedByMastery returns questions sorted by mastery (lowest first for weak focus)
