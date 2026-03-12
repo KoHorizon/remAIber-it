@@ -3,7 +3,7 @@ import { api } from "../api";
 import type { Bank, Session, Category, BankType } from "../types";
 import { getMasteryColor, getMasteryLabel, getBankTypeBadge } from "../utils/mastery";
 import { renderFormattedText } from "../utils/formatText";
-import { SessionConfigModal, AddQuestionModal, GradingSettingsModal } from "./modals";
+import { SessionConfigModal, GradingSettingsModal } from "./modals";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalDisplay } from "./TerminalDisplay";
 import "./BankDetail.css";
@@ -11,6 +11,12 @@ import "./BankDetail.css";
 type Props = {
   bankId: string;
   onBack: () => void;
+  onAddQuestion: (
+    bankId: string,
+    bankSubject: string,
+    bankType: BankType,
+    bankLanguage?: string | null
+  ) => void;
   onStartPractice: (
     session: Session,
     bankId: string,
@@ -20,11 +26,10 @@ type Props = {
   ) => void;
 };
 
-export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
+export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: Props) {
   const [bank, setBank] = useState<Bank | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [showSessionConfig, setShowSessionConfig] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showGradingSettings, setShowGradingSettings] = useState(false);
@@ -49,18 +54,6 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }
-
-  async function handleAddQuestion(question: string, answer: string) {
-    const newQuestion = await api.addQuestion(bankId, question, answer);
-    setBank((prev) =>
-      prev
-        ? {
-            ...prev,
-            questions: [...(prev.questions || []), newQuestion],
-          }
-        : null
-    );
   }
 
   async function handleDeleteQuestion(questionId: string) {
@@ -174,7 +167,7 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
           </button>
           <button
             className="btn btn-secondary"
-            onClick={() => setShowAddQuestion(true)}
+            onClick={() => onAddQuestion(bankId, bank.subject, bank.bank_type, bank.language)}
           >
             + Add Question
           </button>
@@ -194,15 +187,6 @@ export function BankDetail({ bankId, onBack, onStartPractice }: Props) {
           totalQuestions={questions.length}
           onStart={handleStartSession}
           onCancel={() => setShowSessionConfig(false)}
-        />
-      )}
-
-      {showAddQuestion && (
-        <AddQuestionModal
-          bankType={bank.bank_type}
-          bankLanguage={bank.language}
-          onClose={() => setShowAddQuestion(false)}
-          onAdd={handleAddQuestion}
         />
       )}
 

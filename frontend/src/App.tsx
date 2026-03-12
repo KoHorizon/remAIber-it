@@ -3,6 +3,7 @@ import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
 import { CategoriesList } from "./components/CategoriesList";
 import { BankDetail } from "./components/BankDetail";
+import { AddQuestionView } from "./components/AddQuestionView";
 import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
 import { api } from "./api";
@@ -41,6 +42,14 @@ type View =
   | { type: "main"; mainView: MainView }
   | { type: "bank"; bankId: string; returnTo: MainView }
   | {
+      type: "addQuestion";
+      bankId: string;
+      bankSubject: string;
+      bankType: BankType;
+      bankLanguage?: string | null;
+      returnTo: MainView;
+    }
+  | {
       type: "practice";
       session: Session;
       bankId: string;
@@ -69,6 +78,21 @@ function App() {
     toMain: (mainView: MainView) => setView({ type: "main", mainView }),
     toBank: (bankId: string, returnTo: MainView = currentMainView) =>
       setView({ type: "bank", bankId, returnTo }),
+    toAddQuestion: (
+      bankId: string,
+      bankSubject: string,
+      bankType: BankType,
+      bankLanguage?: string | null,
+      returnTo: MainView = currentMainView
+    ) =>
+      setView({
+        type: "addQuestion",
+        bankId,
+        bankSubject,
+        bankType,
+        bankLanguage,
+        returnTo,
+      }),
     toPractice: (
       session: Session,
       bankId: string,
@@ -164,8 +188,8 @@ function App() {
     }
   }
 
-  // Check if we're in a full-screen view (practice/results)
-  const isFullScreen = view.type === "practice" || view.type === "results";
+  // Check if we're in a full-screen view (practice/results/addQuestion)
+  const isFullScreen = view.type === "practice" || view.type === "results" || view.type === "addQuestion";
 
   return (
     <div className={`app ${isFullScreen ? "app-fullscreen" : "app-with-sidebar"}`}>
@@ -198,6 +222,9 @@ function App() {
           <BankDetail
             bankId={view.bankId}
             onBack={() => navigate.toMain(view.returnTo)}
+            onAddQuestion={(bankId, subject, bankType, language) =>
+              navigate.toAddQuestion(bankId, subject, bankType, language, view.returnTo)
+            }
             onStartPractice={(session, bankId, subject, bankType, language) =>
               navigate.toPractice(
                 session,
@@ -208,6 +235,20 @@ function App() {
                 view.returnTo
               )
             }
+          />
+        )}
+
+        {/* Add Question (Full Page) */}
+        {view.type === "addQuestion" && (
+          <AddQuestionView
+            bankSubject={view.bankSubject}
+            bankType={view.bankType}
+            bankLanguage={view.bankLanguage}
+            onSave={async (question, answer) => {
+              await api.addQuestion(view.bankId, question, answer);
+              navigate.toBank(view.bankId, view.returnTo);
+            }}
+            onCancel={() => navigate.toBank(view.bankId, view.returnTo)}
           />
         )}
 

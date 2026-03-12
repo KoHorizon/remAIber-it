@@ -1,13 +1,20 @@
 import { useState, useEffect } from "react";
 import { api } from "../api";
 import type { Bank, Category } from "../types";
-import { getMasteryColor } from "../utils/mastery";
 import "./Dashboard.css";
 
 type Props = {
   onSelectBank: (bankId: string) => void;
   onQuickPractice: (bankIds: string[]) => void;
 };
+
+function getMasteryLevel(mastery: number): string {
+  if (mastery >= 80) return "excellent";
+  if (mastery >= 60) return "good";
+  if (mastery >= 40) return "fair";
+  if (mastery > 0) return "needs-work";
+  return "none";
+}
 
 export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -43,34 +50,38 @@ export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
     ? Math.round(banks.reduce((sum, b) => sum + b.mastery, 0) / banks.length)
     : 0;
 
-  // Get weak banks (mastery < 50%)
-  const weakBanks = banks
+  // Banks that need attention (mastery < 50%)
+  const needsAttention = banks
     .filter((b) => b.mastery < 50 && (b.questions?.length || 0) > 0)
     .sort((a, b) => a.mastery - b.mastery)
-    .slice(0, 4);
+    .slice(0, 5);
 
-  // Get banks with questions for quick practice
-  const practiceableBanks = banks.filter((b) => (b.questions?.length || 0) > 0);
-
-  // Get recently practiced (from localStorage or just show banks with progress)
+  // Recent / in progress (has some mastery)
   const recentBanks = banks
     .filter((b) => b.mastery > 0)
     .sort((a, b) => b.mastery - a.mastery)
-    .slice(0, 4);
+    .slice(0, 5);
+
+  // Banks with questions for quick practice
+  const practiceableBanks = banks.filter((b) => (b.questions?.length || 0) > 0);
 
   function handleQuickPractice() {
-    if (weakBanks.length > 0) {
-      onQuickPractice(weakBanks.map((b) => b.id));
+    if (needsAttention.length > 0) {
+      onQuickPractice(needsAttention.map((b) => b.id));
     } else if (practiceableBanks.length > 0) {
       onQuickPractice([practiceableBanks[0].id]);
     }
   }
 
   function getCategoryName(categoryId: string | null | undefined): string {
-    if (!categoryId) return "";
+    if (!categoryId) return "Uncategorized";
     const category = categories.find((c) => c.id === categoryId);
-    return category?.name || "";
+    return category?.name || "Uncategorized";
   }
+
+  // Progress ring calculation
+  const circumference = 2 * Math.PI * 22; // radius = 22
+  const strokeDashoffset = circumference - (overallMastery / 100) * circumference;
 
   if (isLoading) {
     return (
@@ -84,175 +95,211 @@ export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
 
   return (
     <div className="dashboard">
-      {/* Stats Row */}
-      <div className="dashboard-stats">
-        <div className="stat-card stat-card-primary">
-          <div className="stat-card-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 6v6l4 2" />
-            </svg>
+      {/* Header */}
+      <div className="dashboard-header">
+        <h1 className="dashboard-greeting">Overview</h1>
+        <p className="dashboard-subtitle">
+          {hasContent
+            ? `You have ${banks.length} question bank${banks.length !== 1 ? "s" : ""} with ${totalQuestions} questions`
+            : "Get started by creating your first question bank"}
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="stats-grid">
+        {/* Overall Mastery with ring */}
+        <div className="stat-card">
+          <div className="stat-card-mastery">
+            <div className="mastery-ring-container">
+              <svg className="mastery-ring" width="56" height="56" viewBox="0 0 56 56">
+                <circle
+                  className="mastery-ring-bg"
+                  cx="28"
+                  cy="28"
+                  r="22"
+                />
+                <circle
+                  className={`mastery-ring-fill ${getMasteryLevel(overallMastery)}`}
+                  cx="28"
+                  cy="28"
+                  r="22"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                />
+              </svg>
+              <span className="mastery-ring-value">{overallMastery}%</span>
+            </div>
+            <div>
+              <div className="stat-card-label">Overall Mastery</div>
+              <div className="stat-card-sub">
+                {overallMastery >= 70 ? "Great progress!" : overallMastery > 0 ? "Keep practicing" : "Start learning"}
+              </div>
+            </div>
           </div>
-          <div className="stat-card-content">
-            <span className="stat-card-value">{overallMastery}%</span>
-            <span className="stat-card-label">Overall Mastery</span>
-          </div>
-          <div className={`stat-card-ring ${getMasteryColor(overallMastery)}`} />
         </div>
 
+        {/* Question Banks */}
         <div className="stat-card">
-          <div className="stat-card-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-            </svg>
-          </div>
-          <div className="stat-card-content">
-            <span className="stat-card-value">{banks.length}</span>
-            <span className="stat-card-label">Question Banks</span>
-          </div>
+          <div className="stat-card-label">Question Banks</div>
+          <div className="stat-card-value">{banks.length}</div>
+          <div className="stat-card-sub">{practiceableBanks.length} with questions</div>
         </div>
 
+        {/* Total Questions */}
         <div className="stat-card">
-          <div className="stat-card-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          </div>
-          <div className="stat-card-content">
-            <span className="stat-card-value">{totalQuestions}</span>
-            <span className="stat-card-label">Total Questions</span>
-          </div>
+          <div className="stat-card-label">Total Questions</div>
+          <div className="stat-card-value">{totalQuestions}</div>
+          <div className="stat-card-sub">across all banks</div>
         </div>
 
+        {/* Categories */}
         <div className="stat-card">
-          <div className="stat-card-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-          </div>
-          <div className="stat-card-content">
-            <span className="stat-card-value">{categories.length}</span>
-            <span className="stat-card-label">Categories</span>
-          </div>
+          <div className="stat-card-label">Categories</div>
+          <div className="stat-card-value">{categories.length}</div>
+          <div className="stat-card-sub">for organization</div>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Practice */}
       {hasContent && (
-        <div className="dashboard-quick-actions">
+        <div className="quick-practice-section">
           <button
-            className="quick-action-btn quick-action-primary"
+            className="quick-practice-btn"
             onClick={handleQuickPractice}
             disabled={practiceableBanks.length === 0}
           >
-            <span className="quick-action-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <div className="quick-practice-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
-            </span>
-            <span className="quick-action-text">
-              <span className="quick-action-title">Quick Practice</span>
-              <span className="quick-action-desc">
-                {weakBanks.length > 0
-                  ? `Focus on ${weakBanks.length} weak area${weakBanks.length !== 1 ? "s" : ""}`
-                  : "Start a random session"}
-              </span>
-            </span>
+            </div>
+            <div className="quick-practice-content">
+              <div className="quick-practice-title">Quick Practice</div>
+              <div className="quick-practice-desc">
+                {needsAttention.length > 0
+                  ? `Review ${needsAttention.length} weak bank${needsAttention.length !== 1 ? "s" : ""}`
+                  : practiceableBanks.length > 0
+                    ? "Start a practice session"
+                    : "Add questions to get started"}
+              </div>
+            </div>
+            <div className="quick-practice-arrow">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </div>
           </button>
         </div>
       )}
 
-      {/* Main Content Grid */}
-      <div className="dashboard-grid">
-        {/* Weak Areas */}
-        {weakBanks.length > 0 && (
-          <section className="dashboard-section">
+      {/* Content Sections */}
+      {hasContent && (
+        <div className="dashboard-sections">
+          {/* Needs Attention */}
+          <div className="dashboard-section">
             <div className="section-header">
               <h2 className="section-title">
-                <span className="section-icon section-icon-warning">!</span>
-                Needs Attention
-              </h2>
-              <span className="section-badge">{weakBanks.length}</span>
-            </div>
-            <div className="bank-list">
-              {weakBanks.map((bank) => (
-                <button
-                  key={bank.id}
-                  className="bank-list-item"
-                  onClick={() => onSelectBank(bank.id)}
-                >
-                  <div className="bank-list-info">
-                    <span className="bank-list-name">{bank.subject}</span>
-                    <span className="bank-list-category">
-                      {getCategoryName(bank.category_id)}
-                    </span>
-                  </div>
-                  <div className={`bank-list-mastery ${getMasteryColor(bank.mastery)}`}>
-                    {bank.mastery}%
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Recent / In Progress */}
-        {recentBanks.length > 0 && (
-          <section className="dashboard-section">
-            <div className="section-header">
-              <h2 className="section-title">
-                <span className="section-icon section-icon-accent">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <span className="section-icon warning">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v6l4 2" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
                 </span>
-                Continue Learning
+                Needs Review
+              </h2>
+              {needsAttention.length > 0 && (
+                <span className="section-count">{needsAttention.length}</span>
+              )}
+            </div>
+            {needsAttention.length > 0 ? (
+              <div className="bank-list">
+                {needsAttention.map((bank) => (
+                  <button
+                    key={bank.id}
+                    className="bank-item"
+                    onClick={() => onSelectBank(bank.id)}
+                  >
+                    <div className="bank-item-info">
+                      <div className="bank-item-name">{bank.subject}</div>
+                      <div className="bank-item-meta">
+                        {getCategoryName(bank.category_id)}
+                      </div>
+                    </div>
+                    <span className={`bank-item-mastery ${getMasteryLevel(bank.mastery)}`}>
+                      {bank.mastery}%
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="section-empty">
+                All caught up! No banks need review.
+              </div>
+            )}
+          </div>
+
+          {/* Continue Learning */}
+          <div className="dashboard-section">
+            <div className="section-header">
+              <h2 className="section-title">
+                <span className="section-icon accent">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                </span>
+                In Progress
               </h2>
             </div>
-            <div className="bank-list">
-              {recentBanks.map((bank) => (
-                <button
-                  key={bank.id}
-                  className="bank-list-item"
-                  onClick={() => onSelectBank(bank.id)}
-                >
-                  <div className="bank-list-info">
-                    <span className="bank-list-name">{bank.subject}</span>
-                    <span className="bank-list-category">
-                      {getCategoryName(bank.category_id)}
+            {recentBanks.length > 0 ? (
+              <div className="bank-list">
+                {recentBanks.map((bank) => (
+                  <button
+                    key={bank.id}
+                    className="bank-item"
+                    onClick={() => onSelectBank(bank.id)}
+                  >
+                    <div className="bank-item-info">
+                      <div className="bank-item-name">{bank.subject}</div>
+                      <div className="bank-item-meta">
+                        {getCategoryName(bank.category_id)}
+                      </div>
+                    </div>
+                    <span className={`bank-item-mastery ${getMasteryLevel(bank.mastery)}`}>
+                      {bank.mastery}%
                     </span>
-                  </div>
-                  <div className={`bank-list-mastery ${getMasteryColor(bank.mastery)}`}>
-                    {bank.mastery}%
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="section-empty">
+                Practice some banks to see your progress here.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Empty State */}
       {!hasContent && (
         <div className="dashboard-empty">
-          <div className="empty-illustration">
-            <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
-              <circle cx="60" cy="60" r="50" stroke="var(--border)" strokeWidth="2" strokeDasharray="8 4" />
-              <path d="M60 30v30l20 10" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" />
-              <circle cx="60" cy="60" r="5" fill="var(--accent)" />
+          <div className="empty-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              <line x1="12" y1="6" x2="12" y2="12" />
+              <line x1="9" y1="9" x2="15" y2="9" />
             </svg>
           </div>
           <h2 className="empty-title">Welcome to Remaimber</h2>
           <p className="empty-text">
-            Create your first question bank to start practicing and tracking your learning progress.
+            Create your first category and question bank to start practicing and tracking your learning.
           </p>
-          <p className="empty-hint">
-            Go to <strong>Library</strong> to create categories and question banks.
+          <p className="empty-action">
+            <span style={{ color: "var(--text-muted)" }}>Go to</span>
+            <strong style={{ color: "var(--accent)" }}>Library</strong>
+            <span style={{ color: "var(--text-muted)" }}>to get started</span>
           </p>
         </div>
       )}

@@ -11,7 +11,7 @@ export function Sidebar({ currentView, onNavigate }: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <span className="sidebar-logo-icon">◈</span>
+        <span className="sidebar-logo-icon">R</span>
         <span className="sidebar-logo-text">Remaimber</span>
       </div>
 

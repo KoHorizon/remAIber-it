@@ -6,5 +6,4 @@ export type { DeleteModalData } from "./DeleteConfirmModal";
 export { MoveCategoryModal } from "./MoveCategoryModal";
 export { ImportResultModal } from "./ImportResultModal";
 export { SessionConfigModal } from "./SessionConfigModal";
-export { AddQuestionModal } from "./AddQuestionModal";
 export { GradingSettingsModal } from "./GradingSettingsModal";

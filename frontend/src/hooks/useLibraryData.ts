@@ -182,9 +182,11 @@ export function useLibraryData() {
 
   const getVisibleCategories = useCallback((): Category[] => {
     if (!hasFolders) return categories;
+    // "All" tab shows all categories
     if (selectedFolderId === null) {
-      return categories.filter((c) => !c.folder_id);
+      return categories;
     }
+    // Specific folder shows only its categories
     return categories.filter((c) => c.folder_id === selectedFolderId);
   }, [hasFolders, categories, selectedFolderId]);
 
