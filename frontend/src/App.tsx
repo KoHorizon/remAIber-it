@@ -6,35 +6,10 @@ import { BankDetail } from "./components/BankDetail";
 import { AddQuestionView } from "./components/AddQuestionView";
 import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
+import { useLibrary } from "./context/LibraryContext";
 import { api } from "./api";
-import type {
-  BankType,
-  Session,
-  SessionQuestion,
-  SessionResult,
-} from "./types";
+import type { BankType, Session, SessionQuestion, SessionResult } from "./types";
 import "./App.css";
-
-// Re-export types and api for backward compatibility with existing components
-export type {
-  Folder,
-  Category,
-  Bank,
-  BankType,
-  Question,
-  SessionQuestion,
-  SessionConfig,
-  Session,
-  SessionResult,
-  QuestionResult,
-  ExportQuestion,
-  ExportBank,
-  ExportCategory,
-  ExportFolder,
-  ExportData,
-  ImportResult,
-} from "./types";
-export { api } from "./api";
 
 type MainView = "dashboard" | "library";
 
@@ -71,6 +46,7 @@ type View =
     };
 
 function App() {
+  const { refreshAll } = useLibrary();
   const [view, setView] = useState<View>({ type: "main", mainView: "dashboard" });
 
   const currentMainView = view.type === "main" ? view.mainView : "dashboard";
@@ -286,7 +262,10 @@ function App() {
             bankSubject={view.bankSubject}
             bankType={view.bankType}
             bankLanguage={view.bankLanguage}
-            onBack={() => navigate.toMain(view.returnTo)}
+            onBack={() => {
+              refreshAll(); // Refresh mastery data after practice
+              navigate.toMain(view.returnTo);
+            }}
             onRetry={() =>
               handleRetry(
                 view.bankId,
