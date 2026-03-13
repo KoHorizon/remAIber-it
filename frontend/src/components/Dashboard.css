@@ -110,11 +110,11 @@
     transition: stroke-dashoffset 0.5s ease;
 }
 
-.mastery-ring-fill.excellent { stroke: #6b9f78; }
-.mastery-ring-fill.good { stroke: #8cb896; }
-.mastery-ring-fill.fair { stroke: #d4a056; }
-.mastery-ring-fill.needs-work { stroke: #c45c4a; }
-.mastery-ring-fill.none { stroke: var(--text-muted); }
+.mastery-ring-fill.excellent { stroke: var(--mastery-excellent); }
+.mastery-ring-fill.good { stroke: var(--mastery-good); }
+.mastery-ring-fill.fair { stroke: var(--mastery-fair); }
+.mastery-ring-fill.needs-work { stroke: var(--mastery-needs-work); }
+.mastery-ring-fill.none { stroke: var(--mastery-none); }
 
 .mastery-ring-value {
     position: absolute;
@@ -321,28 +321,28 @@
 }
 
 .bank-item-mastery.excellent {
-    background: var(--success-muted);
-    color: #5a8a66;
+    background: var(--mastery-excellent-bg);
+    color: var(--mastery-excellent);
 }
 
 .bank-item-mastery.good {
-    background: rgba(140, 184, 150, 0.15);
-    color: #6b9f78;
+    background: var(--mastery-good-bg);
+    color: var(--mastery-good);
 }
 
 .bank-item-mastery.fair {
-    background: var(--warning-muted);
-    color: #c48f3d;
+    background: var(--mastery-fair-bg);
+    color: var(--mastery-fair);
 }
 
 .bank-item-mastery.needs-work {
-    background: var(--error-muted);
-    color: #b04a3a;
+    background: var(--mastery-needs-work-bg);
+    color: var(--mastery-needs-work);
 }
 
 .bank-item-mastery.none {
-    background: var(--bg-primary);
-    color: var(--text-muted);
+    background: var(--mastery-none-bg);
+    color: var(--mastery-none);
 }
 
 /* Section empty state */

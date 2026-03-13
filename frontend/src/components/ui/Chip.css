@@ -47,23 +47,28 @@
 
 /* Mastery badge variants */
 .chip-badge.excellent {
-    background: var(--success-muted);
-    color: #5a8a66;
+    background: var(--mastery-excellent-bg);
+    color: var(--mastery-excellent);
 }
 
 .chip-badge.good {
-    background: rgba(140, 184, 150, 0.15);
-    color: #6b9f78;
+    background: var(--mastery-good-bg);
+    color: var(--mastery-good);
 }
 
 .chip-badge.fair {
-    background: var(--warning-muted);
-    color: #c48f3d;
+    background: var(--mastery-fair-bg);
+    color: var(--mastery-fair);
 }
 
 .chip-badge.needs-work {
-    background: var(--error-muted);
-    color: #b04a3a;
+    background: var(--mastery-needs-work-bg);
+    color: var(--mastery-needs-work);
+}
+
+.chip-badge.none {
+    background: var(--mastery-none-bg);
+    color: var(--mastery-none);
 }
 
 /* Actions */
