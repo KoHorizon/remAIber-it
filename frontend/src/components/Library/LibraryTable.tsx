@@ -7,6 +7,7 @@ type Props = {
   sortField: SortField;
   sortDirection: SortDirection;
   hasActiveFilters: boolean;
+  totalBanksInCategory: number;
   getCategoryName: (categoryId: string | null | undefined) => string;
   onSort: (field: SortField) => void;
   onSelectBank: (bankId: string) => void;
@@ -74,12 +75,18 @@ export function LibraryTable({
   sortField,
   sortDirection,
   hasActiveFilters,
+  totalBanksInCategory,
   getCategoryName,
   onSort,
   onSelectBank,
   onDeleteBank,
   onClearFilters,
 }: Props) {
+  // Determine empty state type
+  const isEmpty = banks.length === 0;
+  const isFilteredEmpty = isEmpty && hasActiveFilters && totalBanksInCategory > 0;
+  const isTrulyEmpty = isEmpty && totalBanksInCategory === 0;
+
   return (
     <div className="library-table-wrapper">
       <table className="library-table-content">
@@ -162,12 +169,19 @@ export function LibraryTable({
         </tbody>
       </table>
 
-      {banks.length === 0 && hasActiveFilters && (
+      {isFilteredEmpty && (
         <div className="table-empty">
           <p>No banks match your filters.</p>
           <button className="btn btn-secondary btn-sm" onClick={onClearFilters}>
             Clear filters
           </button>
+        </div>
+      )}
+
+      {isTrulyEmpty && (
+        <div className="table-empty">
+          <p>No banks in this category yet.</p>
+          <p className="table-empty-hint">Click "+ Bank" to create one.</p>
         </div>
       )}
     </div>

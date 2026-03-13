@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Folder } from "../../types";
 
 type Props = {
@@ -11,7 +12,7 @@ type Props = {
   onSaveEdit: (folderId: string) => void;
   onCancelEdit: () => void;
   onDelete: (e: React.MouseEvent, folder: Folder) => void;
-  onCreateFolder: () => void;
+  onCreateFolder: (name: string) => Promise<void>;
 };
 
 export function WorkspaceTabs({
@@ -27,7 +28,27 @@ export function WorkspaceTabs({
   onDelete,
   onCreateFolder,
 }: Props) {
-  if (folders.length === 0) return null;
+  const [isCreating, setIsCreating] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+
+  async function handleCreate() {
+    if (!newFolderName.trim()) {
+      setIsCreating(false);
+      return;
+    }
+    try {
+      await onCreateFolder(newFolderName.trim());
+      setNewFolderName("");
+      setIsCreating(false);
+    } catch (err) {
+      console.error("Failed to create workspace:", err);
+    }
+  }
+
+  function handleCancel() {
+    setNewFolderName("");
+    setIsCreating(false);
+  }
 
   return (
     <div className="library-table-tabs">
@@ -102,9 +123,27 @@ export function WorkspaceTabs({
           )}
         </div>
       ))}
-      <button className="tab-btn tab-btn-add" onClick={onCreateFolder}>
-        + Workspace
-      </button>
+      {isCreating ? (
+        <div className="tab-btn tab-btn-add creating">
+          <input
+            type="text"
+            className="tab-edit-input"
+            placeholder="Workspace name..."
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleCreate();
+              else if (e.key === "Escape") handleCancel();
+            }}
+            onBlur={handleCreate}
+            autoFocus
+          />
+        </div>
+      ) : (
+        <button className="tab-btn tab-btn-add" onClick={() => setIsCreating(true)}>
+          + Workspace
+        </button>
+      )}
     </div>
   );
 }

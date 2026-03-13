@@ -27,14 +27,14 @@ export function MoveCategoryModal({
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>Move Category</h2>
         <p style={{ color: "var(--text-secondary)", marginBottom: "1rem" }}>
-          Choose a folder for "{category.name}":
+          Choose a workspace for "{category.name}":
         </p>
         <div className="folder-picker folder-picker-move">
           <button
             className="folder-pick-btn"
             onClick={() => handleMove(null)}
           >
-            📋 Unfiled (no folder)
+            📋 No workspace
           </button>
           {folders.map((f) => (
             <button

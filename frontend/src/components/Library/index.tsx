@@ -1,8 +1,6 @@
 import { useState, useRef } from "react";
 import { useLibrary } from "../../context/LibraryContext";
 import {
-  CreateFolderModal,
-  CreateCategoryModal,
   CreateBankModal,
   DeleteConfirmModal,
   MoveCategoryModal,
@@ -31,10 +29,12 @@ export function Library({ onSelectBank }: Props) {
     banks,
     isLoading,
     selectedFolderId,
-    setSelectedFolderId,
+    selectedCategoryId,
     hasFolders,
     visibleCategories,
     getCategoryName,
+    selectFolder,
+    selectCategory,
     createFolder,
     updateFolder,
     deleteFolder,
@@ -53,12 +53,11 @@ export function Library({ onSelectBank }: Props) {
     banks,
     categories,
     selectedFolderId,
+    selectedCategoryId,
     getCategoryName,
   });
 
   // Modal states
-  const [showCreateFolder, setShowCreateFolder] = useState(false);
-  const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [showCreateBank, setShowCreateBank] = useState<string | null>(null);
   const [deleteModal, setDeleteModal] = useState<DeleteModalData | null>(null);
   const [movingCategory, setMovingCategory] = useState<Category | null>(null);
@@ -217,27 +216,6 @@ export function Library({ onSelectBank }: Props) {
         />
       )}
 
-      {showCreateFolder && (
-        <CreateFolderModal
-          onClose={() => setShowCreateFolder(false)}
-          onCreate={async (name) => {
-            await createFolder(name);
-          }}
-        />
-      )}
-
-      {showCreateCategory && (
-        <CreateCategoryModal
-          folders={folders}
-          selectedFolderId={selectedFolderId}
-          onSelectFolder={setSelectedFolderId}
-          onClose={() => setShowCreateCategory(false)}
-          onCreate={async (name, folderId) => {
-            await createCategory(name, folderId);
-          }}
-        />
-      )}
-
       {showCreateBank && (
         <CreateBankModal
           categoryId={showCreateBank}
@@ -273,12 +251,8 @@ export function Library({ onSelectBank }: Props) {
         isImporting={isImporting}
         isExporting={isExporting}
         hasContent={hasContent}
-        canCreateBank={categories.length > 0}
         onImport={handleImportClick}
         onExport={handleExport}
-        onCreateBank={() =>
-          setShowCreateBank(filters.filterCategory || visibleCategories[0]?.id || null)
-        }
       />
 
       {/* Workspace Tabs */}
@@ -287,13 +261,15 @@ export function Library({ onSelectBank }: Props) {
         selectedFolderId={selectedFolderId}
         editingFolderId={editingFolderId}
         editFolderName={editFolderName}
-        onSelectFolder={setSelectedFolderId}
+        onSelectFolder={selectFolder}
         onStartEdit={startEditFolder}
         onEditNameChange={setEditFolderName}
         onSaveEdit={handleUpdateFolder}
         onCancelEdit={() => setEditingFolderId(null)}
         onDelete={openDeleteFolderModal}
-        onCreateFolder={() => setShowCreateFolder(true)}
+        onCreateFolder={async (name) => {
+          await createFolder(name);
+        }}
       />
 
       {/* Filters */}
@@ -301,27 +277,34 @@ export function Library({ onSelectBank }: Props) {
         searchQuery={filters.searchQuery}
         filterType={filters.filterType}
         hasActiveFilters={filters.hasActiveFilters}
+        canCreateBank={visibleCategories.length > 0}
         onSearchChange={filters.setSearchQuery}
         onTypeChange={filters.setFilterType}
         onClearFilters={filters.clearFilters}
+        onCreateBank={() =>
+          setShowCreateBank(selectedCategoryId || visibleCategories[0]?.id || null)
+        }
       />
 
       {/* Category Chips */}
       <CategoryChips
         categories={visibleCategories}
         banks={banks}
-        filterCategory={filters.filterCategory}
+        filterCategory={selectedCategoryId}
         editingCategoryId={editingCategoryId}
         editCategoryName={editCategoryName}
         hasFolders={hasFolders}
-        onFilterChange={filters.setFilterCategory}
+        onFilterChange={selectCategory}
         onStartEdit={startEditCategory}
         onEditNameChange={setEditCategoryName}
         onSaveEdit={handleUpdateCategory}
         onCancelEdit={() => setEditingCategoryId(null)}
         onMove={setMovingCategory}
         onDelete={openDeleteCategoryModal}
-        onCreateCategory={() => setShowCreateCategory(true)}
+        onCreateCategory={async (name) => {
+          const category = await createCategory(name, selectedFolderId || undefined);
+          selectCategory(category.id);
+        }}
       />
 
       {/* Table or Empty State */}
@@ -331,6 +314,11 @@ export function Library({ onSelectBank }: Props) {
           sortField={filters.sortField}
           sortDirection={filters.sortDirection}
           hasActiveFilters={filters.hasActiveFilters}
+          totalBanksInCategory={
+            selectedCategoryId
+              ? banks.filter((b) => b.category_id === selectedCategoryId).length
+              : banks.length
+          }
           getCategoryName={getCategoryName}
           onSort={filters.handleSort}
           onSelectBank={onSelectBank}
@@ -338,7 +326,12 @@ export function Library({ onSelectBank }: Props) {
           onClearFilters={filters.clearFilters}
         />
       ) : (
-        <LibraryEmpty onCreateCategory={() => setShowCreateCategory(true)} />
+        <LibraryEmpty
+          onCreateCategory={async (name) => {
+            const category = await createCategory(name, selectedFolderId || undefined);
+            selectCategory(category.id);
+          }}
+        />
       )}
     </div>
   );

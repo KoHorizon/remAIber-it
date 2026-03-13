@@ -9,7 +9,7 @@ type LibraryContextType = {
   banks: Bank[];
   isLoading: boolean;
   selectedFolderId: string | null;
-  setSelectedFolderId: (id: string | null) => void;
+  selectedCategoryId: string | null;
 
   // Computed
   hasFolders: boolean;
@@ -17,6 +17,10 @@ type LibraryContextType = {
   visibleCategories: Category[];
   getBanksForCategory: (categoryId: string) => Bank[];
   getCategoryName: (categoryId: string | null | undefined) => string;
+
+  // Selection
+  selectFolder: (id: string | null) => void;
+  selectCategory: (id: string | null) => void;
 
   // Folder operations
   createFolder: (name: string) => Promise<Folder>;
@@ -50,6 +54,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [banks, setBanks] = useState<Bank[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  // Remember last selected category per workspace (folderId -> categoryId)
+  const [categoryPerFolder, setCategoryPerFolder] = useState<Record<string, string>>({});
 
   const loadData = useCallback(async () => {
     try {
@@ -61,6 +68,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setFolders(foldersData || []);
       setCategories(categoriesData || []);
       setBanks(banksData || []);
+
+      // Select first category on initial load (for "All" workspace)
+      if (categoriesData && categoriesData.length > 0) {
+        setSelectedCategoryId(categoriesData[0].id);
+      }
     } catch (err: unknown) {
       console.error("Failed to load data:", err);
     } finally {
@@ -94,12 +106,63 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     [categories]
   );
 
+  // Selection handlers
+  const selectFolder = useCallback(
+    (folderId: string | null) => {
+      // Save current category for current folder before switching
+      if (selectedCategoryId) {
+        const folderKey = selectedFolderId || "__all__";
+        setCategoryPerFolder((prev) => ({ ...prev, [folderKey]: selectedCategoryId }));
+      }
+
+      setSelectedFolderId(folderId);
+
+      // Get categories for the new folder
+      const newVisibleCategories = folderId
+        ? categories.filter((c) => c.folder_id === folderId)
+        : categories;
+
+      if (newVisibleCategories.length === 0) {
+        // No categories available
+        setSelectedCategoryId(null);
+      } else {
+        // Check if we have a remembered category for this folder
+        const folderKey = folderId || "__all__";
+        const rememberedCategoryId = categoryPerFolder[folderKey];
+
+        if (rememberedCategoryId) {
+          // Check if remembered category is still valid
+          const stillExists = newVisibleCategories.some((c) => c.id === rememberedCategoryId);
+          if (stillExists) {
+            setSelectedCategoryId(rememberedCategoryId);
+            return;
+          }
+        }
+
+        // No remembered category or it's invalid, select first available
+        setSelectedCategoryId(newVisibleCategories[0].id);
+      }
+    },
+    [categories, selectedCategoryId, selectedFolderId, categoryPerFolder]
+  );
+
+  const selectCategory = useCallback((categoryId: string | null) => {
+    setSelectedCategoryId(categoryId);
+    // Also save to memory for current folder
+    if (categoryId) {
+      const folderKey = selectedFolderId || "__all__";
+      setCategoryPerFolder((prev) => ({ ...prev, [folderKey]: categoryId }));
+    }
+  }, [selectedFolderId]);
+
   // Folder operations
   const createFolder = useCallback(
     async (name: string) => {
       const folder = await api.createFolder(name);
       setFolders((prev) => [...prev, folder]);
       setSelectedFolderId(folder.id);
+      // New folder has no categories yet
+      setSelectedCategoryId(null);
       return folder;
     },
     []
@@ -121,6 +184,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       await loadData(); // Reload to get accurate state after cascade
       if (selectedFolderId === folderId) {
         setSelectedFolderId(null);
+        setSelectedCategoryId(null);
       }
     },
     [selectedFolderId, loadData]
@@ -159,8 +223,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       await api.deleteCategory(categoryId);
       setCategories((prev) => prev.filter((c) => c.id !== categoryId));
       setBanks((prev) => prev.filter((b) => b.category_id !== categoryId));
+      if (selectedCategoryId === categoryId) {
+        setSelectedCategoryId(null);
+      }
     },
-    []
+    [selectedCategoryId]
   );
 
   // Bank operations
@@ -228,7 +295,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     banks,
     isLoading,
     selectedFolderId,
-    setSelectedFolderId,
+    selectedCategoryId,
 
     // Computed
     hasFolders,
@@ -236,6 +303,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     visibleCategories,
     getBanksForCategory,
     getCategoryName,
+
+    // Selection
+    selectFolder,
+    selectCategory,
 
     // Operations
     createFolder,

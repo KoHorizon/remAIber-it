@@ -3,10 +3,8 @@ type Props = {
   isImporting: boolean;
   isExporting: boolean;
   hasContent: boolean;
-  canCreateBank: boolean;
   onImport: () => void;
   onExport: () => void;
-  onCreateBank: () => void;
 };
 
 export function LibraryHeader({
@@ -14,10 +12,8 @@ export function LibraryHeader({
   isImporting,
   isExporting,
   hasContent,
-  canCreateBank,
   onImport,
   onExport,
-  onCreateBank,
 }: Props) {
   return (
     <div className="library-table-header">
@@ -39,13 +35,6 @@ export function LibraryHeader({
           disabled={isExporting || !hasContent}
         >
           {isExporting ? "Exporting..." : "Export"}
-        </button>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={onCreateBank}
-          disabled={!canCreateBank}
-        >
-          + Bank
         </button>
       </div>
     </div>

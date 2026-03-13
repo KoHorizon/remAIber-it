@@ -6,6 +6,7 @@ type UseLibraryFiltersProps = {
   banks: Bank[];
   categories: Category[];
   selectedFolderId: string | null;
+  selectedCategoryId: string | null;
   getCategoryName: (categoryId: string | null | undefined) => string;
 };
 
@@ -13,10 +14,10 @@ export function useLibraryFilters({
   banks,
   categories,
   selectedFolderId,
+  selectedCategoryId,
   getCategoryName,
 }: UseLibraryFiltersProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -45,11 +46,11 @@ export function useLibraryFilters({
     }
 
     // Filter by category
-    if (filterCategory) {
-      if (filterCategory === "uncategorized") {
+    if (selectedCategoryId) {
+      if (selectedCategoryId === "uncategorized") {
         result = result.filter((b) => !b.category_id);
       } else {
-        result = result.filter((b) => b.category_id === filterCategory);
+        result = result.filter((b) => b.category_id === selectedCategoryId);
       }
     }
 
@@ -91,8 +92,8 @@ export function useLibraryFilters({
     banks,
     categories,
     selectedFolderId,
+    selectedCategoryId,
     searchQuery,
-    filterCategory,
     filterType,
     sortField,
     sortDirection,
@@ -110,18 +111,15 @@ export function useLibraryFilters({
 
   function clearFilters() {
     setSearchQuery("");
-    setFilterCategory(null);
     setFilterType(null);
   }
 
-  const hasActiveFilters = Boolean(searchQuery || filterCategory || filterType);
+  const hasActiveFilters = Boolean(searchQuery || selectedCategoryId || filterType);
 
   return {
     // Filter state
     searchQuery,
     setSearchQuery,
-    filterCategory,
-    setFilterCategory,
     filterType,
     setFilterType,
 
