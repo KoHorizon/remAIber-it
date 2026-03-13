@@ -241,8 +241,12 @@
 }
 
 .library-table-content thead {
-    background: var(--bg-elevated);
-    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg,
+        rgba(180, 160, 140, 0.08) 0%,
+        rgba(200, 180, 160, 0.12) 50%,
+        rgba(180, 160, 140, 0.08) 100%
+    );
+    border-bottom: 1px solid rgba(180, 160, 140, 0.2);
 }
 
 .library-table-content th {

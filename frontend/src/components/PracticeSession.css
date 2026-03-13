@@ -14,7 +14,11 @@
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    background: var(--bg-secondary);
+    background: linear-gradient(180deg,
+        rgba(56, 172, 236, 0.08) 0%,
+        rgba(82, 182, 240, 0.12) 30%,
+        var(--bg-secondary) 100%
+    );
     border-right: 1px solid var(--border);
 }
 
