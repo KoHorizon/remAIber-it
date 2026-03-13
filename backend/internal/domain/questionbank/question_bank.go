@@ -74,6 +74,11 @@ func (qb *QuestionBank) SetGradingPrompt(prompt *string) {
 
 // AddQuestion appends a single question to the bank.
 func (qb *QuestionBank) AddQuestion(subject string, expectedAnswer string) error {
+	return qb.AddQuestionWithGradingPrompt(subject, expectedAnswer, nil)
+}
+
+// AddQuestionWithGradingPrompt appends a question with optional custom grading prompt.
+func (qb *QuestionBank) AddQuestionWithGradingPrompt(subject string, expectedAnswer string, gradingPrompt *string) error {
 	if subject == "" {
 		return errors.New("question subject cannot be empty")
 	}
@@ -82,6 +87,7 @@ func (qb *QuestionBank) AddQuestion(subject string, expectedAnswer string) error
 		ID:             id.GenerateID(),
 		Subject:        subject,
 		ExpectedAnswer: expectedAnswer,
+		GradingPrompt:  gradingPrompt,
 	})
 	return nil
 }

@@ -1,0 +1,167 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHIP COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-family: inherit;
+    font-size: inherit;
+    text-align: left;
+    appearance: none;
+}
+
+.chip:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-elevated);
+}
+
+.chip.active {
+    border-color: var(--accent);
+    background: var(--accent-muted);
+}
+
+/* Label */
+.chip-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Badges */
+.chip-badge {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+}
+
+/* Mastery badge variants */
+.chip-badge.excellent {
+    background: var(--mastery-excellent-bg);
+    color: var(--mastery-excellent);
+}
+
+.chip-badge.good {
+    background: var(--mastery-good-bg);
+    color: var(--mastery-good);
+}
+
+.chip-badge.fair {
+    background: var(--mastery-fair-bg);
+    color: var(--mastery-fair);
+}
+
+.chip-badge.needs-work {
+    background: var(--mastery-needs-work-bg);
+    color: var(--mastery-needs-work);
+}
+
+.chip-badge.none {
+    background: var(--mastery-none-bg);
+    color: var(--mastery-none);
+}
+
+/* Actions */
+.chip-actions {
+    display: flex;
+    gap: 0.125rem;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-width 0.35s ease, opacity 0.3s ease, margin 0.35s ease;
+    margin-left: 0;
+}
+
+.chip:hover .chip-actions {
+    pointer-events: auto;
+    max-width: 100px;
+    opacity: 1;
+    margin-left: 0.25rem;
+}
+
+.chip-actions > span[role="button"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+}
+
+.chip-actions > span[role="button"]:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.chip-actions > span[role="button"].danger:hover {
+    background: var(--error-muted);
+    color: var(--error);
+}
+
+/* Edit input */
+.chip-edit-input {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font: inherit;
+    font-size: 0.8125rem;
+    width: 80px;
+    padding: 0;
+    outline: none;
+}
+
+/* Add chip variant */
+.chip-add {
+    border-style: dashed;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}
+
+.chip-add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+.chip-add.creating {
+    border-style: solid;
+    border-color: var(--accent);
+    background: var(--bg-primary);
+    padding: 0;
+}
+
+.chip-add.creating .chip-edit-input {
+    border: none;
+    background: transparent;
+    padding: 0.5rem 0.75rem;
+    min-width: 120px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Responsive
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+    .chip-actions {
+        display: flex;
+        max-width: unset;
+        opacity: 1;
+        pointer-events: auto;
+        margin-left: 0.25rem;
+    }
+}

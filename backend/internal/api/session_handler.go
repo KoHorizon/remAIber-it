@@ -28,6 +28,28 @@ func (r *CreateSessionRequest) Validate() error {
 	return nil
 }
 
+type CreateQuickSessionRequest struct {
+	BankIDs        []string `json:"bank_ids"`
+	MaxPerBank     *int     `json:"max_per_bank,omitempty" example:"5"`
+	MaxDurationMin *int     `json:"max_duration_min,omitempty" example:"15"`
+}
+
+func (r *CreateQuickSessionRequest) Validate() error {
+	if len(r.BankIDs) == 0 {
+		return errors.New("bank_ids is required")
+	}
+	return nil
+}
+
+type QuickSessionQuestion struct {
+	ID             string `json:"id"`
+	Subject        string `json:"subject"`
+	ExpectedAnswer string `json:"expected_answer"`
+	BankID         string `json:"bank_id"`
+	BankSubject    string `json:"bank_subject"`
+	BankType       string `json:"bank_type"`
+}
+
 type SessionQuestion struct {
 	ID             string `json:"id" example:"q1w2e3r4t5y6u7i8"`
 	Subject        string `json:"subject" example:"What is a goroutine?"`
@@ -176,6 +198,113 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusCreated, response)
 }
 
+// createQuickSession starts a multi-bank practice session focusing on weak questions.
+// @Summary      Create a quick practice session
+// @Description  Create a practice session from multiple banks, focusing on weak questions.
+// @Tags         Sessions
+// @Accept       json
+// @Produce      json
+// @Param        body  body      CreateQuickSessionRequest  true  "Quick session configuration"
+// @Success      201   {object}  object
+// @Failure      400   {object}  map[string]string
+// @Failure      500   {object}  map[string]string
+// @Router       /sessions/quick [post]
+func (h *Handler) createQuickSession(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req CreateQuickSessionRequest
+	if !decodeAndValidate(w, r, &req) {
+		return
+	}
+
+	maxPerBank := 5
+	if req.MaxPerBank != nil && *req.MaxPerBank > 0 {
+		maxPerBank = *req.MaxPerBank
+	}
+
+	// Get weak questions across all specified banks
+	questionsWithBank, err := h.store.GetWeakQuestionsAcrossBanks(ctx, req.BankIDs, maxPerBank)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to get questions")
+		return
+	}
+
+	if len(questionsWithBank) == 0 {
+		respondError(w, http.StatusBadRequest, "no questions found in specified banks")
+		return
+	}
+
+	// Fetch bank metadata for response
+	bankCache := make(map[string]*questionbank.QuestionBank)
+	for _, bankID := range req.BankIDs {
+		bank, err := h.store.GetBank(ctx, bankID)
+		if err == nil {
+			bankCache[bankID] = bank
+		}
+	}
+
+	// Convert to domain type
+	questionsWithBankID := make([]practicesession.QuestionWithBankID, len(questionsWithBank))
+	for i, qwb := range questionsWithBank {
+		questionsWithBankID[i] = practicesession.QuestionWithBankID{
+			Question: questionbank.Question{
+				ID:             qwb.ID,
+				Subject:        qwb.Subject,
+				ExpectedAnswer: qwb.ExpectedAnswer,
+			},
+			BankID: qwb.BankID,
+		}
+	}
+
+	config := practicesession.DefaultConfig()
+	if req.MaxDurationMin != nil && *req.MaxDurationMin > 0 {
+		duration := time.Duration(*req.MaxDurationMin) * time.Minute
+		config.MaxDuration = &duration
+	}
+
+	session := practicesession.NewMultiBankSession(questionsWithBankID, config)
+
+	if err := h.store.SaveSession(ctx, session); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to save session")
+		return
+	}
+
+	h.grading.TrackSession(session.ID)
+
+	// Build response with bank metadata
+	questions := make([]QuickSessionQuestion, len(session.Questions))
+	for i, q := range session.Questions {
+		bankID := session.QuestionBankMap[q.ID]
+		bankSubject := ""
+		bankType := "theory"
+		if bank, ok := bankCache[bankID]; ok {
+			bankSubject = bank.Subject
+			bankType = string(bank.BankType)
+		}
+		questions[i] = QuickSessionQuestion{
+			ID:             q.ID,
+			Subject:        q.Subject,
+			ExpectedAnswer: q.ExpectedAnswer,
+			BankID:         bankID,
+			BankSubject:    bankSubject,
+			BankType:       bankType,
+		}
+	}
+
+	response := map[string]interface{}{
+		"id":            session.ID,
+		"status":        string(session.Status),
+		"questions":     questions,
+		"focus_on_weak": session.FocusOnWeak,
+		"is_multi_bank": true,
+	}
+
+	if req.MaxDurationMin != nil && *req.MaxDurationMin > 0 {
+		response["max_duration_min"] = *req.MaxDurationMin
+	}
+
+	respondJSON(w, http.StatusCreated, response)
+}
+
 // getSession returns a session and its questions.
 // @Summary      Get a session
 // @Description  Returns a practice session with its questions.
@@ -255,12 +384,30 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bank, _ := h.store.GetBank(ctx, session.QuestionBankId)
+	// For multi-bank sessions, look up the bank per question
+	var bankID string
+	if session.QuestionBankId == "multi" {
+		bankID, _ = h.store.GetSessionQuestionBankID(ctx, sessionID, req.QuestionID)
+	} else {
+		bankID = session.QuestionBankId
+	}
+
+	bank, _ := h.store.GetBank(ctx, bankID)
 	var gradingPrompt *string
 	var bankType string = "theory"
 	if bank != nil {
-		gradingPrompt = bank.GradingPrompt
 		bankType = string(bank.BankType)
+		// Check for question-level grading prompt first, then fallback to bank-level
+		for _, bq := range bank.Questions {
+			if bq.ID == question.ID && bq.GradingPrompt != nil {
+				gradingPrompt = bq.GradingPrompt
+				break
+			}
+		}
+		// If no question-level prompt, use bank-level
+		if gradingPrompt == nil {
+			gradingPrompt = bank.GradingPrompt
+		}
 	}
 
 	h.grading.SubmitGrading(service.GradeRequest{

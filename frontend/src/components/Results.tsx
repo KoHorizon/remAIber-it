@@ -42,6 +42,12 @@ export function Results({
     ? Math.round((results.total_score / results.max_score) * 100)
     : 0;
 
+  // Calculate stats
+  const totalQuestions = results.results.length;
+  const answeredCount = results.results.filter(r => r.user_answer && r.user_answer.trim() !== "").length;
+  const skippedCount = totalQuestions - answeredCount;
+  const perfectCount = results.results.filter(r => Math.round(r.score) >= 90).length;
+
   const toggleAnswer = (index: number) => {
     setExpandedAnswers((prev) => {
       const next = new Set(prev);
@@ -62,6 +68,14 @@ export function Results({
     return "score-poor";
   };
 
+  const getScoreEmoji = () => {
+    if (!hasAnswers) return "😔";
+    if (percentage >= 90) return "🎉";
+    if (percentage >= 70) return "👍";
+    if (percentage >= 50) return "💪";
+    return "📚";
+  };
+
   const getMessage = () => {
     if (!hasAnswers)
       return "Time ran out before you could answer any questions. Try again!";
@@ -76,33 +90,86 @@ export function Results({
 
 
   return (
-    <div
-      className={`results animate-fade-in ${isCodeMode ? "results-code-mode" : ""}`}
-    >
-      <div className="results-header">
-        <h3>Session Complete</h3>
-        <h1>{bankSubject}</h1>
-      </div>
-
-      <div className="results-summary">
-        <div className={`score-circle ${getScoreClass()}`}>
-          <span className="score-value">{percentage}%</span>
-          <span className="score-label">Score</span>
+    <div className={`results-page animate-fade-in ${isCodeMode ? "results-code-mode" : ""}`}>
+      {/* Sidebar */}
+      <aside className="results-sidebar">
+        <div className="results-sidebar-header">
+          <button className="btn btn-ghost btn-sm" onClick={onBack}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
         </div>
-        <p className="results-message">{getMessage()}</p>
-        <p className="results-points">
-          {results.total_score} / {results.max_score} points
-        </p>
-      </div>
 
-      <div className="results-breakdown">
-        <h3>Question Breakdown</h3>
+        <div className="results-sidebar-content">
+          <div className="results-sidebar-section">
+            <span className="results-sidebar-label">Subject</span>
+            <h3 className="results-sidebar-title">{bankSubject}</h3>
+          </div>
+
+          <div className="results-sidebar-section results-score-section">
+            <div className={`results-score-display ${getScoreClass()}`}>
+              <span className="results-score-emoji">{getScoreEmoji()}</span>
+              <span className="results-score-value">{percentage}%</span>
+            </div>
+            <p className="results-score-message">{getMessage()}</p>
+          </div>
+
+          <div className="results-sidebar-section">
+            <span className="results-sidebar-label">Statistics</span>
+            <div className="results-stats-grid">
+              <div className="results-stat-item">
+                <span className="results-stat-value">{results.total_score}</span>
+                <span className="results-stat-label">Points</span>
+              </div>
+              <div className="results-stat-item">
+                <span className="results-stat-value">{results.max_score}</span>
+                <span className="results-stat-label">Max</span>
+              </div>
+              <div className="results-stat-item">
+                <span className="results-stat-value">{answeredCount}</span>
+                <span className="results-stat-label">Answered</span>
+              </div>
+              <div className="results-stat-item">
+                <span className="results-stat-value">{skippedCount}</span>
+                <span className="results-stat-label">Skipped</span>
+              </div>
+              <div className="results-stat-item">
+                <span className="results-stat-value">{perfectCount}</span>
+                <span className="results-stat-label">Perfect</span>
+              </div>
+              <div className="results-stat-item">
+                <span className="results-stat-value">{totalQuestions}</span>
+                <span className="results-stat-label">Total</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="results-sidebar-actions">
+            <button className="btn btn-primary btn-full" onClick={onRetry}>
+              Retry Questions
+            </button>
+            <button className="btn btn-secondary btn-full" onClick={onBack}>
+              Back to Home
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="results-main">
+        <div className="results-main-header">
+          <h2>Question Breakdown</h2>
+          <span className="results-main-subtitle">{totalQuestions} questions reviewed</span>
+        </div>
+
         {!hasAnswers ? (
-          <p className="no-answers-message">
-            No questions were answered in this session.
-          </p>
+          <div className="results-empty">
+            <p>No questions were answered in this session.</p>
+          </div>
         ) : (
-          <div className="breakdown-list">
+          <div className="results-breakdown-list">
             {results.results.map((result, i) => {
               const question = questions[i];
               const questionScore = Math.round(result.score);
@@ -351,16 +418,7 @@ export function Results({
             })}
           </div>
         )}
-      </div>
-
-      <div className="results-actions">
-        <button className="btn btn-secondary" onClick={onBack}>
-          Back to Home
-        </button>
-        <button className="btn btn-primary" onClick={onRetry}>
-          Retry Same Questions
-        </button>
-      </div>
+      </main>
     </div>
   );
 }

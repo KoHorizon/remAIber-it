@@ -38,6 +38,7 @@ func RegisterRoutes(mux *http.ServeMux, h *Handler) {
 
 	// Sessions
 	mux.HandleFunc("POST /sessions", h.createSession)
+	mux.HandleFunc("POST /sessions/quick", h.createQuickSession)
 	mux.HandleFunc("GET /sessions/{sessionID}", h.getSession)
 	mux.HandleFunc("POST /sessions/{sessionID}/answers", h.submitAnswer)
 	mux.HandleFunc("POST /sessions/{sessionID}/complete", h.completeSession)

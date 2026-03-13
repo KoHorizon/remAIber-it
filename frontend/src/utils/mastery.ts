@@ -1,5 +1,13 @@
 import type { Bank } from "../types";
 
+export function getMasteryLevel(mastery: number): string {
+  if (mastery >= 80) return "excellent";
+  if (mastery >= 60) return "good";
+  if (mastery >= 40) return "fair";
+  if (mastery > 0) return "needs-work";
+  return "none";
+}
+
 export function getMasteryColor(mastery: number): string {
   if (mastery >= 80) return "mastery-excellent";
   if (mastery >= 60) return "mastery-good";

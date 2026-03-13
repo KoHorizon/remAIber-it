@@ -1,0 +1,412 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODAL COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Overlay */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    z-index: 200;
+    animation: modalOverlayIn 0.2s ease-out;
+}
+
+@keyframes modalOverlayIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Modal container */
+.modal {
+    position: relative;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 440px;
+    box-shadow:
+        0 0 0 1px var(--border),
+        0 24px 48px -12px rgba(0, 0, 0, 0.25);
+    animation: modalSlideIn 0.25s ease-out;
+    overflow: hidden;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Modal header */
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.modal-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+/* Close button */
+.modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* Modal body */
+.modal-body {
+    padding: 1.25rem 1.5rem;
+}
+
+/* Modal footer/actions */
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.modal-actions .btn {
+    flex: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Delete Modal Variant
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.modal-delete .modal-header {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.modal-delete .modal-body {
+    padding-top: 0.5rem;
+    text-align: center;
+}
+
+.modal-delete-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1rem;
+    background: var(--error-muted);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.modal-delete-target {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.modal-delete-warning {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    text-align: left;
+    margin-bottom: 0.5rem;
+}
+
+.modal-delete-warning p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.modal-delete-warning ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.75rem 0;
+}
+
+.modal-delete-warning li {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    padding: 0.375rem 0 0.375rem 1.5rem;
+    position: relative;
+}
+
+.modal-delete-warning li::before {
+    content: "";
+    position: absolute;
+    left: 0.375rem;
+    top: 0.875rem;
+    width: 5px;
+    height: 5px;
+    background: var(--error);
+    border-radius: 50%;
+}
+
+.modal-delete-warning .count {
+    font-weight: 600;
+    color: var(--error);
+}
+
+.modal-delete-warning .final {
+    font-size: 0.8125rem;
+    color: var(--error);
+    font-weight: 500;
+    margin: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Form Elements in Modal
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.modal-body .input-group {
+    margin-bottom: 1rem;
+}
+
+.modal-body .input-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.modal-body label.input-label {
+    margin-top: 0.25rem;
+}
+
+/* Type selector (Theory/Code/CLI) */
+.modal-type-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.modal-type-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.875rem 0.5rem;
+    background: var(--bg-secondary);
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+}
+
+.modal-type-btn:hover {
+    background: var(--bg-hover);
+}
+
+.modal-type-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+.modal-type-btn .icon {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.modal-type-btn.active .icon {
+    background: var(--accent-muted);
+}
+
+.modal-type-btn .name {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.modal-type-btn.active .name {
+    color: var(--accent);
+}
+
+.modal-type-btn .desc {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+/* Language selector */
+.modal-language-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.modal-lang-btn {
+    padding: 0.5rem 0.875rem;
+    background: var(--bg-secondary);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.modal-lang-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.modal-lang-btn.active {
+    background: var(--accent-muted);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Folder/Workspace picker */
+.modal-folder-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.modal-folder-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    background: var(--bg-secondary);
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.modal-folder-btn:hover {
+    background: var(--bg-hover);
+}
+
+.modal-folder-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+    color: var(--accent);
+}
+
+.modal-folder-btn .folder-icon {
+    font-size: 1rem;
+}
+
+/* Import result stats */
+.modal-import-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    padding: 1.5rem 0;
+}
+
+.modal-import-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.modal-import-stat .value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+}
+
+.modal-import-stat .label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Responsive
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+    .modal-overlay {
+        padding: 1rem;
+        align-items: flex-end;
+    }
+
+    .modal {
+        max-width: 100%;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        animation: modalSlideUp 0.3s ease-out;
+    }
+
+    @keyframes modalSlideUp {
+        from {
+            opacity: 0;
+            transform: translateY(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-type-selector {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-type-btn {
+        flex-direction: row;
+        justify-content: flex-start;
+        text-align: left;
+    }
+
+    .modal-type-btn .icon {
+        flex-shrink: 0;
+    }
+}

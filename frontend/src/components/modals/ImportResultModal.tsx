@@ -1,4 +1,5 @@
 import type { ImportResult } from "../../types";
+import { Modal, Button } from "../ui";
 
 type Props = {
   result: ImportResult;
@@ -7,35 +8,32 @@ type Props = {
 
 export function ImportResultModal({ result, onClose }: Props) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>✅ Import Complete</h2>
-        <div className="import-result">
-          {result.folders_created !== undefined && result.folders_created > 0 && (
-            <div className="import-stat">
-              <span className="import-stat-value">{result.folders_created}</span>
-              <span className="import-stat-label">Folders</span>
-            </div>
-          )}
-          <div className="import-stat">
-            <span className="import-stat-value">{result.categories_created}</span>
-            <span className="import-stat-label">Categories</span>
+    <Modal
+      title="Import Complete"
+      onClose={onClose}
+      showCloseButton={false}
+      actions={<Button onClick={onClose}>Done</Button>}
+    >
+      <div className="modal-import-stats">
+        {result.folders_created !== undefined && result.folders_created > 0 && (
+          <div className="modal-import-stat">
+            <span className="value">{result.folders_created}</span>
+            <span className="label">Workspaces</span>
           </div>
-          <div className="import-stat">
-            <span className="import-stat-value">{result.banks_created}</span>
-            <span className="import-stat-label">Banks</span>
-          </div>
-          <div className="import-stat">
-            <span className="import-stat-value">{result.questions_created}</span>
-            <span className="import-stat-label">Questions</span>
-          </div>
+        )}
+        <div className="modal-import-stat">
+          <span className="value">{result.categories_created}</span>
+          <span className="label">Categories</span>
         </div>
-        <div className="modal-actions">
-          <button className="btn btn-primary" onClick={onClose}>
-            Done
-          </button>
+        <div className="modal-import-stat">
+          <span className="value">{result.banks_created}</span>
+          <span className="label">Banks</span>
+        </div>
+        <div className="modal-import-stat">
+          <span className="value">{result.questions_created}</span>
+          <span className="label">Questions</span>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

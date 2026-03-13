@@ -32,6 +32,7 @@ export type Question = {
   id: string;
   subject: string;
   expected_answer?: string;
+  grading_prompt?: string | null;
   mastery: number;
   times_answered: number;
   times_correct: number;
@@ -41,6 +42,10 @@ export type SessionQuestion = {
   id: string;
   subject: string;
   expected_answer?: string;
+  // For multi-bank sessions
+  bank_id?: string;
+  bank_subject?: string;
+  bank_type?: string;
 };
 
 export type SessionConfig = {
@@ -55,6 +60,7 @@ export type Session = {
   questions: SessionQuestion[];
   max_duration_min?: number;
   focus_on_weak?: boolean;
+  is_multi_bank?: boolean;
 };
 
 export type SessionResult = {

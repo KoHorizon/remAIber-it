@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Modal, Button } from "../ui";
 
 export type DeleteModalData = {
   type: "category" | "bank" | "folder";
@@ -33,81 +34,80 @@ export function DeleteConfirmModal({ data, onClose, onConfirm }: Props) {
 
   const typeLabel =
     data.type === "folder"
-      ? "Folder"
+      ? "Workspace"
       : data.type === "category"
         ? "Category"
         : "Bank";
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-delete" onClick={(e) => e.stopPropagation()}>
-        <div className="delete-modal-icon">⚠️</div>
-        <h2>Delete {typeLabel}?</h2>
-
-        <div className="delete-modal-content">
-          <p className="delete-target">
-            <strong>"{data.name}"</strong>
-          </p>
-
-          {data.type === "folder" ? (
-            <div className="delete-warning">
-              <p className="warning-text">
-                This will delete the folder. Categories inside will become
-                <strong> unfiled</strong> — they won't be deleted.
-              </p>
-              <ul className="warning-list">
-                <li>
-                  <span className="warning-count">{data.categoryCount}</span>{" "}
-                  categor{data.categoryCount !== 1 ? "ies" : "y"} will become
-                  unfiled
-                </li>
-                <li>No banks or questions will be deleted</li>
-              </ul>
-            </div>
-          ) : data.type === "category" ? (
-            <div className="delete-warning">
-              <p className="warning-text">
-                This will permanently delete this category and all its content:
-              </p>
-              <ul className="warning-list">
-                <li>
-                  <span className="warning-count">{data.bankCount}</span>{" "}
-                  question bank{data.bankCount !== 1 ? "s" : ""}
-                </li>
-                <li>All questions within those banks</li>
-                <li>All practice session history</li>
-              </ul>
-              <p className="warning-final">This action cannot be undone.</p>
-            </div>
-          ) : (
-            <div className="delete-warning">
-              <p className="warning-text">
-                This will permanently delete this bank and all its questions.
-              </p>
-              <p className="warning-final">This action cannot be undone.</p>
-            </div>
-          )}
-        </div>
-
-        <div className="modal-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onClose}
-            disabled={isDeleting}
-          >
+    <Modal
+      title={`Delete ${typeLabel}?`}
+      onClose={onClose}
+      variant="delete"
+      showCloseButton={false}
+      actions={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isDeleting}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={handleConfirm}
-            disabled={isDeleting}
-          >
+          </Button>
+          <Button variant="danger" onClick={handleConfirm} disabled={isDeleting}>
             {isDeleting ? "Deleting..." : "Delete"}
-          </button>
-        </div>
+          </Button>
+        </>
+      }
+    >
+      <div className="modal-delete-icon">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--error)"
+          strokeWidth="2"
+        >
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
       </div>
-    </div>
+
+      <p className="modal-delete-target">"{data.name}"</p>
+
+      <div className="modal-delete-warning">
+        {data.type === "folder" ? (
+          <>
+            <p>
+              This will delete the workspace. Categories inside will become
+              <strong> unfiled</strong> — they won't be deleted.
+            </p>
+            <ul>
+              <li>
+                <span className="count">{data.categoryCount}</span>{" "}
+                categor{data.categoryCount !== 1 ? "ies" : "y"} will become unfiled
+              </li>
+              <li>No banks or questions will be deleted</li>
+            </ul>
+          </>
+        ) : data.type === "category" ? (
+          <>
+            <p>This will permanently delete this category and all its content:</p>
+            <ul>
+              <li>
+                <span className="count">{data.bankCount}</span> question
+                {data.bankCount !== 1 ? " banks" : " bank"}
+              </li>
+              <li>All questions within those banks</li>
+              <li>All practice session history</li>
+            </ul>
+            <p className="final">This action cannot be undone.</p>
+          </>
+        ) : (
+          <>
+            <p>This will permanently delete this bank and all its questions.</p>
+            <p className="final">This action cannot be undone.</p>
+          </>
+        )}
+      </div>
+    </Modal>
   );
 }

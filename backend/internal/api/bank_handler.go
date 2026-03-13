@@ -62,12 +62,13 @@ type GetBankResponse struct {
 }
 
 type QuestionResponse struct {
-	ID             string `json:"id" example:"q1w2e3r4t5y6u7i8"`
-	Subject        string `json:"subject" example:"What is a goroutine?"`
-	ExpectedAnswer string `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
-	Mastery        int    `json:"mastery" example:"75"`
-	TimesAnswered  int    `json:"times_answered" example:"3"`
-	TimesCorrect   int    `json:"times_correct" example:"2"`
+	ID             string  `json:"id" example:"q1w2e3r4t5y6u7i8"`
+	Subject        string  `json:"subject" example:"What is a goroutine?"`
+	ExpectedAnswer string  `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
+	GradingPrompt  *string `json:"grading_prompt,omitempty" example:"Be strict about mentioning the Go scheduler."`
+	Mastery        int     `json:"mastery" example:"75"`
+	TimesAnswered  int     `json:"times_answered" example:"3"`
+	TimesCorrect   int     `json:"times_correct" example:"2"`
 }
 
 type UpdateBankCategoryRequest struct {
@@ -212,6 +213,7 @@ func (h *Handler) getBank(w http.ResponseWriter, r *http.Request) {
 			ID:             q.ID,
 			Subject:        q.Subject,
 			ExpectedAnswer: q.ExpectedAnswer,
+			GradingPrompt:  q.GradingPrompt,
 			Mastery:        mastery,
 			TimesAnswered:  timesAnswered,
 			TimesCorrect:   timesCorrect,
