@@ -396,8 +396,18 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 	var gradingPrompt *string
 	var bankType string = "theory"
 	if bank != nil {
-		gradingPrompt = bank.GradingPrompt
 		bankType = string(bank.BankType)
+		// Check for question-level grading prompt first, then fallback to bank-level
+		for _, bq := range bank.Questions {
+			if bq.ID == question.ID && bq.GradingPrompt != nil {
+				gradingPrompt = bq.GradingPrompt
+				break
+			}
+		}
+		// If no question-level prompt, use bank-level
+		if gradingPrompt == nil {
+			gradingPrompt = bank.GradingPrompt
+		}
 	}
 
 	h.grading.SubmitGrading(service.GradeRequest{

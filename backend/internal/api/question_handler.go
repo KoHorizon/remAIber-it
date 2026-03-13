@@ -8,8 +8,9 @@ import (
 // ── Request / Response types ────────────────────────────────────────────────
 
 type AddQuestionRequest struct {
-	Subject        string `json:"subject" example:"What is a goroutine?"`
-	ExpectedAnswer string `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
+	Subject        string  `json:"subject" example:"What is a goroutine?"`
+	ExpectedAnswer string  `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
+	GradingPrompt  *string `json:"grading_prompt,omitempty" example:"Be strict about mentioning the Go scheduler."`
 }
 
 func (r *AddQuestionRequest) Validate() error {
@@ -23,12 +24,13 @@ func (r *AddQuestionRequest) Validate() error {
 }
 
 type AddQuestionResponse struct {
-	ID             string `json:"id" example:"q1w2e3r4t5y6u7i8"`
-	Subject        string `json:"subject" example:"What is a goroutine?"`
-	ExpectedAnswer string `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
-	Mastery        int    `json:"mastery" example:"0"`
-	TimesAnswered  int    `json:"times_answered" example:"0"`
-	TimesCorrect   int    `json:"times_correct" example:"0"`
+	ID             string  `json:"id" example:"q1w2e3r4t5y6u7i8"`
+	Subject        string  `json:"subject" example:"What is a goroutine?"`
+	ExpectedAnswer string  `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
+	GradingPrompt  *string `json:"grading_prompt,omitempty" example:"Be strict about mentioning the Go scheduler."`
+	Mastery        int     `json:"mastery" example:"0"`
+	TimesAnswered  int     `json:"times_answered" example:"0"`
+	TimesCorrect   int     `json:"times_correct" example:"0"`
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -60,7 +62,7 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := bank.AddQuestion(req.Subject, req.ExpectedAnswer); err != nil {
+	if err := bank.AddQuestionWithGradingPrompt(req.Subject, req.ExpectedAnswer, req.GradingPrompt); err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -75,6 +77,7 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 		ID:             newQuestion.ID,
 		Subject:        newQuestion.Subject,
 		ExpectedAnswer: newQuestion.ExpectedAnswer,
+		GradingPrompt:  newQuestion.GradingPrompt,
 		Mastery:        0,
 		TimesAnswered:  0,
 		TimesCorrect:   0,
