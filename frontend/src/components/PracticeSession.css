@@ -1,26 +1,317 @@
-/* Theory mode textarea in split layout */
-.panel-content-theory {
-    padding: 0;
+/* ============================================
+   THEORY MODE - Full layout with sidebar
+   ============================================ */
+
+.theory-session {
+    min-height: 100vh;
+    display: flex;
+    background: var(--bg-primary);
+}
+
+/* Sidebar */
+.theory-sidebar {
+    width: 280px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
 }
 
-.theory-answer-textarea {
+.theory-sidebar-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.theory-sidebar-content {
     flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.theory-sidebar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.theory-sidebar-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.theory-sidebar-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.theory-badge {
+    display: inline-flex;
+    align-self: flex-start;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.theory-progress-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.theory-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.3s ease;
+}
+
+.theory-progress-count {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.theory-timer {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.theory-timer.warning {
+    color: #f59e0b;
+}
+
+.theory-timer.critical {
+    color: #ef4444;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+/* Session stats */
+.theory-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 0.5rem;
+}
+
+.theory-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.theory-stat-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.theory-stat-label {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+}
+
+/* Main content */
+.theory-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 3rem;
+    overflow-y: auto;
+    gap: 2rem;
+}
+
+.theory-top-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
     width: 100%;
-    padding: 1.5rem;
+}
+
+.theory-question {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+.theory-answer-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.theory-answer-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.theory-textarea {
+    width: 100%;
+    min-height: 150px;
+    max-height: 250px;
+    padding: 1rem;
     font-family: var(--font-sans);
-    font-size: 0.9375rem;
+    font-size: 1rem;
     line-height: 1.7;
     color: var(--text-primary);
-    background: var(--bg-primary);
-    border: none;
-    resize: none;
-    outline: none;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    resize: vertical;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.theory-answer-textarea::placeholder {
+.theory-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.theory-textarea::placeholder {
     color: var(--text-muted);
+}
+
+.theory-answer-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+}
+
+.theory-hint {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
+.theory-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Recap section */
+.theory-recap-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    width: 100%;
+}
+
+.theory-recap-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.theory-recap-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+}
+
+.theory-recap-item {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.theory-recap-item.skipped {
+    opacity: 0.6;
+}
+
+.theory-recap-num {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.theory-recap-answer {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.theory-recap-skipped {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Remove old card footer */
+.theory-card-footer {
+    display: none;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .theory-sidebar {
+        width: 220px;
+    }
+
+    .theory-main {
+        padding: 1.5rem 2rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .theory-session {
+        flex-direction: column;
+    }
+
+    .theory-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .theory-sidebar-content {
+        flex-direction: row;
+        gap: 1.5rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .theory-questions-list {
+        display: none;
+    }
+
+    .theory-main {
+        padding: 1rem;
+    }
+
+    .theory-question {
+        font-size: 1.25rem;
+    }
 }
 
 /* Split layout for code mode - FULL WIDTH like LeetCode */

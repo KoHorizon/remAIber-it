@@ -30,6 +30,7 @@ export function PracticeSession({
   const [timeRemaining, setTimeRemaining] = useState<number | null>(
     session.max_duration_min ? session.max_duration_min * 60 : null,
   );
+  const [answeredQuestions, setAnsweredQuestions] = useState<Array<{index: number, answer: string, skipped: boolean}>>([]);
   const completingRef = useRef(false);
 
   const questions = session.questions;
@@ -87,6 +88,7 @@ export function PracticeSession({
   async function handleSubmit() {
     if (!answer.trim() || isSubmitting || completingRef.current) return;
 
+    setAnsweredQuestions(prev => [...prev, { index: currentIndex, answer: answer.trim(), skipped: false }]);
     setIsSubmitting(true);
     try {
       await api.submitAnswer(session.id, currentQuestion.id, answer.trim());
@@ -109,6 +111,8 @@ export function PracticeSession({
 
   async function handleSkip() {
     if (isSubmitting || completingRef.current) return;
+
+    setAnsweredQuestions(prev => [...prev, { index: currentIndex, answer: "", skipped: true }]);
 
     if (isLastQuestion) {
       completingRef.current = true;
@@ -265,100 +269,123 @@ export function PracticeSession({
     );
   }
 
-  // Theory mode: Split layout like code mode
+  // Theory mode: Full-width layout with sidebar
   return (
-    <div className="practice-session-split animate-fade-in">
-      {/* Header */}
-      <div className="practice-header-split">
-        <div className="practice-meta">
-          <span className="practice-subject">{currentBankSubject}</span>
-          <span className="practice-count">
-            Question {currentIndex + 1} of {questions.length}
-          </span>
-          {session.focus_on_weak && (
-            <span className="practice-mode">Focus mode</span>
-          )}
-        </div>
-        <div className="practice-header-right">
-          {timeRemaining !== null && (
-            <span
-              className={`practice-timer ${timeRemaining <= 60 ? "timer-warning" : ""} ${timeRemaining <= 10 ? "timer-critical" : ""}`}
-            >
-              {formatTime(timeRemaining)}
-            </span>
-          )}
-          <button className="btn btn-ghost" onClick={onCancel}>
+    <div className="theory-session animate-fade-in">
+      {/* Sidebar with progress */}
+      <aside className="theory-sidebar">
+        <div className="theory-sidebar-header">
+          <button className="btn btn-ghost btn-sm" onClick={onCancel}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
             Exit
           </button>
         </div>
-      </div>
 
-      {/* Progress bar */}
-      <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
-      </div>
-
-      {/* Split content */}
-      <div className="split-container">
-        {/* Left panel - Question */}
-        <div className="split-panel split-panel-left">
-          <div className="panel-header">
-            <span className="panel-tab active">Description</span>
+        <div className="theory-sidebar-content">
+          <div className="theory-sidebar-section">
+            <h3 className="theory-sidebar-title">{currentBankSubject}</h3>
+            {session.focus_on_weak && <span className="theory-badge">Focus mode</span>}
           </div>
-          <div className="panel-content">
-            <div className="question-content-split" key={currentQuestion.id}>
-              <div className="question-type-badge">
-                <span>Theory</span>
+
+          <div className="theory-sidebar-section">
+            <span className="theory-sidebar-label">Progress</span>
+            <div className="theory-progress-bar">
+              <div className="theory-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+            <span className="theory-progress-count">{currentIndex + 1} / {questions.length}</span>
+          </div>
+
+          {timeRemaining !== null && (
+            <div className="theory-sidebar-section">
+              <span className="theory-sidebar-label">Time remaining</span>
+              <span className={`theory-timer ${timeRemaining <= 60 ? "warning" : ""} ${timeRemaining <= 10 ? "critical" : ""}`}>
+                {formatTime(timeRemaining)}
+              </span>
+            </div>
+          )}
+
+          <div className="theory-sidebar-section">
+            <span className="theory-sidebar-label">Session stats</span>
+            <div className="theory-stats">
+              <div className="theory-stat">
+                <span className="theory-stat-value">{answeredQuestions.filter(q => !q.skipped).length}</span>
+                <span className="theory-stat-label">Answered</span>
               </div>
-              <div className="question-text">
-                <p className="question-paragraph">{currentQuestion.subject}</p>
+              <div className="theory-stat">
+                <span className="theory-stat-value">{answeredQuestions.filter(q => q.skipped).length}</span>
+                <span className="theory-stat-label">Skipped</span>
+              </div>
+              <div className="theory-stat">
+                <span className="theory-stat-value">{questions.length - currentIndex - 1}</span>
+                <span className="theory-stat-label">Remaining</span>
               </div>
             </div>
           </div>
         </div>
+      </aside>
 
-        {/* Right panel - Answer */}
-        <div className="split-panel split-panel-right">
-          <div className="panel-header">
-            <span className="panel-tab active">Your Answer</span>
+      {/* Main content area */}
+      <main className="theory-main">
+        <div className="theory-top-section">
+          <div className="theory-question">
+            {currentQuestion.subject}
           </div>
-          <div className="panel-content panel-content-theory">
+
+          <div className="theory-answer-wrapper">
+            <label className="theory-answer-label">Your answer</label>
             <textarea
-              className="theory-answer-textarea"
-              placeholder="Write your answer from memory..."
+              className="theory-textarea"
+              placeholder="Write what you remember..."
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               onKeyDown={handleKeyDown}
               autoFocus
             />
-          </div>
-          <div className="panel-footer">
-            <span className="submit-hint">
-              {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to submit
-            </span>
-            <div className="panel-actions">
-              <button
-                className="btn btn-secondary"
-                onClick={handleSkip}
-                disabled={isSubmitting}
-              >
-                Skip
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleSubmit}
-                disabled={!answer.trim() || isSubmitting}
-              >
-                {isSubmitting
-                  ? "Submitting..."
-                  : isLastQuestion
-                    ? "Submit & Finish"
-                    : "Next"}
-              </button>
+            <div className="theory-answer-footer">
+              <span className="theory-hint">
+                {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to submit
+              </span>
+              <div className="theory-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleSkip}
+                  disabled={isSubmitting}
+                >
+                  Skip
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSubmit}
+                  disabled={!answer.trim() || isSubmitting}
+                >
+                  {isSubmitting ? "Submitting..." : isLastQuestion ? "Finish" : "Next"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+
+        {/* Bottom section - answered recap */}
+        {answeredQuestions.length > 0 && (
+          <div className="theory-recap-section">
+            <h4 className="theory-recap-title">Your answers this session</h4>
+            <div className="theory-recap-list">
+              {answeredQuestions.map((item, idx) => (
+                <div key={idx} className={`theory-recap-item ${item.skipped ? 'skipped' : ''}`}>
+                  <span className="theory-recap-num">Q{item.index + 1}</span>
+                  {item.skipped ? (
+                    <span className="theory-recap-skipped">Skipped</span>
+                  ) : (
+                    <p className="theory-recap-answer">{item.answer}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
