@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
-import { api } from "../api";
-import type { Bank, Category } from "../types";
+import { useLibrary } from "../context/LibraryContext";
 import { getMasteryLevel } from "../utils/mastery";
 import "./Dashboard.css";
 
@@ -10,28 +8,7 @@ type Props = {
 };
 
 export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [banks, setBanks] = useState<Bank[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    try {
-      const [categoriesData, banksData] = await Promise.all([
-        api.getCategories(),
-        api.getBanks(),
-      ]);
-      setCategories(categoriesData || []);
-      setBanks(banksData || []);
-    } catch (err: unknown) {
-      console.error("Failed to load data:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const { categories, banks, isLoading, getCategoryName } = useLibrary();
 
   // Calculate stats
   const totalQuestions = banks.reduce(
@@ -64,12 +41,6 @@ export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
     } else if (practiceableBanks.length > 0) {
       onQuickPractice([practiceableBanks[0].id]);
     }
-  }
-
-  function getCategoryName(categoryId: string | null | undefined): string {
-    if (!categoryId) return "Uncategorized";
-    const category = categories.find((c) => c.id === categoryId);
-    return category?.name || "Uncategorized";
   }
 
   // Progress ring calculation

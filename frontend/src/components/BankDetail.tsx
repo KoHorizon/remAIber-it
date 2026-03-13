@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../api";
-import type { Bank, Session, Category, BankType } from "../types";
+import { useLibrary } from "../context/LibraryContext";
+import type { Bank, Session, BankType } from "../types";
 import { getMasteryColor, getMasteryLabel, getBankTypeBadge } from "../utils/mastery";
 import { renderFormattedText } from "../utils/formatText";
 import { SessionConfigModal, GradingSettingsModal } from "./modals";
@@ -28,8 +29,9 @@ type Props = {
 };
 
 export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: Props) {
+  const { getCategoryName: getCategory, refreshBank } = useLibrary();
+
   const [bank, setBank] = useState<Bank | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSessionConfig, setShowSessionConfig] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -39,19 +41,16 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
   const [isStartingSession, setIsStartingSession] = useState(false);
 
   useEffect(() => {
-    loadData();
+    loadBank();
   }, [bankId]);
 
-  async function loadData() {
+  async function loadBank() {
+    setIsLoading(true);
     try {
-      const [bankData, categoriesData] = await Promise.all([
-        api.getBank(bankId),
-        api.getCategories(),
-      ]);
+      const bankData = await api.getBank(bankId);
       setBank(bankData);
-      setCategories(categoriesData || []);
     } catch (err: unknown) {
-      console.error("Failed to load data:", err);
+      console.error("Failed to load bank:", err);
     } finally {
       setIsLoading(false);
     }
@@ -63,8 +62,9 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
     setIsDeleting(true);
     try {
       await api.deleteQuestion(bankId, questionId);
-      const updatedBank = await api.getBank(bankId);
-      setBank(updatedBank);
+      // Refresh from context (updates global state) and local state
+      const updated = await refreshBank(bankId);
+      if (updated) setBank(updated);
     } catch (err: unknown) {
       console.error("Failed to delete question:", err);
     } finally {
@@ -105,8 +105,8 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
 
   function getCategoryName(): string | null {
     if (!bank?.category_id) return null;
-    const category = categories.find((c) => c.id === bank.category_id);
-    return category?.name || null;
+    const name = getCategory(bank.category_id);
+    return name === "Uncategorized" ? null : name;
   }
 
   if (isLoading) {
