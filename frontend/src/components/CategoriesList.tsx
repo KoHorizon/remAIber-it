@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useLibraryData } from "../hooks/useLibraryData";
 import {
   CreateFolderModal,
@@ -16,6 +16,9 @@ type Props = {
   onSelectBank: (bankId: string) => void;
 };
 
+type SortField = "name" | "category" | "type" | "mastery" | "questions";
+type SortDirection = "asc" | "desc";
+
 function getMasteryLevel(mastery: number): string {
   if (mastery >= 80) return "excellent";
   if (mastery >= 60) return "good";
@@ -24,14 +27,16 @@ function getMasteryLevel(mastery: number): string {
   return "none";
 }
 
-function getBankTypeInfo(bank: Bank) {
-  if (bank.bank_type === "code") {
-    return { icon: "code", label: bank.language || "Code", className: "type-code" };
-  }
-  if (bank.bank_type === "cli") {
-    return { icon: "terminal", label: "CLI", className: "type-cli" };
-  }
-  return { icon: "book", label: "Theory", className: "type-theory" };
+function getBankTypeLabel(bank: Bank): string {
+  if (bank.bank_type === "code") return bank.language || "Code";
+  if (bank.bank_type === "cli") return "CLI";
+  return "Theory";
+}
+
+function getBankTypeClass(bank: Bank): string {
+  if (bank.bank_type === "code") return "type-code";
+  if (bank.bank_type === "cli") return "type-cli";
+  return "type-theory";
 }
 
 export function CategoriesList({ onSelectBank }: Props) {
@@ -42,9 +47,7 @@ export function CategoriesList({ onSelectBank }: Props) {
     isLoading,
     selectedFolderId,
     setSelectedFolderId,
-    expandedCategories,
     hasFolders,
-    toggleCategory,
     createFolder,
     updateFolder,
     deleteFolder,
@@ -56,13 +59,17 @@ export function CategoriesList({ onSelectBank }: Props) {
     deleteBank,
     exportData,
     importData,
-    getVisibleCategories,
-    getBanksForCategory,
     uncategorizedBanks,
   } = useLibraryData();
 
-  // Search
+  // Search & Filter
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<string | null>(null);
+
+  // Sort
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   // Modal states
   const [showCreateFolder, setShowCreateFolder] = useState(false);
@@ -83,20 +90,83 @@ export function CategoriesList({ onSelectBank }: Props) {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const visibleCategories = getVisibleCategories();
+  // Get category name by ID
+  const getCategoryName = (categoryId: string | null): string => {
+    if (!categoryId) return "Uncategorized";
+    const cat = categories.find(c => c.id === categoryId);
+    return cat?.name || "Unknown";
+  };
 
-  // Filter by search
-  const filteredCategories = searchQuery
-    ? categories.filter((c) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : visibleCategories;
+  // Filter and sort banks
+  const filteredAndSortedBanks = useMemo(() => {
+    let result = [...banks];
 
-  const filteredBanks = searchQuery
-    ? banks.filter((b) =>
-        b.subject.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
+    // Filter by folder (workspace)
+    if (selectedFolderId) {
+      const folderCategoryIds = categories
+        .filter(c => c.folder_id === selectedFolderId)
+        .map(c => c.id);
+      result = result.filter(b => b.category_id && folderCategoryIds.includes(b.category_id));
+    }
+
+    // Filter by search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(b =>
+        b.subject.toLowerCase().includes(query) ||
+        getCategoryName(b.category_id).toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by category
+    if (filterCategory) {
+      if (filterCategory === "uncategorized") {
+        result = result.filter(b => !b.category_id);
+      } else {
+        result = result.filter(b => b.category_id === filterCategory);
+      }
+    }
+
+    // Filter by type
+    if (filterType) {
+      result = result.filter(b => b.bank_type === filterType);
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case "name":
+          comparison = a.subject.localeCompare(b.subject);
+          break;
+        case "category":
+          comparison = getCategoryName(a.category_id).localeCompare(getCategoryName(b.category_id));
+          break;
+        case "type":
+          comparison = (a.bank_type || "theory").localeCompare(b.bank_type || "theory");
+          break;
+        case "mastery":
+          comparison = a.mastery - b.mastery;
+          break;
+        case "questions":
+          comparison = (a.questions?.length || 0) - (b.questions?.length || 0);
+          break;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
+    return result;
+  }, [banks, categories, selectedFolderId, searchQuery, filterCategory, filterType, sortField, sortDirection]);
+
+  // Handle sort click
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  }
 
   // Folder operations
   function startEditFolder(e: React.MouseEvent, folder: Folder) {
@@ -210,12 +280,14 @@ export function CategoriesList({ onSelectBank }: Props) {
     }
   }
 
-  // Calculate mastery ring
-  function getMasteryRing(mastery: number) {
-    const circumference = 2 * Math.PI * 18;
-    const offset = circumference - (mastery / 100) * circumference;
-    return { circumference, offset };
+  // Clear all filters
+  function clearFilters() {
+    setSearchQuery("");
+    setFilterCategory(null);
+    setFilterType(null);
   }
+
+  const hasActiveFilters = searchQuery || filterCategory || filterType;
 
   if (isLoading) {
     return (
@@ -227,8 +299,13 @@ export function CategoriesList({ onSelectBank }: Props) {
 
   const hasContent = categories.length > 0 || banks.length > 0;
 
+  // Get visible categories based on selected folder
+  const visibleCategories = selectedFolderId
+    ? categories.filter(c => c.folder_id === selectedFolderId)
+    : categories;
+
   return (
-    <div className="library animate-fade-in">
+    <div className="library-table animate-fade-in">
       {/* Hidden file input for import */}
       <input
         type="file"
@@ -297,70 +374,41 @@ export function CategoriesList({ onSelectBank }: Props) {
       )}
 
       {/* Header */}
-      <div className="library-header">
-        <div className="library-header-left">
-          <h1 className="library-title">Library</h1>
+      <div className="library-table-header">
+        <div className="library-table-title">
+          <h1>Library</h1>
+          <span className="library-table-count">{filteredAndSortedBanks.length} banks</span>
         </div>
-        <div className="library-header-actions">
+        <div className="library-table-actions">
           <button
-            className="btn btn-ghost"
+            className="btn btn-ghost btn-sm"
             onClick={handleImportClick}
             disabled={isImporting}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
             {isImporting ? "Importing..." : "Import"}
           </button>
           <button
-            className="btn btn-ghost"
+            className="btn btn-ghost btn-sm"
             onClick={handleExport}
             disabled={isExporting || !hasContent}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
             {isExporting ? "Exporting..." : "Export"}
           </button>
           <button
-            className="btn btn-primary"
-            onClick={() => setShowCreateCategory(true)}
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowCreateBank(filterCategory || visibleCategories[0]?.id || null)}
+            disabled={categories.length === 0}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            New Category
+            + Bank
           </button>
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="library-search">
-        <div className="search-input-wrapper">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            className="input"
-            placeholder="Search categories and banks..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Workspace Tabs (Folders) */}
-      {(hasFolders || folders.length > 0) && !searchQuery && (
-        <div className="workspace-tabs">
+      {/* Workspace Tabs */}
+      {(hasFolders || folders.length > 0) && (
+        <div className="library-table-tabs">
           <button
-            className={`workspace-tab ${!selectedFolderId ? "active" : ""}`}
+            className={`tab-btn ${!selectedFolderId ? "active" : ""}`}
             onClick={() => setSelectedFolderId(null)}
           >
             All
@@ -368,12 +416,12 @@ export function CategoriesList({ onSelectBank }: Props) {
           {folders.map((folder) => (
             <div
               key={folder.id}
-              className={`workspace-tab ${selectedFolderId === folder.id ? "active" : ""}`}
+              className={`tab-btn ${selectedFolderId === folder.id ? "active" : ""}`}
             >
               {editingFolderId === folder.id ? (
                 <input
                   type="text"
-                  className="workspace-tab-input"
+                  className="tab-edit-input"
                   value={editFolderName}
                   onChange={(e) => setEditFolderName(e.target.value)}
                   onKeyDown={(e) => {
@@ -387,29 +435,19 @@ export function CategoriesList({ onSelectBank }: Props) {
               ) : (
                 <>
                   <button
-                    className="workspace-tab-btn"
-                    onClick={() =>
-                      setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id)
-                    }
+                    className="tab-btn-inner"
+                    onClick={() => setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id)}
                   >
                     {folder.name}
                   </button>
-                  <div className="workspace-tab-actions">
-                    <button
-                      className="workspace-tab-action"
-                      onClick={(e) => startEditFolder(e, folder)}
-                      title="Rename"
-                    >
+                  <div className="tab-actions">
+                    <button onClick={(e) => startEditFolder(e, folder)} title="Rename">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                       </svg>
                     </button>
-                    <button
-                      className="workspace-tab-action danger"
-                      onClick={(e) => openDeleteFolderModal(e, folder)}
-                      title="Delete"
-                    >
+                    <button onClick={(e) => openDeleteFolderModal(e, folder)} title="Delete" className="danger">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
@@ -421,208 +459,193 @@ export function CategoriesList({ onSelectBank }: Props) {
             </div>
           ))}
           <button
-            className="workspace-tab workspace-tab-add"
+            className="tab-btn tab-btn-add"
             onClick={() => setShowCreateFolder(true)}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Add Workspace
+            + Workspace
           </button>
         </div>
       )}
 
-      {/* Search Results */}
-      {searchQuery && (
-        <div className="search-results">
-          {filteredCategories.length > 0 && (
-            <div className="search-section">
-              <h3 className="search-section-title">Categories</h3>
-              <div className="category-grid">
-                {filteredCategories.map((category) => {
-                  const categoryBanks = getBanksForCategory(category.id);
-                  const { circumference, offset } = getMasteryRing(category.mastery);
-                  return (
-                    <div
-                      key={category.id}
-                      className="category-card"
-                      onClick={() => {
-                        setSearchQuery("");
-                        toggleCategory(category.id);
-                      }}
-                    >
-                      <div className="category-card-header">
-                        <div className="category-card-mastery">
-                          <svg width="44" height="44" viewBox="0 0 44 44">
-                            <circle
-                              cx="22"
-                              cy="22"
-                              r="18"
-                              fill="none"
-                              stroke="var(--bg-elevated)"
-                              strokeWidth="4"
-                            />
-                            <circle
-                              cx="22"
-                              cy="22"
-                              r="18"
-                              fill="none"
-                              className={`mastery-ring-stroke ${getMasteryLevel(category.mastery)}`}
-                              strokeWidth="4"
-                              strokeLinecap="round"
-                              strokeDasharray={circumference}
-                              strokeDashoffset={offset}
-                              transform="rotate(-90 22 22)"
-                            />
+      {/* Filters Row */}
+      <div className="library-table-filters">
+        <div className="filter-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search banks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="filter-dropdowns">
+          <select
+            value={filterType || ""}
+            onChange={(e) => setFilterType(e.target.value || null)}
+            className="filter-select"
+          >
+            <option value="">All Types</option>
+            <option value="theory">Theory</option>
+            <option value="code">Code</option>
+            <option value="cli">CLI</option>
+          </select>
+
+          {hasActiveFilters && (
+            <button className="filter-clear" onClick={clearFilters}>
+              Clear filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Category Chips - for filtering */}
+      {categories.length > 0 && (
+        <div className="library-category-chips">
+          {visibleCategories.map(category => {
+            const categoryBanks = banks.filter(b => b.category_id === category.id);
+            const isEditing = editingCategoryId === category.id;
+
+            return (
+              <div
+                key={category.id}
+                className={`category-chip ${filterCategory === category.id ? 'active' : ''}`}
+                onClick={() => setFilterCategory(filterCategory === category.id ? null : category.id)}
+              >
+                {isEditing ? (
+                  <input
+                    type="text"
+                    className="chip-edit-input"
+                    value={editCategoryName}
+                    onChange={(e) => setEditCategoryName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleUpdateCategory(category.id);
+                      else if (e.key === "Escape") setEditingCategoryId(null);
+                    }}
+                    onBlur={() => handleUpdateCategory(category.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                  />
+                ) : (
+                  <>
+                    <span className="chip-name">{category.name}</span>
+                    <span className={`chip-mastery ${getMasteryLevel(category.mastery)}`}>
+                      {category.mastery}%
+                    </span>
+                    <span className="chip-count">{categoryBanks.length}</span>
+                    <div className="chip-actions">
+                      {hasFolders && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMovingCategory(category);
+                          }}
+                          title="Move"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                           </svg>
-                          <span className="category-card-mastery-value">{category.mastery}%</span>
-                        </div>
-                        <div className="category-card-info">
-                          <h3 className="category-card-name">{category.name}</h3>
-                          <span className="category-card-count">
-                            {categoryBanks.length} bank{categoryBanks.length !== 1 ? "s" : ""}
-                          </span>
-                        </div>
-                      </div>
+                        </button>
+                      )}
+                      <button onClick={(e) => startEditCategory(e, category)} title="Rename">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => openDeleteCategoryModal(e, category)}
+                        title="Delete"
+                        className="danger"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
                     </div>
-                  );
-                })}
+                  </>
+                )}
               </div>
-            </div>
-          )}
-
-          {filteredBanks.length > 0 && (
-            <div className="search-section">
-              <h3 className="search-section-title">Banks</h3>
-              <div className="bank-grid">
-                {filteredBanks.map((bank) => {
-                  const typeInfo = getBankTypeInfo(bank);
-                  return (
-                    <div
-                      key={bank.id}
-                      className="bank-card"
-                      onClick={() => onSelectBank(bank.id)}
-                    >
-                      <div className="bank-card-header">
-                        <span className={`bank-card-type ${typeInfo.className}`}>
-                          {typeInfo.label}
-                        </span>
-                        <span className={`bank-card-mastery ${getMasteryLevel(bank.mastery)}`}>
-                          {bank.mastery}%
-                        </span>
-                      </div>
-                      <h4 className="bank-card-name">{bank.subject}</h4>
-                      <span className="bank-card-questions">
-                        {bank.questions?.length || 0} questions
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {filteredCategories.length === 0 && filteredBanks.length === 0 && (
-            <div className="search-empty">
-              <p>No results found for "{searchQuery}"</p>
-            </div>
-          )}
+            );
+          })}
+          <button
+            className="category-chip add-chip"
+            onClick={() => setShowCreateCategory(true)}
+          >
+            + Add Category
+          </button>
         </div>
       )}
 
-      {/* Categories Grid (not searching) */}
-      {!searchQuery && (
-        <div className="category-grid">
-          {filteredCategories.map((category) => {
-            const categoryBanks = getBanksForCategory(category.id);
-            const isExpanded = expandedCategories.has(category.id);
-            const isEditing = editingCategoryId === category.id;
-            const { circumference, offset } = getMasteryRing(category.mastery);
-
-            return (
-              <div key={category.id} className="category-card-wrapper">
-                <div
-                  className={`category-card ${isExpanded ? "expanded" : ""}`}
-                  onClick={() => toggleCategory(category.id)}
-                >
-                  <div className="category-card-header">
-                    <div className="category-card-mastery">
-                      <svg width="44" height="44" viewBox="0 0 44 44">
-                        <circle
-                          cx="22"
-                          cy="22"
-                          r="18"
-                          fill="none"
-                          stroke="var(--bg-elevated)"
-                          strokeWidth="4"
+      {/* Table */}
+      {hasContent ? (
+        <div className="library-table-wrapper">
+          <table className="library-table-content">
+            <thead>
+              <tr>
+                <th className="col-name" onClick={() => handleSort("name")}>
+                  Name
+                  <SortIcon field="name" current={sortField} direction={sortDirection} />
+                </th>
+                <th className="col-category" onClick={() => handleSort("category")}>
+                  Category
+                  <SortIcon field="category" current={sortField} direction={sortDirection} />
+                </th>
+                <th className="col-type" onClick={() => handleSort("type")}>
+                  Type
+                  <SortIcon field="type" current={sortField} direction={sortDirection} />
+                </th>
+                <th className="col-mastery" onClick={() => handleSort("mastery")}>
+                  Mastery
+                  <SortIcon field="mastery" current={sortField} direction={sortDirection} />
+                </th>
+                <th className="col-questions" onClick={() => handleSort("questions")}>
+                  Questions
+                  <SortIcon field="questions" current={sortField} direction={sortDirection} />
+                </th>
+                <th className="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAndSortedBanks.map((bank) => (
+                <tr key={bank.id} onClick={() => onSelectBank(bank.id)}>
+                  <td className="col-name">
+                    <span className="bank-name">{bank.subject}</span>
+                  </td>
+                  <td className="col-category">
+                    <span className="category-badge">
+                      {getCategoryName(bank.category_id)}
+                    </span>
+                  </td>
+                  <td className="col-type">
+                    <span className={`type-badge ${getBankTypeClass(bank)}`}>
+                      {getBankTypeLabel(bank)}
+                    </span>
+                  </td>
+                  <td className="col-mastery">
+                    <div className="mastery-cell">
+                      <div className="mastery-bar">
+                        <div
+                          className={`mastery-fill ${getMasteryLevel(bank.mastery)}`}
+                          style={{ width: `${bank.mastery}%` }}
                         />
-                        <circle
-                          cx="22"
-                          cy="22"
-                          r="18"
-                          fill="none"
-                          className={`mastery-ring-stroke ${getMasteryLevel(category.mastery)}`}
-                          strokeWidth="4"
-                          strokeLinecap="round"
-                          strokeDasharray={circumference}
-                          strokeDashoffset={offset}
-                          transform="rotate(-90 22 22)"
-                        />
-                      </svg>
-                      <span className="category-card-mastery-value">{category.mastery}%</span>
-                    </div>
-                    <div className="category-card-info">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          className="input category-edit-input"
-                          value={editCategoryName}
-                          onChange={(e) => setEditCategoryName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleUpdateCategory(category.id);
-                            else if (e.key === "Escape") setEditingCategoryId(null);
-                          }}
-                          onBlur={() => handleUpdateCategory(category.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          autoFocus
-                        />
-                      ) : (
-                        <h3 className="category-card-name">{category.name}</h3>
-                      )}
-                      <span className="category-card-count">
-                        {categoryBanks.length} bank{categoryBanks.length !== 1 ? "s" : ""}
+                      </div>
+                      <span className={`mastery-value ${getMasteryLevel(bank.mastery)}`}>
+                        {bank.mastery}%
                       </span>
                     </div>
-                  </div>
-                  <div className="category-card-actions">
-                    {hasFolders && (
-                      <button
-                        className="category-action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMovingCategory(category);
-                        }}
-                        title="Move to workspace"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                        </svg>
-                      </button>
-                    )}
+                  </td>
+                  <td className="col-questions">
+                    {bank.questions?.length || 0}
+                  </td>
+                  <td className="col-actions">
                     <button
-                      className="category-action-btn"
-                      onClick={(e) => startEditCategory(e, category)}
-                      title="Edit"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                    </button>
-                    <button
-                      className="category-action-btn danger"
-                      onClick={(e) => openDeleteCategoryModal(e, category)}
+                      className="row-action-btn danger"
+                      onClick={(e) => openDeleteBankModal(e, bank)}
                       title="Delete"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -630,123 +653,22 @@ export function CategoriesList({ onSelectBank }: Props) {
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                       </svg>
                     </button>
-                  </div>
-                  <div className="category-card-expand">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className={isExpanded ? "rotated" : ""}
-                    >
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </div>
-                </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-                {/* Expanded Banks */}
-                {isExpanded && (
-                  <div className="category-banks">
-                    {categoryBanks.map((bank) => {
-                      const typeInfo = getBankTypeInfo(bank);
-                      return (
-                        <div
-                          key={bank.id}
-                          className="bank-card"
-                          onClick={() => onSelectBank(bank.id)}
-                        >
-                          <div className="bank-card-header">
-                            <span className={`bank-card-type ${typeInfo.className}`}>
-                              {typeInfo.label}
-                            </span>
-                            <span className={`bank-card-mastery ${getMasteryLevel(bank.mastery)}`}>
-                              {bank.mastery}%
-                            </span>
-                          </div>
-                          <h4 className="bank-card-name">{bank.subject}</h4>
-                          <span className="bank-card-questions">
-                            {bank.questions?.length || 0} questions
-                          </span>
-                          <button
-                            className="bank-card-delete"
-                            onClick={(e) => openDeleteBankModal(e, bank)}
-                            title="Delete"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <line x1="18" y1="6" x2="6" y2="18" />
-                              <line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                          </button>
-                        </div>
-                      );
-                    })}
-                    <button
-                      className="add-bank-card"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowCreateBank(category.id);
-                      }}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                      <span>Add Bank</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {filteredAndSortedBanks.length === 0 && hasActiveFilters && (
+            <div className="table-empty">
+              <p>No banks match your filters.</p>
+              <button className="btn btn-secondary btn-sm" onClick={clearFilters}>
+                Clear filters
+              </button>
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Uncategorized Banks */}
-      {!searchQuery && uncategorizedBanks.length > 0 && (
-        <div className="uncategorized-section">
-          <h3 className="section-title">Uncategorized</h3>
-          <div className="bank-grid">
-            {uncategorizedBanks.map((bank) => {
-              const typeInfo = getBankTypeInfo(bank);
-              return (
-                <div
-                  key={bank.id}
-                  className="bank-card"
-                  onClick={() => onSelectBank(bank.id)}
-                >
-                  <div className="bank-card-header">
-                    <span className={`bank-card-type ${typeInfo.className}`}>
-                      {typeInfo.label}
-                    </span>
-                    <span className={`bank-card-mastery ${getMasteryLevel(bank.mastery)}`}>
-                      {bank.mastery}%
-                    </span>
-                  </div>
-                  <h4 className="bank-card-name">{bank.subject}</h4>
-                  <span className="bank-card-questions">
-                    {bank.questions?.length || 0} questions
-                  </span>
-                  <button
-                    className="bank-card-delete"
-                    onClick={(e) => openDeleteBankModal(e, bank)}
-                    title="Delete"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!hasContent && !searchQuery && (
+      ) : (
         <div className="library-empty">
           <div className="library-empty-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -759,13 +681,30 @@ export function CategoriesList({ onSelectBank }: Props) {
             Create your first category to start organizing your question banks.
           </p>
           <button
-            className="btn btn-primary btn-lg"
+            className="btn btn-primary"
             onClick={() => setShowCreateCategory(true)}
           >
             Create Category
           </button>
         </div>
       )}
+
     </div>
+  );
+}
+
+// Sort icon component
+function SortIcon({ field, current, direction }: { field: SortField; current: SortField; direction: SortDirection }) {
+  if (field !== current) {
+    return (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="sort-icon inactive">
+        <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="sort-icon active">
+      {direction === "asc" ? <path d="M7 14l5-5 5 5" /> : <path d="M7 10l5 5 5-5" />}
+    </svg>
   );
 }
