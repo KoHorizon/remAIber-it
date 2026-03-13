@@ -1,20 +1,13 @@
 import { useState, useEffect } from "react";
 import { api } from "../api";
 import type { Bank, Category } from "../types";
+import { getMasteryLevel } from "../utils/mastery";
 import "./Dashboard.css";
 
 type Props = {
   onSelectBank: (bankId: string) => void;
   onQuickPractice: (bankIds: string[]) => void;
 };
-
-function getMasteryLevel(mastery: number): string {
-  if (mastery >= 80) return "excellent";
-  if (mastery >= 60) return "good";
-  if (mastery >= 40) return "fair";
-  if (mastery > 0) return "needs-work";
-  return "none";
-}
 
 export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);

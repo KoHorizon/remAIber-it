@@ -7,34 +7,8 @@ import { AddQuestionView } from "./components/AddQuestionView";
 import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
 import { api } from "./api";
-import type {
-  BankType,
-  Session,
-  SessionQuestion,
-  SessionResult,
-} from "./types";
+import type { BankType, Session, SessionQuestion, SessionResult } from "./types";
 import "./App.css";
-
-// Re-export types and api for backward compatibility with existing components
-export type {
-  Folder,
-  Category,
-  Bank,
-  BankType,
-  Question,
-  SessionQuestion,
-  SessionConfig,
-  Session,
-  SessionResult,
-  QuestionResult,
-  ExportQuestion,
-  ExportBank,
-  ExportCategory,
-  ExportFolder,
-  ExportData,
-  ImportResult,
-} from "./types";
-export { api } from "./api";
 
 type MainView = "dashboard" | "library";
 

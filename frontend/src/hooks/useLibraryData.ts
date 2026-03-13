@@ -1,14 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import * as api from "../api";
+import { api } from "../api";
 import type { Folder, Category, Bank, BankType, ImportResult, ExportData } from "../types";
-
-export type DeleteModalData = {
-  type: "category" | "bank" | "folder";
-  id: string;
-  name: string;
-  bankCount?: number;
-  categoryCount?: number;
-} | null;
 
 export function useLibraryData() {
   const [folders, setFolders] = useState<Folder[]>([]);

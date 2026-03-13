@@ -9,7 +9,8 @@ import {
   ImportResultModal,
 } from "./modals";
 import type { DeleteModalData } from "./modals";
-import type { Folder, Category, Bank, ImportResult } from "../types";
+import type { Bank } from "../types";
+import { getMasteryLevel } from "../utils/mastery";
 import "./CategoriesList.css";
 
 type Props = {
@@ -18,14 +19,6 @@ type Props = {
 
 type SortField = "name" | "category" | "type" | "mastery" | "questions";
 type SortDirection = "asc" | "desc";
-
-function getMasteryLevel(mastery: number): string {
-  if (mastery >= 80) return "excellent";
-  if (mastery >= 60) return "good";
-  if (mastery >= 40) return "fair";
-  if (mastery > 0) return "needs-work";
-  return "none";
-}
 
 function getBankTypeLabel(bank: Bank): string {
   if (bank.bank_type === "code") return bank.language || "Code";
