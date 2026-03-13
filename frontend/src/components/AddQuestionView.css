@@ -182,6 +182,31 @@
     color: var(--text-muted);
 }
 
+/* Theory mode grading section - full width */
+.add-theory-grading-section {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 3rem;
+    margin: -2rem -3rem 1.5rem -3rem;
+    width: calc(100% + 6rem);
+}
+
+.add-theory-grading-section .grading-prompt-section-header {
+    margin-bottom: 0.5rem;
+}
+
+.add-theory-grading-section .grading-prompt-textarea {
+    min-height: 280px;
+    width: 100%;
+}
+
+.add-theory-grading-section .grading-prompt-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.75rem;
+}
+
 .add-question-view-hint {
     font-size: 0.75rem;
     color: var(--text-muted);

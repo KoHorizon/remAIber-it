@@ -3,6 +3,7 @@ import { getMasteryColor, getMasteryLabel } from "../../utils/mastery";
 import { renderFormattedText } from "../../utils/formatText";
 import { CodeEditor } from "../CodeEditor";
 import { TerminalDisplay } from "../TerminalDisplay";
+import { Tooltip, TooltipTitle, TooltipContent } from "../ui";
 
 type Props = {
   question: Question;
@@ -37,7 +38,25 @@ export function QuestionCard({
       style={{ animationDelay: `${index * 0.05}s` }}
     >
       <div className="question-header">
-        <span className="question-number">Q{index + 1}</span>
+        <div className="question-header-left">
+          <span className="question-number">Q{index + 1}</span>
+          {question.grading_prompt && (
+            <Tooltip
+              trigger={
+                <span className="question-grading-badge">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                  Custom grading
+                </span>
+              }
+              width="400px"
+            >
+              <TooltipTitle>Custom Grading Rules</TooltipTitle>
+              <TooltipContent>{question.grading_prompt}</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         <div className={`question-mastery ${getMasteryColor(question.mastery)}`}>
           <span className="mastery-percent">{question.mastery}%</span>
           <span className="mastery-status">{getMasteryLabel(question.mastery)}</span>

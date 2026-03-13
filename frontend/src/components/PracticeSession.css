@@ -165,7 +165,7 @@
 
 .theory-textarea {
     width: 100%;
-    min-height: 150px;
+    min-height: 120px;
     max-height: 250px;
     padding: 1rem;
     font-family: var(--font-sans);
@@ -177,6 +177,11 @@
     border-radius: var(--radius-md);
     resize: vertical;
     transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Larger textareas in add question mode */
+.theory-session .theory-answer-wrapper .theory-textarea {
+    min-height: 240px;
 }
 
 .theory-textarea:focus {
