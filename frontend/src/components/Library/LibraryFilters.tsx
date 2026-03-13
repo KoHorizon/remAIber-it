@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { Dropdown, Button } from "../ui";
 
 type Props = {
   searchQuery: string;
@@ -28,27 +28,6 @@ export function LibraryFilters({
   onClearFilters,
   onCreateBank,
 }: Props) {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const selectedOption = TYPE_OPTIONS.find((opt) => opt.value === (filterType || ""));
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  function handleSelect(value: string) {
-    onTypeChange(value || null);
-    setIsOpen(false);
-  }
-
   return (
     <div className="library-table-filters">
       <div className="filter-search">
@@ -72,50 +51,12 @@ export function LibraryFilters({
       </div>
 
       <div className="filter-dropdowns">
-        <div className="custom-dropdown" ref={dropdownRef}>
-          <button
-            className={`custom-dropdown-trigger ${isOpen ? "open" : ""}`}
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            <span>{selectedOption?.label}</span>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className={`dropdown-chevron ${isOpen ? "open" : ""}`}
-            >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
-          {isOpen && (
-            <div className="custom-dropdown-menu">
-              {TYPE_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  className={`custom-dropdown-item ${(filterType || "") === option.value ? "selected" : ""}`}
-                  onClick={() => handleSelect(option.value)}
-                >
-                  {option.label}
-                  {(filterType || "") === option.value && (
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <Dropdown
+          options={TYPE_OPTIONS}
+          value={filterType || ""}
+          onChange={(val) => onTypeChange(val || null)}
+          emptyValue=""
+        />
 
         {hasActiveFilters && (
           <button className="filter-clear" onClick={onClearFilters}>
@@ -126,13 +67,9 @@ export function LibraryFilters({
 
       <div className="filter-spacer" />
 
-      <button
-        className="btn btn-primary btn-sm"
-        onClick={onCreateBank}
-        disabled={!canCreateBank}
-      >
+      <Button size="sm" onClick={onCreateBank} disabled={!canCreateBank}>
         + Bank
-      </button>
+      </Button>
     </div>
   );
 }

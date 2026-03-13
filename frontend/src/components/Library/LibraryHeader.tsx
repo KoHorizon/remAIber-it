@@ -1,3 +1,5 @@
+import { Button } from "../ui";
+
 type Props = {
   bankCount: number;
   isImporting: boolean;
@@ -22,20 +24,12 @@ export function LibraryHeader({
         <span className="library-table-count">{bankCount} banks</span>
       </div>
       <div className="library-table-actions">
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={onImport}
-          disabled={isImporting}
-        >
+        <Button variant="ghost" size="sm" onClick={onImport} disabled={isImporting}>
           {isImporting ? "Importing..." : "Import"}
-        </button>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={onExport}
-          disabled={isExporting || !hasContent}
-        >
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onExport} disabled={isExporting || !hasContent}>
           {isExporting ? "Exporting..." : "Export"}
-        </button>
+        </Button>
       </div>
     </div>
   );

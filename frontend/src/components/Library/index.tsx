@@ -16,7 +16,7 @@ import { LibraryFilters } from "./LibraryFilters";
 import { CategoryChips } from "./CategoryChips";
 import { LibraryTable } from "./LibraryTable";
 import { LibraryEmpty } from "./LibraryEmpty";
-import "../CategoriesList.css";
+import "./Library.css";
 
 type Props = {
   onSelectBank: (bankId: string) => void;
@@ -75,8 +75,7 @@ export function Library({ onSelectBank }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Folder handlers
-  function startEditFolder(e: React.MouseEvent, folder: Folder) {
-    e.stopPropagation();
+  function startEditFolder(folder: Folder) {
     setEditingFolderId(folder.id);
     setEditFolderName(folder.name);
   }
@@ -92,8 +91,7 @@ export function Library({ onSelectBank }: Props) {
     }
   }
 
-  function openDeleteFolderModal(e: React.MouseEvent, folder: Folder) {
-    e.stopPropagation();
+  function openDeleteFolderModal(folder: Folder) {
     const folderCategories = categories.filter((c) => c.folder_id === folder.id);
     setDeleteModal({
       type: "folder",
@@ -104,8 +102,7 @@ export function Library({ onSelectBank }: Props) {
   }
 
   // Category handlers
-  function startEditCategory(e: React.MouseEvent, category: Category) {
-    e.stopPropagation();
+  function startEditCategory(category: Category) {
     setEditingCategoryId(category.id);
     setEditCategoryName(category.name);
   }
@@ -121,8 +118,7 @@ export function Library({ onSelectBank }: Props) {
     }
   }
 
-  function openDeleteCategoryModal(e: React.MouseEvent, category: Category) {
-    e.stopPropagation();
+  function openDeleteCategoryModal(category: Category) {
     const categoryBanks = banks.filter((b) => b.category_id === category.id);
     setDeleteModal({
       type: "category",
@@ -336,6 +332,3 @@ export function Library({ onSelectBank }: Props) {
     </div>
   );
 }
-
-// Re-export as CategoriesList for backward compatibility
-export { Library as CategoriesList };

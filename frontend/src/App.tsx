@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
-import { CategoriesList } from "./components/CategoriesList";
-import { BankDetail } from "./components/BankDetail";
+import { Library } from "./components/Library";
+import { BankDetail } from "./components/BankDetail/index";
 import { AddQuestionView } from "./components/AddQuestionView";
 import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
@@ -189,11 +189,9 @@ function App() {
           />
         )}
 
-        {/* Library (Categories List) */}
+        {/* Library */}
         {view.type === "main" && view.mainView === "library" && (
-          <CategoriesList
-            onSelectBank={(bankId) => navigate.toBank(bankId, "library")}
-          />
+          <Library onSelectBank={(bankId) => navigate.toBank(bankId, "library")} />
         )}
 
         {/* Bank Detail */}

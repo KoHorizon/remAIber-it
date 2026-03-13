@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Folder } from "../../types";
+import { Chip, AddChip, ChipIcons } from "../ui";
 
 type Props = {
   folders: Folder[];
@@ -7,11 +8,11 @@ type Props = {
   editingFolderId: string | null;
   editFolderName: string;
   onSelectFolder: (id: string | null) => void;
-  onStartEdit: (e: React.MouseEvent, folder: Folder) => void;
+  onStartEdit: (folder: Folder) => void;
   onEditNameChange: (name: string) => void;
   onSaveEdit: (folderId: string) => void;
   onCancelEdit: () => void;
-  onDelete: (e: React.MouseEvent, folder: Folder) => void;
+  onDelete: (folder: Folder) => void;
   onCreateFolder: (name: string) => Promise<void>;
 };
 
@@ -51,99 +52,52 @@ export function WorkspaceTabs({
   }
 
   return (
-    <div className="library-table-tabs">
-      <button
-        className={`tab-btn ${!selectedFolderId ? "active" : ""}`}
+    <div className="library-workspace-chips">
+      <Chip
+        label="All"
+        isActive={!selectedFolderId}
         onClick={() => onSelectFolder(null)}
-      >
-        All
-      </button>
+      />
+
       {folders.map((folder) => (
-        <div
+        <Chip
           key={folder.id}
-          className={`tab-btn ${selectedFolderId === folder.id ? "active" : ""}`}
-        >
-          {editingFolderId === folder.id ? (
-            <input
-              type="text"
-              className="tab-edit-input"
-              value={editFolderName}
-              onChange={(e) => onEditNameChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onSaveEdit(folder.id);
-                else if (e.key === "Escape") onCancelEdit();
-              }}
-              onBlur={() => onSaveEdit(folder.id)}
-              onClick={(e) => e.stopPropagation()}
-              autoFocus
-            />
-          ) : (
-            <>
-              <button
-                className="tab-btn-inner"
-                onClick={() =>
-                  onSelectFolder(selectedFolderId === folder.id ? null : folder.id)
-                }
-              >
-                {folder.name}
-              </button>
-              <div className="tab-actions">
-                <button onClick={(e) => onStartEdit(e, folder)} title="Rename">
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={(e) => onDelete(e, folder)}
-                  title="Delete"
-                  className="danger"
-                >
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+          label={folder.name}
+          isActive={selectedFolderId === folder.id}
+          onClick={() =>
+            onSelectFolder(selectedFolderId === folder.id ? null : folder.id)
+          }
+          isEditing={editingFolderId === folder.id}
+          editValue={editFolderName}
+          onEditChange={onEditNameChange}
+          onEditSave={() => onSaveEdit(folder.id)}
+          onEditCancel={onCancelEdit}
+          actions={[
+            {
+              icon: ChipIcons.edit,
+              label: "Rename",
+              onClick: () => onStartEdit(folder),
+            },
+            {
+              icon: ChipIcons.delete,
+              label: "Delete",
+              onClick: () => onDelete(folder),
+              variant: "danger",
+            },
+          ]}
+        />
       ))}
-      {isCreating ? (
-        <div className="tab-btn tab-btn-add creating">
-          <input
-            type="text"
-            className="tab-edit-input"
-            placeholder="Workspace name..."
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreate();
-              else if (e.key === "Escape") handleCancel();
-            }}
-            onBlur={handleCreate}
-            autoFocus
-          />
-        </div>
-      ) : (
-        <button className="tab-btn tab-btn-add" onClick={() => setIsCreating(true)}>
-          + Workspace
-        </button>
-      )}
+
+      <AddChip
+        label="+ Workspace"
+        isCreating={isCreating}
+        createValue={newFolderName}
+        placeholder="Workspace name..."
+        onStartCreate={() => setIsCreating(true)}
+        onCreateChange={setNewFolderName}
+        onCreateSave={handleCreate}
+        onCreateCancel={handleCancel}
+      />
     </div>
   );
 }

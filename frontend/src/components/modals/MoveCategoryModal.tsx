@@ -1,4 +1,5 @@
 import type { Folder, Category } from "../../types";
+import { Modal, Button } from "../ui";
 
 type Props = {
   category: Category;
@@ -23,35 +24,32 @@ export function MoveCategoryModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Move Category</h2>
-        <p style={{ color: "var(--text-secondary)", marginBottom: "1rem" }}>
-          Choose a workspace for "{category.name}":
-        </p>
-        <div className="folder-picker folder-picker-move">
+    <Modal
+      title="Move Category"
+      onClose={onClose}
+      actions={
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+      }
+    >
+      <p style={{ color: "var(--text-secondary)", marginBottom: "1rem" }}>
+        Choose a workspace for "{category.name}":
+      </p>
+      <div className="folder-picker folder-picker-move">
+        <button className="folder-pick-btn" onClick={() => handleMove(null)}>
+          📋 No workspace
+        </button>
+        {folders.map((f) => (
           <button
-            className="folder-pick-btn"
-            onClick={() => handleMove(null)}
+            key={f.id}
+            className={`folder-pick-btn ${category.folder_id === f.id ? "active" : ""}`}
+            onClick={() => handleMove(f.id)}
           >
-            📋 No workspace
+            📁 {f.name}
           </button>
-          {folders.map((f) => (
-            <button
-              key={f.id}
-              className={`folder-pick-btn ${category.folder_id === f.id ? "active" : ""}`}
-              onClick={() => handleMove(f.id)}
-            >
-              📁 {f.name}
-            </button>
-          ))}
-        </div>
-        <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>
-            Cancel
-          </button>
-        </div>
+        ))}
       </div>
-    </div>
+    </Modal>
   );
 }

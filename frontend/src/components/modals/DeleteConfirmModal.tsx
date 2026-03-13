@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Modal, Button } from "../ui";
 
 export type DeleteModalData = {
   type: "category" | "bank" | "folder";
@@ -39,10 +40,22 @@ export function DeleteConfirmModal({ data, onClose, onConfirm }: Props) {
         : "Bank";
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-delete" onClick={(e) => e.stopPropagation()}>
-        <div className="delete-modal-icon">⚠️</div>
-        <h2>Delete {typeLabel}?</h2>
+    <Modal
+      title={`Delete ${typeLabel}?`}
+      onClose={onClose}
+      variant="delete"
+      actions={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleConfirm} disabled={isDeleting}>
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </>
+      }
+    >
+      <div className="delete-modal-icon">⚠️</div>
 
         <div className="delete-modal-content">
           <p className="delete-target">
@@ -88,26 +101,6 @@ export function DeleteConfirmModal({ data, onClose, onConfirm }: Props) {
             </div>
           )}
         </div>
-
-        <div className="modal-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onClose}
-            disabled={isDeleting}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={handleConfirm}
-            disabled={isDeleting}
-          >
-            {isDeleting ? "Deleting..." : "Delete"}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
