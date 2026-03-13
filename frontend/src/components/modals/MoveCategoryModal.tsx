@@ -33,20 +33,25 @@ export function MoveCategoryModal({
         </Button>
       }
     >
-      <p style={{ color: "var(--text-secondary)", marginBottom: "1rem" }}>
-        Choose a workspace for "{category.name}":
+      <p style={{ color: "var(--text-secondary)", marginBottom: "1rem", fontSize: "0.9375rem" }}>
+        Choose a workspace for <strong>"{category.name}"</strong>:
       </p>
-      <div className="folder-picker folder-picker-move">
-        <button className="folder-pick-btn" onClick={() => handleMove(null)}>
-          📋 No workspace
+      <div className="modal-folder-picker">
+        <button
+          className={`modal-folder-btn ${category.folder_id === null ? "active" : ""}`}
+          onClick={() => handleMove(null)}
+        >
+          <span className="folder-icon">📋</span>
+          No workspace
         </button>
         {folders.map((f) => (
           <button
             key={f.id}
-            className={`folder-pick-btn ${category.folder_id === f.id ? "active" : ""}`}
+            className={`modal-folder-btn ${category.folder_id === f.id ? "active" : ""}`}
             onClick={() => handleMove(f.id)}
           >
-            📁 {f.name}
+            <span className="folder-icon">📁</span>
+            {f.name}
           </button>
         ))}
       </div>

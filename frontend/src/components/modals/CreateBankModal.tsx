@@ -72,45 +72,45 @@ export function CreateBankModal({ categoryId, onClose, onCreate }: Props) {
         />
 
         <label className="input-label">Bank Type</label>
-        <div className="type-selector">
+        <div className="modal-type-selector">
           <button
             type="button"
-            className={`type-btn ${bankType === "theory" ? "active" : ""}`}
+            className={`modal-type-btn ${bankType === "theory" ? "active" : ""}`}
             onClick={() => setBankType("theory")}
           >
-            <span className="type-icon">📝</span>
-            <span className="type-name">Theory</span>
-            <span className="type-desc">concepts, definitions</span>
+            <span className="icon">📝</span>
+            <span className="name">Theory</span>
+            <span className="desc">concepts, definitions</span>
           </button>
           <button
             type="button"
-            className={`type-btn ${bankType === "code" ? "active" : ""}`}
+            className={`modal-type-btn ${bankType === "code" ? "active" : ""}`}
             onClick={() => setBankType("code")}
           >
-            <span className="type-icon">💻</span>
-            <span className="type-name">Code</span>
-            <span className="type-desc">syntax, programming</span>
+            <span className="icon">💻</span>
+            <span className="name">Code</span>
+            <span className="desc">syntax, programming</span>
           </button>
           <button
             type="button"
-            className={`type-btn ${bankType === "cli" ? "active" : ""}`}
+            className={`modal-type-btn ${bankType === "cli" ? "active" : ""}`}
             onClick={() => setBankType("cli")}
           >
-            <span className="type-icon">⌨️</span>
-            <span className="type-name">CLI</span>
-            <span className="type-desc">commands, terminal</span>
+            <span className="icon">⌨️</span>
+            <span className="name">CLI</span>
+            <span className="desc">commands, terminal</span>
           </button>
         </div>
 
         {bankType === "code" && (
           <>
             <label className="input-label">Programming Language</label>
-            <div className="language-selector">
+            <div className="modal-language-selector">
               {PROGRAMMING_LANGUAGES.map((lang) => (
                 <button
                   key={lang.value}
                   type="button"
-                  className={`lang-btn ${language === lang.value ? "active" : ""}`}
+                  className={`modal-lang-btn ${language === lang.value ? "active" : ""}`}
                   onClick={() => setLanguage(lang.value)}
                 >
                   {lang.label}
