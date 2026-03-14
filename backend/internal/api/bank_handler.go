@@ -31,12 +31,13 @@ func (r *CreateBankRequest) Validate() error {
 }
 
 type CreateBankResponse struct {
-	ID         string  `json:"id" example:"x9y8z7w6v5u4t3s2"`
-	Subject    string  `json:"subject" example:"Go concurrency patterns"`
-	CategoryID *string `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
-	BankType   string  `json:"bank_type" example:"theory"`
-	Language   *string `json:"language,omitempty" example:"go"`
-	Mastery    int     `json:"mastery" example:"0"`
+	ID            string  `json:"id" example:"x9y8z7w6v5u4t3s2"`
+	Subject       string  `json:"subject" example:"Go concurrency patterns"`
+	CategoryID    *string `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
+	BankType      string  `json:"bank_type" example:"theory"`
+	Language      *string `json:"language,omitempty" example:"go"`
+	Mastery       int     `json:"mastery" example:"0"`
+	QuestionCount int     `json:"question_count" example:"5"`
 }
 
 // BankResponse is used when banks appear nested inside a category response.
@@ -151,7 +152,7 @@ func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 // @Router       /banks [get]
 func (h *Handler) listBanks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	banks, err := h.store.ListBanks(ctx)
+	banks, err := h.store.ListBanksWithCounts(ctx)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to load banks")
 		return
@@ -161,12 +162,13 @@ func (h *Handler) listBanks(w http.ResponseWriter, r *http.Request) {
 	for i, bank := range banks {
 		mastery, _ := h.store.GetBankMastery(ctx, bank.ID)
 		response[i] = CreateBankResponse{
-			ID:         bank.ID,
-			Subject:    bank.Subject,
-			CategoryID: bank.CategoryID,
-			BankType:   string(bank.BankType),
-			Language:   bank.Language,
-			Mastery:    mastery,
+			ID:            bank.ID,
+			Subject:       bank.Subject,
+			CategoryID:    bank.CategoryID,
+			BankType:      string(bank.BankType),
+			Language:      bank.Language,
+			Mastery:       mastery,
+			QuestionCount: bank.QuestionCount,
 		}
 	}
 

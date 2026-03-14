@@ -144,7 +144,7 @@ export function LibraryTable({
                   </span>
                 </div>
               </td>
-              <td className="col-questions">{bank.questions?.length || 0}</td>
+              <td className="col-questions">{bank.question_count ?? 0}</td>
               <td className="col-actions">
                 <button
                   className="row-action-btn danger"

@@ -179,15 +179,26 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   const deleteFolder = useCallback(
     async (folderId: string) => {
+      // Move all categories in this folder to "No workspace" before deleting
+      const folderCategories = categories.filter((c) => c.folder_id === folderId);
+      await Promise.all(
+        folderCategories.map((c) => api.updateCategoryFolder(c.id, null))
+      );
+
+      // Update local state to reflect moved categories
+      setCategories((prev) =>
+        prev.map((c) => (c.folder_id === folderId ? { ...c, folder_id: null } : c))
+      );
+
+      // Now delete the empty folder
       await api.deleteFolder(folderId);
       setFolders((prev) => prev.filter((f) => f.id !== folderId));
-      await loadData(); // Reload to get accurate state after cascade
+
       if (selectedFolderId === folderId) {
         setSelectedFolderId(null);
-        setSelectedCategoryId(null);
       }
     },
-    [selectedFolderId, loadData]
+    [selectedFolderId, categories]
   );
 
   // Category operations

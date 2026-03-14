@@ -1,0 +1,243 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   DELETE CONFIRM MODAL - Square Card Design (matches MoveCategoryModal)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.delete-modal {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 400px;
+    animation: deleteModalIn 0.2s ease-out;
+    overflow: hidden;
+}
+
+@keyframes deleteModalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Header - matches move-modal-header */
+.delete-modal-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.delete-modal-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: var(--radius);
+    color: #ef4444;
+    flex-shrink: 0;
+}
+
+.delete-modal-title {
+    flex: 1;
+    min-width: 0;
+}
+
+.delete-modal-title h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.125rem 0;
+}
+
+.delete-modal-name {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.delete-modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.delete-modal-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* Content */
+.delete-modal-content {
+    padding: 1rem 1.5rem 1.25rem;
+}
+
+/* Info card - like move-option but for information */
+.delete-info-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+}
+
+.delete-info-card.delete-info-danger {
+    background: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.delete-info-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.delete-info-danger .delete-info-icon {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.delete-info-text {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.delete-info-text strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Stats - similar to move-option style */
+.delete-stats {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.delete-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    flex: 1;
+}
+
+.delete-stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.delete-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* Notes and warnings */
+.delete-note {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin: 0;
+    text-align: center;
+}
+
+.delete-warning {
+    font-size: 0.8125rem;
+    color: #ef4444;
+    margin: 0;
+    text-align: center;
+    font-weight: 500;
+}
+
+/* Footer - matches move-modal-footer */
+.delete-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--bg-secondary);
+}
+
+.delete-modal-btn {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.delete-modal-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.delete-modal-btn-cancel {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+}
+
+.delete-modal-btn-cancel:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.delete-modal-btn-confirm {
+    background: #ef4444;
+    color: white;
+}
+
+.delete-modal-btn-confirm:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+/* Responsive */
+@media (max-width: 440px) {
+    .delete-modal {
+        max-width: calc(100vw - 2rem);
+    }
+
+    .delete-modal-header,
+    .delete-modal-content,
+    .delete-modal-footer {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+}

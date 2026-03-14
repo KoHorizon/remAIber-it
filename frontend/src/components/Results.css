@@ -3,9 +3,10 @@
    ============================================ */
 
 .results-page {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     background: var(--bg-primary);
+    overflow: hidden;
 }
 
 /* Sidebar */

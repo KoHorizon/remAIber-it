@@ -25,6 +25,7 @@ export type Bank = {
   bank_type: BankType;
   language?: string | null;
   mastery: number;
+  question_count?: number;
   questions?: Question[];
 };
 

@@ -44,6 +44,7 @@ type Store interface {
 	SaveBank(ctx context.Context, bank *questionbank.QuestionBank) error
 	GetBank(ctx context.Context, id string) (*questionbank.QuestionBank, error)
 	ListBanks(ctx context.Context) ([]*questionbank.QuestionBank, error)
+	ListBanksWithCounts(ctx context.Context) ([]*BankWithCount, error)
 	ListBanksByCategory(ctx context.Context, categoryID string) ([]*questionbank.QuestionBank, error)
 	UpdateBankCategory(ctx context.Context, bankID string, categoryID *string) error
 	UpdateBankGradingPrompt(ctx context.Context, bankID string, gradingPrompt *string) error
@@ -95,4 +96,15 @@ type QuestionWithBank struct {
 	ExpectedAnswer string
 	BankID         string
 	Mastery        int
+}
+
+// BankWithCount holds a question bank with its question count
+type BankWithCount struct {
+	ID            string
+	Subject       string
+	CategoryID    *string
+	GradingPrompt *string
+	BankType      string
+	Language      *string
+	QuestionCount int
 }

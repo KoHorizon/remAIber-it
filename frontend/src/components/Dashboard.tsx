@@ -12,7 +12,7 @@ export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
 
   // Calculate stats
   const totalQuestions = banks.reduce(
-    (sum, b) => sum + (b.questions?.length || 0),
+    (sum, b) => sum + (b.question_count ?? 0),
     0
   );
 
@@ -22,7 +22,7 @@ export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
 
   // Banks that need attention (mastery < 50%)
   const needsAttention = banks
-    .filter((b) => b.mastery < 50 && (b.questions?.length || 0) > 0)
+    .filter((b) => b.mastery < 50 && (b.question_count ?? 0) > 0)
     .sort((a, b) => a.mastery - b.mastery)
     .slice(0, 5);
 
@@ -33,7 +33,7 @@ export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
     .slice(0, 5);
 
   // Banks with questions for quick practice
-  const practiceableBanks = banks.filter((b) => (b.questions?.length || 0) > 0);
+  const practiceableBanks = banks.filter((b) => (b.question_count ?? 0) > 0);
 
   function handleQuickPractice() {
     if (needsAttention.length > 0) {
