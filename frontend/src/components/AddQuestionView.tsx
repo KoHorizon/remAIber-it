@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { BankType } from "../types";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalEditor } from "./TerminalEditor";
@@ -43,6 +43,8 @@ export function AddQuestionView({
   const extraTemplates = getAvailableTemplates(bankType);
   const defaultRules = getDefaultRules(bankType);
   const presetName = getPresetName(gradingPrompt, bankType);
+  const questionRef = useRef<HTMLTextAreaElement>(null);
+  const answerRef = useRef<HTMLTextAreaElement>(null);
 
 
   async function handleSave() {
@@ -144,70 +146,79 @@ export function AddQuestionView({
 
   // ── Theory mode ────────────────────────────────────────────────────────────
   if (bankType === "theory") {
+    function handleTheoryKeyDown(e: React.KeyboardEvent) {
+      handleKeyDown(e);
+      if ((e.metaKey || e.ctrlKey) && e.key === "ArrowDown") {
+        e.preventDefault();
+        answerRef.current?.focus();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "ArrowUp") {
+        e.preventDefault();
+        questionRef.current?.focus();
+      }
+    }
+
     return (
-      <div className="theory-session animate-fade-in" onKeyDown={handleKeyDown}>
-        <aside className="theory-sidebar">
-          <div className="theory-sidebar-header">
-            <button className="btn btn-ghost btn-sm" onClick={onCancel}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-              Exit
+      <div className="theory-doc animate-fade-in" onKeyDown={handleTheoryKeyDown}>
+
+        {/* Top nav bar */}
+        <div className="theory-doc-nav">
+          <button className="btn btn-ghost btn-sm" onClick={onCancel}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back to {bankSubject}
+          </button>
+          <div className="theory-doc-nav-right">
+            {gradingPill}
+            <span className="theory-doc-hint">
+              {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to save
+            </span>
+            <button className="btn btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleSave}
+              disabled={!question.trim() || !answer.trim() || isSaving}
+            >
+              {isSaving ? "Saving..." : "Save Question"}
             </button>
           </div>
-          <div className="theory-sidebar-content">
-            <div className="theory-sidebar-section">
-              <h3 className="theory-sidebar-title">{bankSubject}</h3>
-              <span className="theory-badge">Adding Question</span>
+        </div>
+
+        {gradingPanel}
+
+        {/* Cards */}
+        <div className="theory-doc-body">
+
+          <div className="theory-doc-card" onClick={() => questionRef.current?.focus()}>
+            <div className="theory-doc-card-header">
+              <span className="theory-doc-card-label">Question</span>
             </div>
-            <div className="theory-sidebar-section">
-              <span className="theory-sidebar-label">Grading</span>
-              {gradingPill}
-            </div>
+            <textarea
+              ref={questionRef}
+              className="theory-doc-card-textarea"
+              placeholder="What do you want to be asked?"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              autoFocus
+            />
           </div>
-        </aside>
 
-        <main className="theory-main">
-          {gradingPanel}
-
-          <div className="theory-top-section">
-            <div className="theory-answer-wrapper">
-              <label className="theory-answer-label">Question</label>
-              <textarea
-                className="theory-textarea"
-                placeholder="Enter your question..."
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                autoFocus
-              />
+          <div className="theory-doc-card" onClick={() => answerRef.current?.focus()}>
+            <div className="theory-doc-card-header">
+              <span className="theory-doc-card-label">Expected Answer</span>
+              <span className="theory-doc-card-sublabel">Key points that should be covered</span>
             </div>
-
-            <div className="theory-answer-wrapper">
-              <label className="theory-answer-label">Expected Answer</label>
-              <textarea
-                className="theory-textarea"
-                placeholder="Enter the expected answer with key points that should be covered..."
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-              />
-              <div className="theory-answer-footer">
-                <span className="theory-hint">
-                  {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to save
-                </span>
-                <div className="theory-actions">
-                  <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleSave}
-                    disabled={!question.trim() || !answer.trim() || isSaving}
-                  >
-                    {isSaving ? "Saving..." : "Save Question"}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <textarea
+              ref={answerRef}
+              className="theory-doc-card-textarea"
+              placeholder={question.trim() ? "Now define the key points your answer should cover..." : "List the key concepts, facts, or points the answer should cover..."}
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+            />
           </div>
-        </main>
+
+        </div>
       </div>
     );
   }
