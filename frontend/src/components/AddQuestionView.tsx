@@ -3,65 +3,51 @@ import type { BankType } from "../types";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalEditor } from "./TerminalEditor";
 import { Tooltip, TooltipTitle, TooltipContent, TooltipHint } from "./ui";
-import { DEFAULT_GRADING_RULES, EXTRA_TEMPLATES } from "../utils/gradingTemplates";
+import { getDefaultRules, getAvailableTemplates, DEFAULT_GRADING_RULES, EXTRA_TEMPLATES } from "../utils/gradingTemplates";
 import "./AddQuestionView.css";
 
 type Props = {
   bankSubject: string;
   bankType: BankType;
   bankLanguage?: string | null;
-  bankGradingPrompt?: string | null;
   onSave: (question: string, answer: string, gradingPrompt?: string | null) => Promise<void>;
   onCancel: () => void;
 };
+
+
+function getPresetName(prompt: string, bankType: string): string {
+  const trimmed = prompt.trim();
+  if (!trimmed) return "Built-in";
+  if (trimmed === DEFAULT_GRADING_RULES[bankType]?.trim()) {
+    return bankType === "cli" ? "Default (CLI)" : bankType === "code" ? "Default (code)" : "Default";
+  }
+  for (const [, template] of Object.entries(EXTRA_TEMPLATES)) {
+    if (trimmed === template.rules.trim()) return template.label;
+  }
+  return "Custom";
+}
 
 export function AddQuestionView({
   bankSubject,
   bankType,
   bankLanguage,
-  bankGradingPrompt,
   onSave,
   onCancel,
 }: Props) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
-  const [gradingPrompt, setGradingPrompt] = useState("");
-  const [showGradingPrompt, setShowGradingPrompt] = useState(false);
+  const [gradingPrompt, setGradingPrompt] = useState(() => getDefaultRules(bankType));
+  const [showGrading, setShowGrading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const isCodeMode = bankType === "code" || bankType === "cli";
+  const extraTemplates = getAvailableTemplates(bankType);
+  const defaultRules = getDefaultRules(bankType);
+  const presetName = getPresetName(gradingPrompt, bankType);
+  const isCustom = presetName === "Custom";
 
-  // Find the preset name for the bank's grading prompt
-  function getPresetName(prompt: string | null | undefined): string {
-    if (!prompt) return "Default";
-
-    // Check if it matches a default rule
-    for (const [type, rules] of Object.entries(DEFAULT_GRADING_RULES)) {
-      if (rules.trim() === prompt.trim()) {
-        const typeLabels: Record<string, string> = {
-          theory: "Default (concepts)",
-          code: "Default (code)",
-          cli: "Default (CLI)",
-        };
-        return typeLabels[type] || "Default";
-      }
-    }
-
-    // Check if it matches an extra template
-    for (const [, template] of Object.entries(EXTRA_TEMPLATES)) {
-      if (template.rules.trim() === prompt.trim()) {
-        return template.label;
-      }
-    }
-
-    return "Custom";
-  }
-
-  const presetName = getPresetName(bankGradingPrompt);
 
   async function handleSave() {
     if (!question.trim() || !answer.trim() || isSaving) return;
-
     setIsSaving(true);
     try {
       const prompt = gradingPrompt.trim() || null;
@@ -73,22 +59,90 @@ export function AddQuestionView({
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    // Cmd/Ctrl + Enter to save
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSave();
     }
-    // Escape to cancel
-    if (e.key === "Escape") {
-      onCancel();
-    }
+    if (e.key === "Escape") onCancel();
   }
 
-  // Theory mode uses sidebar layout like practice session
+  // Shared grading panel content (used in both layouts)
+  const gradingPanel = showGrading ? (
+    <div className="grading-prompt-section">
+      <textarea
+        className="grading-prompt-textarea"
+        value={gradingPrompt}
+        onChange={(e) => setGradingPrompt(e.target.value)}
+        rows={Math.max(1, gradingPrompt.split("\n").length)}
+        autoFocus
+      />
+      <div className="grading-templates">
+        <span className="templates-label">Presets:</span>
+        <button
+          type="button"
+          className={`template-btn ${gradingPrompt.trim() === defaultRules.trim() ? "template-btn-active" : ""}`}
+          onClick={() => setGradingPrompt(defaultRules)}
+        >
+          {bankType === "cli" ? "Default (CLI)" : bankType === "code" ? "Default (code)" : "Default"}
+        </button>
+        {extraTemplates.map(([key, template]) => (
+          <button
+            key={key}
+            type="button"
+            className={`template-btn ${gradingPrompt.trim() === template.rules.trim() ? "template-btn-active" : ""}`}
+            onClick={() => setGradingPrompt(template.rules)}
+          >
+            {template.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="template-btn template-btn-clear"
+          onClick={() => setGradingPrompt("")}
+        >
+          Clear (use built-in)
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  // Shared grading pill (tooltip on hover, click to toggle)
+  const gradingPill = (
+    <Tooltip
+      trigger={
+        <button
+          type="button"
+          className={`grading-pill ${showGrading ? "grading-pill--open" : ""} ${isCustom ? "grading-pill--custom" : ""}`}
+          onClick={() => setShowGrading((v) => !v)}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
+          {presetName}
+          <svg
+            className={`grading-pill-chevron ${showGrading ? "grading-pill-chevron--open" : ""}`}
+            width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      }
+      position="bottom"
+      width="340px"
+    >
+      <TooltipTitle>Grading Rules</TooltipTitle>
+      {gradingPrompt.trim()
+        ? <TooltipContent>{gradingPrompt}</TooltipContent>
+        : <TooltipHint>No custom rules — built-in defaults will be used.</TooltipHint>
+      }
+      {!showGrading && <TooltipHint>Click to edit</TooltipHint>}
+    </Tooltip>
+  );
+
+  // ── Theory mode ────────────────────────────────────────────────────────────
   if (bankType === "theory") {
     return (
       <div className="theory-session animate-fade-in" onKeyDown={handleKeyDown}>
-        {/* Sidebar */}
         <aside className="theory-sidebar">
           <div className="theory-sidebar-header">
             <button className="btn btn-ghost btn-sm" onClick={onCancel}>
@@ -98,76 +152,22 @@ export function AddQuestionView({
               Exit
             </button>
           </div>
-
           <div className="theory-sidebar-content">
             <div className="theory-sidebar-section">
               <h3 className="theory-sidebar-title">{bankSubject}</h3>
               <span className="theory-badge">Adding Question</span>
             </div>
-
             <div className="theory-sidebar-section">
               <span className="theory-sidebar-label">Grading</span>
-              <button
-                className={`btn btn-sm ${showGradingPrompt || gradingPrompt.trim() ? "btn-secondary" : "btn-ghost"}`}
-                onClick={() => setShowGradingPrompt(!showGradingPrompt)}
-                type="button"
-                style={{ justifyContent: "flex-start" }}
-              >
-                {gradingPrompt.trim() ? "Custom" : bankGradingPrompt ? presetName : "Default"}
-              </button>
+              {gradingPill}
             </div>
           </div>
         </aside>
 
-        {/* Main content */}
         <main className="theory-main">
-          {/* Grading section if expanded */}
-          {showGradingPrompt && (
-            <div className="add-theory-grading-section">
-              <div className="grading-prompt-section-header">
-                <label className="grading-prompt-label">Custom Grading Instructions</label>
-                {bankGradingPrompt && (
-                  <Tooltip
-                    trigger={
-                      <span className="grading-prompt-default-info">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="10" />
-                          <path d="M12 16v-4M12 8h.01" />
-                        </svg>
-                        <span>Bank default: {presetName}</span>
-                      </span>
-                    }
-                  >
-                    <TooltipTitle>Bank Default Rules</TooltipTitle>
-                    <TooltipContent>{bankGradingPrompt}</TooltipContent>
-                    <TooltipHint>Leave empty to use this</TooltipHint>
-                  </Tooltip>
-                )}
-              </div>
-              <textarea
-                className="grading-prompt-textarea"
-                placeholder={bankGradingPrompt
-                  ? "Leave empty to use bank default, or write custom instructions..."
-                  : "Add custom instructions for the LLM grader..."
-                }
-                value={gradingPrompt}
-                onChange={(e) => setGradingPrompt(e.target.value)}
-                rows={2}
-              />
-              <div className="grading-prompt-actions">
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={() => setShowGradingPrompt(false)}
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          )}
+          {gradingPanel}
 
           <div className="theory-top-section">
-            {/* Question input */}
             <div className="theory-answer-wrapper">
               <label className="theory-answer-label">Question</label>
               <textarea
@@ -179,7 +179,6 @@ export function AddQuestionView({
               />
             </div>
 
-            {/* Expected answer input */}
             <div className="theory-answer-wrapper">
               <label className="theory-answer-label">Expected Answer</label>
               <textarea
@@ -193,9 +192,7 @@ export function AddQuestionView({
                   {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to save
                 </span>
                 <div className="theory-actions">
-                  <button className="btn btn-secondary" onClick={onCancel}>
-                    Cancel
-                  </button>
+                  <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
                   <button
                     className="btn btn-primary"
                     onClick={handleSave}
@@ -212,7 +209,7 @@ export function AddQuestionView({
     );
   }
 
-  // Code/CLI mode uses split panel layout
+  // ── Code / CLI mode ────────────────────────────────────────────────────────
   return (
     <div className="add-question-view" onKeyDown={handleKeyDown}>
       {/* Header */}
@@ -226,37 +223,11 @@ export function AddQuestionView({
           </button>
         </div>
         <div className="add-question-view-header-right">
+          {gradingPill}
           <span className="add-question-view-hint">
             {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to save
           </span>
-          {bankGradingPrompt && !showGradingPrompt ? (
-            <Tooltip
-              trigger={
-                <button
-                  className={`btn ${showGradingPrompt || gradingPrompt.trim() ? "btn-secondary" : "btn-ghost"}`}
-                  onClick={() => setShowGradingPrompt(!showGradingPrompt)}
-                  type="button"
-                >
-                  {gradingPrompt.trim() ? "Custom Grading" : "Bank Default"}
-                </button>
-              }
-            >
-              <TooltipTitle>{presetName}</TooltipTitle>
-              <TooltipContent>{bankGradingPrompt}</TooltipContent>
-              <TooltipHint>Click to customize for this question</TooltipHint>
-            </Tooltip>
-          ) : (
-            <button
-              className={`btn ${showGradingPrompt || gradingPrompt.trim() ? "btn-secondary" : "btn-ghost"}`}
-              onClick={() => setShowGradingPrompt(!showGradingPrompt)}
-              type="button"
-            >
-              {gradingPrompt.trim() ? "Custom Grading" : bankGradingPrompt ? "Bank Default" : "Grading"}
-            </button>
-          )}
-          <button className="btn btn-secondary" onClick={onCancel}>
-            Cancel
-          </button>
+          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
           <button
             className="btn btn-primary"
             onClick={handleSave}
@@ -267,55 +238,15 @@ export function AddQuestionView({
         </div>
       </div>
 
-      {/* Grading Prompt Section */}
-      {showGradingPrompt && (
-        <div className="grading-prompt-section">
-          <div className="grading-prompt-section-header">
-            <label className="grading-prompt-label">
-              Custom Grading Instructions
-            </label>
-            <Tooltip
-              trigger={
-                <span className="grading-prompt-default-info">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 16v-4M12 8h.01" />
-                  </svg>
-                  <span>Saved: {presetName}</span>
-                </span>
-              }
-              position="bottom"
-            >
-              <TooltipTitle>Current Bank Grading Rules</TooltipTitle>
-              {bankGradingPrompt
-                ? <TooltipContent>{bankGradingPrompt}</TooltipContent>
-                : <TooltipContent>No custom rules set — using built-in defaults.</TooltipContent>
-              }
-              <TooltipHint>Leave empty to use this</TooltipHint>
-            </Tooltip>
-          </div>
-          <textarea
-            className="grading-prompt-textarea"
-            placeholder={bankGradingPrompt
-              ? "Leave empty to use bank default, or write custom instructions..."
-              : "Add custom instructions for the LLM grader (e.g., 'Be strict about exact syntax' or 'Accept any valid solution')..."
-            }
-            value={gradingPrompt}
-            onChange={(e) => setGradingPrompt(e.target.value)}
-            rows={3}
-          />
-        </div>
-      )}
+      {/* Grading panel — collapsed by default, toggled by pill */}
+      {gradingPanel}
 
       {/* Main Content - Split View */}
       <div className="add-question-view-content">
-        {/* Left Panel - Question */}
         <div className="add-question-panel">
           <div className="add-question-panel-header">
             <h2>Question</h2>
-            <span className="add-question-panel-hint">
-              Describe the coding task
-            </span>
+            <span className="add-question-panel-hint">Describe the coding task</span>
           </div>
           <div className="add-question-panel-content">
             <textarea
@@ -328,10 +259,8 @@ export function AddQuestionView({
           </div>
         </div>
 
-        {/* Resizer */}
         <div className="add-question-resizer" />
 
-        {/* Right Panel - Expected Answer */}
         <div className="add-question-panel add-question-panel--answer">
           <div className="add-question-panel-header">
             <h2>Expected Answer</h2>

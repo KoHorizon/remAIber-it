@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../../api";
 import { useLibrary } from "../../context/LibraryContext";
 import type { Bank, Session, BankType } from "../../types";
-import { SessionConfigModal, GradingSettingsModal } from "../modals";
+import { SessionConfigModal } from "../modals";
 import { BankHeader } from "./BankHeader";
 import { QuestionCard } from "./QuestionCard";
 import { DeleteQuestionModal } from "./DeleteQuestionModal";
@@ -15,8 +15,7 @@ type Props = {
     bankId: string,
     bankSubject: string,
     bankType: BankType,
-    bankLanguage?: string | null,
-    bankGradingPrompt?: string | null
+    bankLanguage?: string | null
   ) => void;
   onStartPractice: (
     session: Session,
@@ -34,7 +33,6 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
   const [isLoading, setIsLoading] = useState(true);
   const [showSessionConfig, setShowSessionConfig] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [showGradingSettings, setShowGradingSettings] = useState(false);
   const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
@@ -95,12 +93,6 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
     }
   }
 
-  async function handleSaveGradingPrompt(prompt: string | null) {
-    if (!bank) return;
-    await api.updateBankGradingPrompt(bankId, prompt);
-    setBank({ ...bank, grading_prompt: prompt });
-  }
-
   function toggleExpanded(questionId: string) {
     setExpandedAnswers((prev) => {
       const next = new Set(prev);
@@ -150,15 +142,8 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
         isStartingSession={isStartingSession}
         onBack={onBack}
         onAddQuestion={() =>
-          onAddQuestion(
-            bankId,
-            bank.subject,
-            bank.bank_type,
-            bank.language,
-            bank.grading_prompt
-          )
+          onAddQuestion(bankId, bank.subject, bank.bank_type, bank.language)
         }
-        onOpenGradingSettings={() => setShowGradingSettings(true)}
         onOpenSessionConfig={() => setShowSessionConfig(true)}
       />
 
@@ -168,15 +153,6 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
           totalQuestions={questions.length}
           onStart={handleStartSession}
           onCancel={() => setShowSessionConfig(false)}
-        />
-      )}
-
-      {showGradingSettings && (
-        <GradingSettingsModal
-          bankType={bank.bank_type}
-          currentPrompt={bank.grading_prompt || null}
-          onClose={() => setShowGradingSettings(false)}
-          onSave={handleSaveGradingPrompt}
         />
       )}
 
@@ -205,7 +181,6 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
               index={index}
               bankType={bank.bank_type}
               bankLanguage={bank.language}
-              bankGradingPrompt={bank.grading_prompt}
               isExpanded={expandedAnswers.has(q.id)}
               onToggleExpand={() => toggleExpanded(q.id)}
               onDelete={() => setShowDeleteConfirm(q.id)}

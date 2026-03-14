@@ -51,9 +51,10 @@ type QuickSessionQuestion struct {
 }
 
 type SessionQuestion struct {
-	ID             string `json:"id" example:"q1w2e3r4t5y6u7i8"`
-	Subject        string `json:"subject" example:"What is a goroutine?"`
-	ExpectedAnswer string `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
+	ID             string  `json:"id" example:"q1w2e3r4t5y6u7i8"`
+	Subject        string  `json:"subject" example:"What is a goroutine?"`
+	ExpectedAnswer string  `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
+	GradingPrompt  *string `json:"grading_prompt,omitempty"`
 }
 
 type CreateSessionResponse struct {
@@ -175,12 +176,19 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 
 	h.grading.TrackSession(session.ID)
 
+	// Build a lookup for per-question grading prompts
+	questionGradingPrompts := make(map[string]*string)
+	for _, bq := range bank.Questions {
+		questionGradingPrompts[bq.ID] = bq.GradingPrompt
+	}
+
 	questions := make([]SessionQuestion, len(session.Questions))
 	for i, q := range session.Questions {
 		questions[i] = SessionQuestion{
 			ID:             q.ID,
 			Subject:        q.Subject,
 			ExpectedAnswer: q.ExpectedAnswer,
+			GradingPrompt:  questionGradingPrompts[q.ID],
 		}
 	}
 
@@ -323,12 +331,21 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	bank, _ := h.store.GetBank(ctx, session.QuestionBankId)
+	questionGradingPrompts := make(map[string]*string)
+	if bank != nil {
+		for _, bq := range bank.Questions {
+			questionGradingPrompts[bq.ID] = bq.GradingPrompt
+		}
+	}
+
 	questions := make([]SessionQuestion, len(session.Questions))
 	for i, q := range session.Questions {
 		questions[i] = SessionQuestion{
 			ID:             q.ID,
 			Subject:        q.Subject,
 			ExpectedAnswer: q.ExpectedAnswer,
+			GradingPrompt:  questionGradingPrompts[q.ID],
 		}
 	}
 
@@ -397,16 +414,11 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 	var bankType string = "theory"
 	if bank != nil {
 		bankType = string(bank.BankType)
-		// Check for question-level grading prompt first, then fallback to bank-level
 		for _, bq := range bank.Questions {
-			if bq.ID == question.ID && bq.GradingPrompt != nil {
+			if bq.ID == question.ID {
 				gradingPrompt = bq.GradingPrompt
 				break
 			}
-		}
-		// If no question-level prompt, use bank-level
-		if gradingPrompt == nil {
-			gradingPrompt = bank.GradingPrompt
 		}
 	}
 

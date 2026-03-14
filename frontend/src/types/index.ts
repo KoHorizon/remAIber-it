@@ -43,6 +43,7 @@ export type SessionQuestion = {
   id: string;
   subject: string;
   expected_answer?: string;
+  grading_prompt?: string | null;
   // For multi-bank sessions
   bank_id?: string;
   bank_subject?: string;

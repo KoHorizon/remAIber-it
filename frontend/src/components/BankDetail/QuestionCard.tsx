@@ -3,7 +3,7 @@ import { getMasteryColor, getMasteryLabel } from "../../utils/mastery";
 import { renderFormattedText } from "../../utils/formatText";
 import { CodeEditor } from "../CodeEditor";
 import { TerminalDisplay } from "../TerminalDisplay";
-import { Tooltip, TooltipTitle, TooltipContent, TooltipHint } from "../ui";
+import { Tooltip, TooltipTitle, TooltipContent } from "../ui";
 import "./QuestionCard.css";
 
 type Props = {
@@ -11,7 +11,6 @@ type Props = {
   index: number;
   bankType: BankType;
   bankLanguage?: string | null;
-  bankGradingPrompt?: string | null;
   isExpanded: boolean;
   onToggleExpand: () => void;
   onDelete: () => void;
@@ -22,7 +21,6 @@ export function QuestionCard({
   index,
   bankType,
   bankLanguage,
-  bankGradingPrompt,
   isExpanded,
   onToggleExpand,
   onDelete,
@@ -48,21 +46,20 @@ export function QuestionCard({
       <div className="qcard-header">
         <div className="qcard-header-left">
           <span className="qcard-number">Q{index + 1}</span>
-          {(question.grading_prompt || bankGradingPrompt) && (
+          {question.grading_prompt && (
             <Tooltip
               trigger={
-                <span className={`qcard-grading-badge ${question.grading_prompt ? "qcard-grading-badge--custom" : "qcard-grading-badge--bank"}`}>
+                <span className="qcard-grading-badge qcard-grading-badge--custom">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                   </svg>
-                  {question.grading_prompt ? "Custom grading" : "Bank grading"}
+                  Grading rules
                 </span>
               }
               width="400px"
             >
-              <TooltipTitle>{question.grading_prompt ? "Question Grading Rules" : "Bank Grading Rules"}</TooltipTitle>
-              <TooltipContent>{question.grading_prompt ?? bankGradingPrompt}</TooltipContent>
-              {!question.grading_prompt && <TooltipHint>Inherited from bank — override per question when adding</TooltipHint>}
+              <TooltipTitle>Grading Rules</TooltipTitle>
+              <TooltipContent>{question.grading_prompt}</TooltipContent>
             </Tooltip>
           )}
         </div>

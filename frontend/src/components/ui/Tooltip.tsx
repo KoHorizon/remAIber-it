@@ -74,6 +74,7 @@ export function Tooltip({
       className="tooltip-wrapper"
       onMouseEnter={() => setIsVisible(true)}
       onMouseLeave={() => setIsVisible(false)}
+      onMouseDown={() => setIsVisible(false)}
     >
       <div ref={triggerRef} className="tooltip-trigger">
         {trigger}
