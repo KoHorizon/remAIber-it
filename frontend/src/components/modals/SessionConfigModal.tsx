@@ -47,6 +47,8 @@ export function SessionConfigModal({
     }
   }
 
+  const questionCount = useQuestionLimit ? maxQuestions : totalQuestions;
+
   return (
     <Modal
       title="Configure Session"
@@ -58,23 +60,18 @@ export function SessionConfigModal({
         </>
       }
     >
-      <div className="session-config-modal">
-        <p className="modal-subtitle">
-          {totalQuestions} question{totalQuestions !== 1 ? "s" : ""} in this
-          bank
+      <div className="session-config">
+        <p className="session-config-subtitle">
+          {totalQuestions} question{totalQuestions !== 1 ? "s" : ""} in this bank
         </p>
 
-        <div className="config-options">
+        <div className="session-config-rows">
           {/* Focus on Weak */}
-          <div
-            className={`config-option ${focusOnWeak ? "config-option-active config-option-focus" : ""}`}
-          >
-            <div className="config-header">
-              <div className="config-label-group">
-                <span className="config-label">Focus on weak</span>
-                <span className="config-description">
-                  Prioritize questions with low mastery scores
-                </span>
+          <div className={`scr ${focusOnWeak ? "scr--active scr--focus" : ""}`}>
+            <div className="scr-main">
+              <div className="scr-label-group">
+                <span className="scr-label">Focus on weak</span>
+                <span className="scr-desc">Prioritize questions with low mastery scores</span>
               </div>
               <button
                 type="button"
@@ -89,121 +86,91 @@ export function SessionConfigModal({
           </div>
 
           {/* Question Limit */}
-          <div
-            className={`config-option ${useQuestionLimit ? "config-option-active" : ""}`}
-          >
-            <div className="config-header">
-              <span className="config-label">Limit questions</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={useQuestionLimit}
-                className={`toggle-switch ${useQuestionLimit ? "toggle-switch-on" : ""}`}
-                onClick={() => setUseQuestionLimit(!useQuestionLimit)}
-              >
-                <span className="toggle-thumb" />
-              </button>
-            </div>
-            {useQuestionLimit && (
-              <div className="config-input-row">
+          <div className={`scr ${useQuestionLimit ? "scr--active" : ""}`}>
+            <div className="scr-main">
+              <span className="scr-label">Limit questions</span>
+              <div className="scr-right">
+                {useQuestionLimit && (
+                  <div className="scr-stepper">
+                    <button
+                      type="button"
+                      className="stepper-btn"
+                      onClick={() => setMaxQuestions((q) => Math.max(1, q - 1))}
+                      disabled={maxQuestions <= 1}
+                    >−</button>
+                    <span className="scr-stepper-value">
+                      {maxQuestions}<span className="scr-stepper-total">/{totalQuestions}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="stepper-btn"
+                      onClick={() => setMaxQuestions((q) => Math.min(totalQuestions, q + 1))}
+                      disabled={maxQuestions >= totalQuestions}
+                    >+</button>
+                  </div>
+                )}
                 <button
                   type="button"
-                  className="stepper-btn"
-                  onClick={() => setMaxQuestions((q) => Math.max(1, q - 1))}
-                  disabled={maxQuestions <= 1}
+                  role="switch"
+                  aria-checked={useQuestionLimit}
+                  className={`toggle-switch ${useQuestionLimit ? "toggle-switch-on" : ""}`}
+                  onClick={() => setUseQuestionLimit(!useQuestionLimit)}
                 >
-                  -
+                  <span className="toggle-thumb" />
                 </button>
-                <input
-                  type="number"
-                  className="config-number-input"
-                  value={maxQuestions}
-                  onChange={(e) => handleQuestionChange(e.target.value)}
-                  min={1}
-                  max={totalQuestions}
-                />
-                <button
-                  type="button"
-                  className="stepper-btn"
-                  onClick={() =>
-                    setMaxQuestions((q) => Math.min(totalQuestions, q + 1))
-                  }
-                  disabled={maxQuestions >= totalQuestions}
-                >
-                  +
-                </button>
-                <span className="config-unit">/ {totalQuestions}</span>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Time Limit */}
-          <div
-            className={`config-option ${useTimeLimit ? "config-option-active" : ""}`}
-          >
-            <div className="config-header">
-              <span className="config-label">Time limit</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={useTimeLimit}
-                className={`toggle-switch ${useTimeLimit ? "toggle-switch-on" : ""}`}
-                onClick={() => setUseTimeLimit(!useTimeLimit)}
-              >
-                <span className="toggle-thumb" />
-              </button>
-            </div>
-            {useTimeLimit && (
-              <div className="config-input-row">
+          <div className={`scr ${useTimeLimit ? "scr--active" : ""}`}>
+            <div className="scr-main">
+              <span className="scr-label">Time limit</span>
+              <div className="scr-right">
+                {useTimeLimit && (
+                  <div className="scr-stepper">
+                    <button
+                      type="button"
+                      className="stepper-btn"
+                      onClick={() => setMaxDurationMin((t) => Math.max(1, t - 5))}
+                      disabled={maxDurationMin <= 1}
+                    >−</button>
+                    <span className="scr-stepper-value">
+                      {maxDurationMin}<span className="scr-stepper-total"> min</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="stepper-btn"
+                      onClick={() => setMaxDurationMin((t) => Math.min(120, t + 5))}
+                      disabled={maxDurationMin >= 120}
+                    >+</button>
+                  </div>
+                )}
                 <button
                   type="button"
-                  className="stepper-btn"
-                  onClick={() => setMaxDurationMin((t) => Math.max(1, t - 5))}
-                  disabled={maxDurationMin <= 1}
+                  role="switch"
+                  aria-checked={useTimeLimit}
+                  className={`toggle-switch ${useTimeLimit ? "toggle-switch-on" : ""}`}
+                  onClick={() => setUseTimeLimit(!useTimeLimit)}
                 >
-                  -
+                  <span className="toggle-thumb" />
                 </button>
-                <input
-                  type="number"
-                  className="config-number-input"
-                  value={maxDurationMin}
-                  onChange={(e) => handleTimeChange(e.target.value)}
-                  min={1}
-                  max={120}
-                />
-                <button
-                  type="button"
-                  className="stepper-btn"
-                  onClick={() => setMaxDurationMin((t) => Math.min(120, t + 5))}
-                  disabled={maxDurationMin >= 120}
-                >
-                  +
-                </button>
-                <span className="config-unit">min</span>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
-        <div className="config-summary">
-          <span>
-            {useQuestionLimit ? maxQuestions : totalQuestions} question
-            {(useQuestionLimit ? maxQuestions : totalQuestions) !== 1
-              ? "s"
-              : ""}
-          </span>
-          <span className="config-summary-dot">.</span>
-          <span>
-            {useTimeLimit ? `${maxDurationMin} min` : "No time limit"}
-          </span>
+        <div className="session-config-summary">
+          <span>{questionCount} question{questionCount !== 1 ? "s" : ""}</span>
+          <span className="scs-dot" />
+          <span>{useTimeLimit ? `${maxDurationMin} min` : "No time limit"}</span>
           {focusOnWeak && (
             <>
-              <span className="config-summary-dot">.</span>
-              <span className="config-summary-focus">Weak focus</span>
+              <span className="scs-dot" />
+              <span className="scs-focus">Weak focus</span>
             </>
           )}
         </div>
-
       </div>
     </Modal>
   );
