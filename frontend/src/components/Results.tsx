@@ -182,7 +182,7 @@ export function Results({
               if (isCodeMode) {
                 return (
                   <div
-                    key={i}
+                    key={question?.id ?? i}
                     className={`breakdown-card breakdown-card-code ${scoreClass}`}
                     style={{ animationDelay: `${i * 0.05}s` }}
                   >
@@ -293,7 +293,7 @@ export function Results({
 
               return (
                 <div
-                  key={i}
+                  key={question?.id ?? i}
                   className={`breakdown-card ${scoreClass}`}
                   style={{ animationDelay: `${i * 0.05}s` }}
                 >

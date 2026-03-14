@@ -138,21 +138,6 @@
     flex-shrink: 0;
 }
 
-.grading-prompt-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-}
-
-.grading-prompt-label {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-
-
-
 .grading-prompt-textarea {
     width: 100%;
     padding: 0.75rem;
