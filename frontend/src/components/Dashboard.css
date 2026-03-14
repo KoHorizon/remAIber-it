@@ -188,7 +188,7 @@
     justify-content: center;
     background: var(--accent);
     border-radius: var(--radius-md);
-    color: #fff;
+    color: white;
     flex-shrink: 0;
 }
 

@@ -1,4 +1,5 @@
 import type { Bank } from "../../types";
+import { Button } from "../ui";
 import { getMasteryColor, getBankTypeBadge } from "../../utils/mastery";
 
 type Props = {
@@ -74,14 +75,14 @@ export function BankHeader({
 
         {/* Actions */}
         <div className="bank-header-actions">
-          <button className="btn btn-secondary" onClick={onAddQuestion}>
+          <Button variant="secondary" onClick={onAddQuestion}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 5v14M5 12h14" />
             </svg>
             Add Question
-          </button>
-          <button
-            className="btn btn-primary"
+          </Button>
+          <Button
+            variant="primary"
             onClick={onOpenSessionConfig}
             disabled={questionCount === 0 || isStartingSession}
           >
@@ -89,7 +90,7 @@ export function BankHeader({
               <polygon points="5 3 19 12 5 21 5 3" />
             </svg>
             {isStartingSession ? "Starting..." : "Practice"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

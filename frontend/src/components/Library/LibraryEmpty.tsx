@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button } from "../ui";
 
 type Props = {
   onCreateCategory: (name: string) => Promise<void>;
@@ -58,23 +59,23 @@ export function LibraryEmpty({ onCreateCategory }: Props) {
             }}
             autoFocus
           />
-          <button className="btn btn-primary" onClick={handleCreate}>
+          <Button variant="primary" onClick={handleCreate}>
             Create
-          </button>
-          <button
-            className="btn btn-secondary"
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => {
               setIsCreating(false);
               setName("");
             }}
           >
             Cancel
-          </button>
+          </Button>
         </div>
       ) : (
-        <button className="btn btn-primary" onClick={() => setIsCreating(true)}>
+        <Button variant="primary" onClick={() => setIsCreating(true)}>
           Create Category
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import type { Session } from "../../types";
+import { Button } from "../ui";
 
 type AnsweredQuestion = {
   index: number;
@@ -54,12 +55,12 @@ export function TheoryModeSession({
       {/* Top bar */}
       <div className="ts-topbar">
         <div className="ts-topbar-left">
-          <button className="btn btn-ghost btn-sm" onClick={onCancel}>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
             Exit
-          </button>
+          </Button>
           <span className="ts-bank-name">{currentBankSubject}</span>
           {session.focus_on_weak && <span className="ts-badge">Focus mode</span>}
         </div>
@@ -115,16 +116,17 @@ export function TheoryModeSession({
           {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to submit
         </span>
         <div className="ts-actions">
-          <button className="btn btn-secondary btn-sm" onClick={onSkip} disabled={isSubmitting}>
+          <Button variant="secondary" size="sm" onClick={onSkip} disabled={isSubmitting}>
             Skip
-          </button>
-          <button
-            className="btn btn-primary btn-sm"
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={onSubmit}
             disabled={!answer.trim() || isSubmitting}
           >
             {isSubmitting ? "Submitting..." : isLastQuestion ? "Finish" : "Next →"}
-          </button>
+          </Button>
         </div>
       </div>
 

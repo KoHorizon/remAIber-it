@@ -196,8 +196,8 @@ function App() {
           <BankDetail
             bankId={view.bankId}
             onBack={() => navigate.toMain(view.returnTo)}
-            onAddQuestion={(bankId, subject, bankType, language, gradingPrompt) =>
-              navigate.toAddQuestion(bankId, subject, bankType, language, gradingPrompt, view.returnTo)
+            onAddQuestion={(bankId, subject, bankType, language) =>
+              navigate.toAddQuestion(bankId, subject, bankType, language, view.returnTo)
             }
             onStartPractice={(session, bankId, subject, bankType, language) =>
               navigate.toPractice(

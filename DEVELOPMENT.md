@@ -57,6 +57,26 @@ import { Button, Modal, Chip, Dropdown, Input } from "../ui";
 | `AddChip` | Inline creation chips. Props: `label`, `isCreating`, `createValue`, callbacks |
 | `IconButton` | Icon-only buttons. Props: `icon`, `label`, `variant` |
 
+### Exceptions — When NOT to use `<Modal>`
+
+Some modals have layouts too custom to fit the `<Modal>` component and are intentionally hand-rolled:
+
+- `DeleteConfirmModal` — custom danger confirm button with scoped CSS (`delete-modal-btn-confirm`)
+- `CreateBankModal` — bank type selector + language grid as custom radio-style controls
+- `MoveCategoryModal` — scrollable option list as the body, no standard actions slot
+
+Do not migrate these to `<Modal>`. For new modals, use `<Modal>` unless the layout or footer controls are fundamentally incompatible with its `title`/`children`/`actions` pattern.
+
+### Exceptions — Raw `<button>` is acceptable
+
+The following custom control classes are intentionally outside the `Button` variant system and should stay as raw `<button>` elements:
+
+- `template-btn` — preset selector chips in grading settings
+- `toggle-switch` — toggle controls in session config
+- `stepper-btn` — +/- steppers in session config
+
+All other buttons must use `<Button variant="...">`.
+
 ### Adding New UI Components
 
 1. Create in `src/components/ui/`
@@ -105,6 +125,15 @@ All colors are defined in `src/styles/theme.css`. Never hardcode colors.
 **Type badges:** `--type-theory`, `--type-code`, `--type-cli` (each has `-bg` variant)
 
 **Layout:** `--radius-sm/md/lg/xl`, `--shadow-sm/md/lg`, `--transition-fast/transition/transition-slow`
+
+### Intentional hardcoded color exceptions
+
+The "never hardcode colors" rule has two accepted exceptions:
+
+- **`#e06c75`** — inline code pink (`<code>` elements rendered by `renderFormattedText`). No theme variable maps to this color; it is intentionally fixed across all themes.
+- **Terminal component palette** (`TerminalEditor.css`, `TerminalDisplay.css`, `TerminalInput.css`) — the terminal chrome uses a hardcoded dark background (`#0d1117`, `#2d2a24`, etc.) because it is always dark regardless of the active theme, by design.
+
+All other color values must use `var(--*)` variables.
 
 ### Adding a New Theme
 
@@ -298,5 +327,5 @@ chore: clean up unused re-exports
 
 1. Test the feature in browser
 2. Check for TypeScript errors
-3. Remove console.logs
-4. Verify no hardcoded colors added
+3. Remove `console.log` calls (`console.error` in catch blocks is fine)
+4. Verify no hardcoded colors added (see exceptions in Styling section)

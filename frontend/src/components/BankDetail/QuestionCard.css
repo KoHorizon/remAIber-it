@@ -112,23 +112,23 @@
 
 /* Mastery colors */
 .qcard-mastery.mastery-excellent {
-    background: rgba(34, 197, 94, 0.12);
-    color: #22c55e;
+    background: var(--mastery-excellent-bg);
+    color: var(--mastery-excellent);
 }
 
 .qcard-mastery.mastery-good {
-    background: rgba(34, 197, 94, 0.08);
-    color: #4ade80;
+    background: var(--mastery-good-bg);
+    color: var(--mastery-good);
 }
 
 .qcard-mastery.mastery-fair {
-    background: rgba(245, 158, 11, 0.12);
-    color: #f59e0b;
+    background: var(--mastery-fair-bg);
+    color: var(--mastery-fair);
 }
 
 .qcard-mastery.mastery-needs-work {
-    background: rgba(239, 68, 68, 0.12);
-    color: #ef4444;
+    background: var(--mastery-needs-work-bg);
+    color: var(--mastery-needs-work);
 }
 
 .qcard-mastery.mastery-none {
@@ -280,8 +280,8 @@
 }
 
 .qcard-delete:hover {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    background: var(--error-muted);
+    color: var(--error);
 }
 
 /* Responsive */

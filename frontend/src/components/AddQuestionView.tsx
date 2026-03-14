@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import type { BankType } from "../types";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalEditor } from "./TerminalEditor";
-import { TooltipContent, TooltipHint } from "./ui";
+import { Button, TooltipContent, TooltipHint } from "./ui";
 import { getDefaultRules, getAvailableTemplates, DEFAULT_GRADING_RULES, EXTRA_TEMPLATES } from "../utils/gradingTemplates";
 import "./AddQuestionView.css";
 
@@ -163,25 +163,26 @@ export function AddQuestionView({
 
         {/* Top nav bar */}
         <div className="theory-doc-nav">
-          <button className="btn btn-ghost btn-sm" onClick={onCancel}>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
             Back to {bankSubject}
-          </button>
+          </Button>
           <div className="theory-doc-nav-right">
             {gradingPill}
             <span className="theory-doc-hint">
               {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to save
             </span>
-            <button className="btn btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
-            <button
-              className="btn btn-primary btn-sm"
+            <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={handleSave}
               disabled={!question.trim() || !answer.trim() || isSaving}
             >
               {isSaving ? "Saving..." : "Save Question"}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -229,26 +230,26 @@ export function AddQuestionView({
       {/* Header */}
       <div className="add-question-view-header">
         <div className="add-question-view-header-left">
-          <button className="btn btn-ghost" onClick={onCancel}>
+          <Button variant="ghost" onClick={onCancel}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
             Back to {bankSubject}
-          </button>
+          </Button>
         </div>
         <div className="add-question-view-header-right">
           {gradingPill}
           <span className="add-question-view-hint">
             {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to save
           </span>
-          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-          <button
-            className="btn btn-primary"
+          <Button variant="secondary" onClick={onCancel}>Cancel</Button>
+          <Button
+            variant="primary"
             onClick={handleSave}
             disabled={!question.trim() || !answer.trim() || isSaving}
           >
             {isSaving ? "Saving..." : "Save Question"}
-          </button>
+          </Button>
         </div>
       </div>
 

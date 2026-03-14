@@ -3,7 +3,7 @@ import type { SessionResult, BankType } from "../types";
 import { renderFormattedText } from "../utils/formatText";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalDisplay } from "./TerminalDisplay";
-import { Tooltip, TooltipTitle, TooltipContent, TooltipHint } from "./ui/Tooltip";
+import { Button, Tooltip, TooltipTitle, TooltipContent, TooltipHint } from "./ui";
 import "./Results.css";
 
 type ResultQuestion = {
@@ -127,12 +127,12 @@ export function Results({
           </div>
 
           <div className="results-sidebar-actions">
-            <button className="btn btn-primary btn-full" onClick={onRetry}>
+            <Button variant="primary" className="btn-full" onClick={onRetry}>
               Retry Questions
-            </button>
-            <button className="btn btn-secondary btn-full" onClick={onBack}>
+            </Button>
+            <Button variant="secondary" className="btn-full" onClick={onBack}>
               Back to Home
-            </button>
+            </Button>
           </div>
         </div>
       </aside>
@@ -182,7 +182,7 @@ export function Results({
               if (isCodeMode) {
                 return (
                   <div
-                    key={i}
+                    key={question?.id ?? i}
                     className={`breakdown-card breakdown-card-code ${scoreClass}`}
                     style={{ animationDelay: `${i * 0.05}s` }}
                   >
@@ -293,7 +293,7 @@ export function Results({
 
               return (
                 <div
-                  key={i}
+                  key={question?.id ?? i}
                   className={`breakdown-card ${scoreClass}`}
                   style={{ animationDelay: `${i * 0.05}s` }}
                 >
