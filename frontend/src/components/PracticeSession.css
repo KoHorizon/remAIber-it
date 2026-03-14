@@ -442,22 +442,21 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    max-width: 760px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 2.5rem 1.5rem 1rem;
-    gap: 1.5rem;
     min-height: 0;
     overflow: hidden;
 }
 
-/* Question card */
-.ts-question-card {
-    flex-shrink: 0;
-    padding: 1.5rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+/* Question hero — top ~42% */
+.ts-hero {
+    flex: 0 0 42%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2.5rem 3rem;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-primary);
 }
 
 .ts-question-eyebrow {
@@ -467,24 +466,27 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--accent);
-    margin-bottom: 0.625rem;
+    margin-bottom: 1rem;
 }
 
 .ts-question-text {
-    font-size: 1.125rem;
+    font-size: 1.5rem;
     font-weight: 500;
-    line-height: 1.6;
+    line-height: 1.5;
     color: var(--text-primary);
     margin: 0;
+    max-width: 640px;
 }
 
-/* Answer area */
+/* Answer area — bottom ~58% */
 .ts-answer-area {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.625rem;
+    padding: 1.25rem 1.5rem;
     min-height: 0;
+    background: var(--bg-secondary);
 }
 
 .ts-answer-label {
@@ -505,7 +507,7 @@
     font-size: 0.9375rem;
     line-height: 1.7;
     color: var(--text-primary);
-    background: var(--bg-secondary);
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     resize: none;

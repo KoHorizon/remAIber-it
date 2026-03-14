@@ -88,9 +88,9 @@ export function TheoryModeSession({
       {/* Body */}
       <div className="ts-body">
 
-        {/* Question card */}
-        <div className="ts-question-card">
-          <span className="ts-question-eyebrow">Question {currentIndex + 1}</span>
+        {/* Question hero */}
+        <div className="ts-hero">
+          <span className="ts-question-eyebrow">Question {currentIndex + 1} of {totalQuestions}</span>
           <p className="ts-question-text">{currentQuestion.subject}</p>
         </div>
 
