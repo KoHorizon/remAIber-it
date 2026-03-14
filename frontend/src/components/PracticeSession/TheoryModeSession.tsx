@@ -45,150 +45,89 @@ export function TheoryModeSession({
   onKeyDown,
   formatTime,
 }: Props) {
+  const answered = answeredQuestions.filter((q) => !q.skipped).length;
+  const skipped = answeredQuestions.filter((q) => q.skipped).length;
+
   return (
-    <div className="theory-session animate-fade-in">
-      {/* Sidebar with progress */}
-      <aside className="theory-sidebar">
-        <div className="theory-sidebar-header">
+    <div className="ts-layout animate-fade-in">
+
+      {/* Top bar */}
+      <div className="ts-topbar">
+        <div className="ts-topbar-left">
           <button className="btn btn-ghost btn-sm" onClick={onCancel}>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
             Exit
           </button>
+          <span className="ts-bank-name">{currentBankSubject}</span>
+          {session.focus_on_weak && <span className="ts-badge">Focus mode</span>}
         </div>
-
-        <div className="theory-sidebar-content">
-          <div className="theory-sidebar-section">
-            <h3 className="theory-sidebar-title">{currentBankSubject}</h3>
-            {session.focus_on_weak && (
-              <span className="theory-badge">Focus mode</span>
-            )}
+        <div className="ts-topbar-center">
+          <div className="ts-progress-track">
+            <div className="ts-progress-fill" style={{ width: `${progress}%` }} />
           </div>
-
-          <div className="theory-sidebar-section">
-            <span className="theory-sidebar-label">Progress</span>
-            <div className="theory-progress-bar">
-              <div
-                className="theory-progress-fill"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <span className="theory-progress-count">
-              {currentIndex + 1} / {totalQuestions}
-            </span>
-          </div>
-
+          <span className="ts-progress-label">{currentIndex + 1} / {totalQuestions}</span>
+        </div>
+        <div className="ts-topbar-right">
           {timeRemaining !== null && (
-            <div className="theory-sidebar-section">
-              <span className="theory-sidebar-label">Time remaining</span>
-              <span
-                className={`theory-timer ${timeRemaining <= 60 ? "warning" : ""} ${timeRemaining <= 10 ? "critical" : ""}`}
-              >
-                {formatTime(timeRemaining)}
-              </span>
-            </div>
+            <span className={`ts-timer ${timeRemaining <= 60 ? "ts-timer--warning" : ""} ${timeRemaining <= 10 ? "ts-timer--critical" : ""}`}>
+              {formatTime(timeRemaining)}
+            </span>
           )}
-
-          <div className="theory-sidebar-section">
-            <span className="theory-sidebar-label">Session stats</span>
-            <div className="theory-stats">
-              <div className="theory-stat">
-                <span className="theory-stat-value">
-                  {answeredQuestions.filter((q) => !q.skipped).length}
-                </span>
-                <span className="theory-stat-label">Answered</span>
-              </div>
-              <div className="theory-stat">
-                <span className="theory-stat-value">
-                  {answeredQuestions.filter((q) => q.skipped).length}
-                </span>
-                <span className="theory-stat-label">Skipped</span>
-              </div>
-              <div className="theory-stat">
-                <span className="theory-stat-value">
-                  {totalQuestions - currentIndex - 1}
-                </span>
-                <span className="theory-stat-label">Remaining</span>
-              </div>
-            </div>
+          <div className="ts-stats">
+            <span className="ts-stat"><strong>{answered}</strong> answered</span>
+            <span className="ts-stat-sep" />
+            <span className="ts-stat"><strong>{skipped}</strong> skipped</span>
+            <span className="ts-stat-sep" />
+            <span className="ts-stat"><strong>{totalQuestions - currentIndex - 1}</strong> remaining</span>
           </div>
         </div>
-      </aside>
+      </div>
 
-      {/* Main content area */}
-      <main className="theory-main">
-        <div className="theory-top-section">
-          <div className="theory-question">{currentQuestion.subject}</div>
+      {/* Body */}
+      <div className="ts-body">
 
-          <div className="theory-answer-wrapper">
-            <label className="theory-answer-label">Your answer</label>
-            <textarea
-              className="theory-textarea"
-              placeholder="Write what you remember..."
-              value={answer}
-              onChange={(e) => onAnswerChange(e.target.value)}
-              onKeyDown={onKeyDown}
-              autoFocus
-            />
-            <div className="theory-answer-footer">
-              <span className="theory-hint">
-                {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to
-                submit
-              </span>
-              <div className="theory-actions">
-                <button
-                  className="btn btn-secondary"
-                  onClick={onSkip}
-                  disabled={isSubmitting}
-                >
-                  Skip
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={onSubmit}
-                  disabled={!answer.trim() || isSubmitting}
-                >
-                  {isSubmitting
-                    ? "Submitting..."
-                    : isLastQuestion
-                      ? "Finish"
-                      : "Next"}
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Question card */}
+        <div className="ts-question-card">
+          <span className="ts-question-eyebrow">Question {currentIndex + 1}</span>
+          <p className="ts-question-text">{currentQuestion.subject}</p>
         </div>
 
-        {/* Bottom section - answered recap */}
-        {answeredQuestions.length > 0 && (
-          <div className="theory-recap-section">
-            <h4 className="theory-recap-title">Your answers this session</h4>
-            <div className="theory-recap-list">
-              {answeredQuestions.map((item, idx) => (
-                <div
-                  key={idx}
-                  className={`theory-recap-item ${item.skipped ? "skipped" : ""}`}
-                >
-                  <span className="theory-recap-num">Q{item.index + 1}</span>
-                  {item.skipped ? (
-                    <span className="theory-recap-skipped">Skipped</span>
-                  ) : (
-                    <p className="theory-recap-answer">{item.answer}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </main>
+        {/* Answer area */}
+        <div className="ts-answer-area">
+          <label className="ts-answer-label">Your answer</label>
+          <textarea
+            className="ts-answer-textarea"
+            placeholder="Write what you remember..."
+            value={answer}
+            onChange={(e) => onAnswerChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            autoFocus
+          />
+        </div>
+
+      </div>
+
+      {/* Bottom action bar */}
+      <div className="ts-actionbar">
+        <span className="ts-hint">
+          {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to submit
+        </span>
+        <div className="ts-actions">
+          <button className="btn btn-secondary btn-sm" onClick={onSkip} disabled={isSubmitting}>
+            Skip
+          </button>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={onSubmit}
+            disabled={!answer.trim() || isSubmitting}
+          >
+            {isSubmitting ? "Submitting..." : isLastQuestion ? "Finish" : "Next →"}
+          </button>
+        </div>
+      </div>
+
     </div>
   );
 }

@@ -323,6 +323,226 @@
     }
 }
 
+/* ============================================
+   THEORY SESSION — new layout (ts-*)
+   ============================================ */
+
+.ts-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg-primary);
+}
+
+/* Top bar */
+.ts-topbar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0 1.25rem;
+    height: 48px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.ts-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 0 0 auto;
+}
+
+.ts-bank-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.ts-badge {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--accent-muted);
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ts-topbar-center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.ts-progress-track {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.ts-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.ts-progress-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.ts-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 0 0 auto;
+}
+
+.ts-timer {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.ts-timer--warning { color: var(--warning); }
+.ts-timer--critical { color: var(--error); animation: pulse 1s ease-in-out infinite; }
+
+.ts-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ts-stat {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.ts-stat strong {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.ts-stat-sep {
+    width: 1px;
+    height: 12px;
+    background: var(--border);
+}
+
+/* Body */
+.ts-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 760px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 1rem;
+    gap: 1.5rem;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Question card */
+.ts-question-card {
+    flex-shrink: 0;
+    padding: 1.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.ts-question-eyebrow {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.625rem;
+}
+
+.ts-question-text {
+    font-size: 1.125rem;
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+/* Answer area */
+.ts-answer-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 0;
+}
+
+.ts-answer-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.ts-answer-textarea {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    padding: 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    resize: none;
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ts-answer-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.ts-answer-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* Action bar */
+.ts-actionbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.ts-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.ts-actions {
+    display: flex;
+    gap: 0.625rem;
+}
+
 /* Split layout for code mode - FULL WIDTH like LeetCode */
 .practice-session-split {
     max-width: none;
