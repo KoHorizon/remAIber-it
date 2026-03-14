@@ -274,23 +274,25 @@ export function AddQuestionView({
             <label className="grading-prompt-label">
               Custom Grading Instructions
             </label>
-            {bankGradingPrompt && (
-              <Tooltip
-                trigger={
-                  <span className="grading-prompt-default-info">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 16v-4M12 8h.01" />
-                    </svg>
-                    <span>Bank default</span>
-                  </span>
-                }
-              >
-                <TooltipTitle>Bank Default Rules</TooltipTitle>
-                <TooltipContent>{bankGradingPrompt}</TooltipContent>
-                <TooltipHint>Leave empty to use this</TooltipHint>
-              </Tooltip>
-            )}
+            <Tooltip
+              trigger={
+                <span className="grading-prompt-default-info">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4M12 8h.01" />
+                  </svg>
+                  <span>Saved: {presetName}</span>
+                </span>
+              }
+              position="bottom"
+            >
+              <TooltipTitle>Current Bank Grading Rules</TooltipTitle>
+              {bankGradingPrompt
+                ? <TooltipContent>{bankGradingPrompt}</TooltipContent>
+                : <TooltipContent>No custom rules set — using built-in defaults.</TooltipContent>
+              }
+              <TooltipHint>Leave empty to use this</TooltipHint>
+            </Tooltip>
           </div>
           <textarea
             className="grading-prompt-textarea"

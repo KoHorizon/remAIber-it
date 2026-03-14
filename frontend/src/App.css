@@ -376,6 +376,41 @@ p {
     color: var(--text-muted);
 }
 
+/* ─── Formatted text (renderFormattedText utility) ─── */
+.fmt-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.fmt-paragraph {
+    margin: 0;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.fmt-spacer {
+    height: 0.25rem;
+}
+
+.fmt-body .formatted-list {
+    margin: 0;
+    padding-left: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.fmt-body .formatted-list li {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.inline-code--placeholder {
+    color: var(--accent);
+    background: var(--accent-muted);
+}
+
 /* Back button */
 .back-btn {
     display: inline-flex;

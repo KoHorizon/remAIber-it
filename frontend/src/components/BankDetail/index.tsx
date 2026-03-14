@@ -205,6 +205,7 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
               index={index}
               bankType={bank.bank_type}
               bankLanguage={bank.language}
+              bankGradingPrompt={bank.grading_prompt}
               isExpanded={expandedAnswers.has(q.id)}
               onToggleExpand={() => toggleExpanded(q.id)}
               onDelete={() => setShowDeleteConfirm(q.id)}

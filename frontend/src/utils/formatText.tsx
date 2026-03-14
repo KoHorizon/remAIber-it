@@ -1,12 +1,21 @@
 import type { ReactNode } from "react";
 
+// Renders inline segments: backtick code and <placeholder> angle-bracket tokens
 export function renderInlineCode(text: string): ReactNode {
-  const parts = text.split(/(`[^`]+`)/g);
+  // Split on backtick code OR <placeholder> tokens
+  const parts = text.split(/(`[^`]+`|<[^>]+>)/g);
   return parts.map((part, i) => {
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
         <code key={i} className="inline-code">
           {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith("<") && part.endsWith(">")) {
+      return (
+        <code key={i} className="inline-code inline-code--placeholder">
+          {part}
         </code>
       );
     }
@@ -37,19 +46,25 @@ export function renderFormattedText(text: string): ReactNode {
 
     if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
       listItems.push(trimmed.substring(2));
+    } else if (/^\d+\.\s/.test(trimmed)) {
+      // Numbered list item
+      listItems.push(trimmed.replace(/^\d+\.\s/, ""));
     } else if (trimmed === "") {
       flushList();
+      // Add spacing between paragraphs only if there's content before
+      if (elements.length > 0) {
+        elements.push(<div key={`spacer-${index}`} className="fmt-spacer" />);
+      }
     } else {
       flushList();
       elements.push(
-        <span key={`line-${index}`}>
+        <p key={`line-${index}`} className="fmt-paragraph">
           {renderInlineCode(trimmed)}
-          {index < lines.length - 1 && <br />}
-        </span>
+        </p>
       );
     }
   });
 
   flushList();
-  return elements;
+  return <div className="fmt-body">{elements}</div>;
 }

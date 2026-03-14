@@ -74,7 +74,8 @@ const maxRetries = 2
 
 func (g *OllamaGrader) GradeAnswer(ctx context.Context, question, expectedAnswer, userAnswer string, customPrompt *string, bankType string) (string, error) {
 	customRules := ""
-	if customPrompt != nil && *customPrompt != "" {
+	hasCustomRules := customPrompt != nil && *customPrompt != ""
+	if hasCustomRules {
 		customRules = *customPrompt
 	}
 
@@ -113,10 +114,16 @@ func (g *OllamaGrader) GradeAnswer(ctx context.Context, question, expectedAnswer
 			gradeResult.Missed = []string{"Unable to evaluate"}
 		}
 
-		total := len(gradeResult.Covered) + len(gradeResult.Missed)
-		score := 0
-		if total > 0 {
-			score = (len(gradeResult.Covered) * 100) / total
+		// If custom rules were provided, trust the LLM's score field directly.
+		// Otherwise, calculate score from covered/missed counts.
+		var score int
+		if hasCustomRules && gradeResult.Score >= 0 && gradeResult.Score <= 100 {
+			score = gradeResult.Score
+		} else {
+			total := len(gradeResult.Covered) + len(gradeResult.Missed)
+			if total > 0 {
+				score = (len(gradeResult.Covered) * 100) / total
+			}
 		}
 
 		finalResult := map[string]interface{}{
@@ -266,7 +273,7 @@ func buildSemanticCodePrompt(question, expected, user, customRules string) strin
 	}
 
 	return fmt.Sprintf(`/no_think
-You are grading a coding syntax,
+You are grading a coding answer.
 
 %s
 
@@ -279,8 +286,8 @@ EXPECTED CODE:
 USER CODE:
 %s
 
-Return ONLY valid JSON:
-{"covered": ["logical element", ...], "missed": ["logical element", ...]}`,
+Return ONLY valid JSON with score (0-100), covered points, and missed points:
+{"score": <0-100>, "covered": ["logical element", ...], "missed": ["logical element", ...]}`,
 		rules, question, expected, user)
 }
 
@@ -311,8 +318,8 @@ KEY POINTS:
 USER ANSWER:
 %s
 
-Return ONLY JSON:
-{"covered": [...], "missed": [...]}`,
+Return ONLY valid JSON with score (0-100), covered points, and missed points:
+{"score": <0-100>, "covered": [...], "missed": [...]}`,
 		rules, question, keyPoints, userAnswer)
 }
 
@@ -346,8 +353,8 @@ EXPECTED:
 USER:
 %s
 
-Return ONLY JSON:
-{"covered": [...], "missed": [...]}`,
+Return ONLY valid JSON with score (0-100), covered points, and missed points:
+{"score": <0-100>, "covered": [...], "missed": [...]}`,
 		rules, question, expectedAnswer, userAnswer)
 }
 
