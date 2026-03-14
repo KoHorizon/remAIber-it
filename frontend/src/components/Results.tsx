@@ -32,9 +32,8 @@ export function Results({
   onBack,
   onRetry,
 }: Props) {
-  const [expandedAnswers, setExpandedAnswers] = useState<Set<number>>(
-    new Set(),
-  );
+  // null = use score-based default; true/false = user explicitly toggled
+  const [answerOverrides, setAnswerOverrides] = useState<Map<number, boolean>>(new Map());
 
   const isCodeMode = bankType === "code" || bankType === "cli";
 
@@ -48,13 +47,8 @@ export function Results({
   const skippedCount = totalQuestions - answeredCount;
   const perfectCount = results.results.filter(r => Math.round(r.score) >= 90).length;
 
-  const toggleAnswer = (index: number) => {
-    setExpandedAnswers((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
+  const toggleAnswer = (index: number, currentlyShown: boolean) => {
+    setAnswerOverrides((prev) => new Map(prev).set(index, !currentlyShown));
   };
 
   const getScoreClass = (pct = percentage) => {
@@ -159,7 +153,8 @@ export function Results({
             {results.results.map((result, i) => {
               const question = questions[i];
               const questionScore = Math.round(result.score);
-              const isExpanded = expandedAnswers.has(i);
+              const override = answerOverrides.get(i);
+              const isExpanded = override !== undefined ? override : undefined;
               const hasExpectedAnswer = !!question?.expected_answer;
               const hasUserAnswer = !!(result.user_answer && result.user_answer.trim() !== "");
               const scoreClass = getScoreClass(questionScore);
@@ -291,52 +286,29 @@ export function Results({
               }
 
               // ── Theory card ──────────────────────────────────────────────
+              // Default: expanded when score < 70; user toggle overrides
+              const showAnswers = isExpanded !== undefined ? isExpanded : questionScore < 70;
+              const missedItems = hasUserAnswer ? result.missed : [];
+              const hasFeedback = result.covered.length > 0 || missedItems.length > 0;
+
               return (
                 <div
                   key={i}
                   className={`breakdown-card ${scoreClass}`}
                   style={{ animationDelay: `${i * 0.05}s` }}
                 >
+                  {/* Header */}
                   <div className="bcard-header">
                     <span className="bcard-num">Q{i + 1}</span>
                     <div className="breakdown-question">
                       {renderFormattedText(question?.subject || "")}
                     </div>
+                    {!hasUserAnswer && <span className="bcard-skipped-badge">Skipped</span>}
                     {gradingTooltip}
                   </div>
 
-                  {/* Answer toggle */}
-                  {(hasExpectedAnswer || hasUserAnswer) && (
-                    <div className="answer-comparison-section">
-                      <button
-                        className="answer-comparison-toggle"
-                        onClick={() => toggleAnswer(i)}
-                        aria-expanded={isExpanded}
-                      >
-                        <span>{isExpanded ? "Hide answers" : "Show answers"}</span>
-                        <span className={`toggle-icon ${isExpanded ? "expanded" : ""}`}>▼</span>
-                      </button>
-                      {isExpanded && (
-                        <div className="answer-comparison-content">
-                          <div className={`answer-block given-answer ${!hasUserAnswer ? "not-answered" : ""}`}>
-                            <span className="answer-label">Your answer</span>
-                            <div className={`answer-text ${!hasUserAnswer ? "empty" : ""}`}>
-                              {hasUserAnswer ? result.user_answer : "Not answered"}
-                            </div>
-                          </div>
-                          {hasExpectedAnswer && (
-                            <div className="answer-block expected-answer">
-                              <span className="answer-label">Expected answer</span>
-                              <div className="answer-text">{question.expected_answer}</div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Inline feedback chips */}
-                  {(result.covered.length > 0 || result.missed.length > 0) && (
+                  {/* Feedback chips — always visible */}
+                  {hasFeedback && (
                     <div className="bcard-feedback">
                       {result.covered.length > 0 && (
                         <div className="bcard-feedback-group">
@@ -351,20 +323,78 @@ export function Results({
                           </div>
                         </div>
                       )}
-                      {result.missed.length > 0 && (
+                      {missedItems.length > 0 && (
                         <div className="bcard-feedback-group">
                           <span className="bcard-feedback-heading bcard-feedback-heading--missed">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             Missed
                           </span>
                           <div className="bcard-chips">
-                            {result.missed.map((item, j) => (
+                            {missedItems.map((item, j) => (
                               <span key={j} className="bcard-chip bcard-chip--missed">{item}</span>
                             ))}
                           </div>
                         </div>
                       )}
                     </div>
+                  )}
+
+                  {/* Skipped: show expected answer directly, no toggle */}
+                  {!hasUserAnswer && hasExpectedAnswer && (
+                    <div className="bcard-diff">
+                      <div className="bcard-diff-pane bcard-diff-expected">
+                        <div className="bcard-diff-label">
+                          <span className="bcard-diff-dot score-excellent" />
+                          Expected answer
+                        </div>
+                        <div className="bcard-diff-content bcard-diff-content--text">
+                          {question.expected_answer}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Answered: toggle to show/hide both answers */}
+                  {hasUserAnswer && (hasExpectedAnswer || hasUserAnswer) && (
+                    <>
+                      <button
+                        className="bcard-answers-toggle"
+                        onClick={() => toggleAnswer(i, showAnswers)}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points={showAnswers ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
+                        </svg>
+                        {showAnswers ? "Hide answers" : "Show answers"}
+                      </button>
+
+                      {showAnswers && (
+                        <div className="bcard-diff">
+                          <div className="bcard-diff-pane bcard-diff-yours">
+                            <div className="bcard-diff-label">
+                              <span className={`bcard-diff-dot ${scoreClass}`} />
+                              Your answer
+                            </div>
+                            <div className="bcard-diff-content bcard-diff-content--text">
+                              {result.user_answer}
+                            </div>
+                          </div>
+                          {hasExpectedAnswer && (
+                            <>
+                              <div className="bcard-diff-divider" />
+                              <div className="bcard-diff-pane bcard-diff-expected">
+                                <div className="bcard-diff-label">
+                                  <span className="bcard-diff-dot score-excellent" />
+                                  Expected answer
+                                </div>
+                                <div className="bcard-diff-content bcard-diff-content--text">
+                                  {question.expected_answer}
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );

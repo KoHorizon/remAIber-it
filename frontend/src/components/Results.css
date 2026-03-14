@@ -250,7 +250,7 @@
 /* ── Card header row ──────────────────────── */
 .bcard-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.875rem;
     padding: 0.875rem 1.25rem;
     background: var(--bg-elevated);
@@ -375,6 +375,14 @@
     /* auto-size to content */
 }
 
+.bcard-diff-content--text {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+}
+
 .bcard-diff-content .terminal-display {
     border: none;
     border-radius: 0;
@@ -459,57 +467,38 @@
     border: 1px solid rgba(196, 92, 74, 0.25);
 }
 
-/* ── Answer toggle (theory mode) ──────────── */
-.answer-comparison-section {
-    padding: 0 1.25rem;
-    padding-bottom: 0.875rem;
-    background: var(--bg-secondary);
-}
-
-.answer-comparison-toggle {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.625rem 0.875rem;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-secondary);
-    font-size: 0.8125rem;
-    font-family: var(--font-body);
-    cursor: pointer;
-    transition: all var(--transition);
-    margin-top: 0;
-}
-
-.answer-comparison-toggle:hover {
-    background: var(--bg-hover);
-    border-color: var(--border-hover);
-    color: var(--text-primary);
-}
-
-.toggle-icon {
-    font-size: 0.5625rem;
-    transition: transform 0.2s ease;
+/* ── Answer toggle button (theory mode) ───── */
+.bcard-skipped-badge {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-active);
     color: var(--text-muted);
+    flex-shrink: 0;
+    line-height: 1;
+    align-self: center;
 }
 
-.toggle-icon.expanded {
-    transform: rotate(180deg);
+.bcard-answers-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 1.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color var(--transition-fast);
 }
 
-.answer-comparison-content {
-    margin-top: 0.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    animation: fadeIn 0.2s ease-out;
-}
-
-.answer-block {
-    padding: 0.875rem 1rem;
-    border-radius: var(--radius-md);
+.bcard-answers-toggle:hover {
+    color: var(--text-secondary);
 }
 
 .answer-label {
