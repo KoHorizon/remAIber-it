@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { BankType } from "../types";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalEditor } from "./TerminalEditor";
-import { Tooltip, TooltipTitle, TooltipContent, TooltipHint } from "./ui";
+import { TooltipContent, TooltipHint } from "./ui";
 import { getDefaultRules, getAvailableTemplates, DEFAULT_GRADING_RULES, EXTRA_TEMPLATES } from "../utils/gradingTemplates";
 import "./AddQuestionView.css";
 
@@ -43,7 +43,6 @@ export function AddQuestionView({
   const extraTemplates = getAvailableTemplates(bankType);
   const defaultRules = getDefaultRules(bankType);
   const presetName = getPresetName(gradingPrompt, bankType);
-  const isCustom = presetName === "Custom";
 
 
   async function handleSave() {
@@ -74,7 +73,7 @@ export function AddQuestionView({
         value={gradingPrompt}
         onChange={(e) => setGradingPrompt(e.target.value)}
         rows={Math.max(1, gradingPrompt.split("\n").length)}
-        autoFocus
+        ref={(el) => { if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }}
       />
       <div className="grading-templates">
         <span className="templates-label">Presets:</span>
@@ -106,37 +105,41 @@ export function AddQuestionView({
     </div>
   ) : null;
 
-  // Shared grading pill (tooltip on hover, click to toggle)
+  // Pill button — click only to toggle grading section open/close
   const gradingPill = (
-    <Tooltip
-      trigger={
-        <button
-          type="button"
-          className={`grading-pill ${showGrading ? "grading-pill--open" : ""} ${isCustom ? "grading-pill--custom" : ""}`}
-          onClick={() => setShowGrading((v) => !v)}
+    <div className="grading-pill-group">
+      <button
+        type="button"
+        className={`grading-pill ${showGrading ? "grading-pill--open" : ""}`}
+        onClick={() => setShowGrading((v) => !v)}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+        </svg>
+        {presetName}
+        <svg
+          className={`grading-pill-chevron ${showGrading ? "grading-pill-chevron--open" : ""}`}
+          width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-          </svg>
-          {presetName}
-          <svg
-            className={`grading-pill-chevron ${showGrading ? "grading-pill-chevron--open" : ""}`}
-            width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
-      }
-      position="bottom"
-      width="340px"
-    >
-      <TooltipTitle>Grading Rules</TooltipTitle>
-      {gradingPrompt.trim()
-        ? <TooltipContent>{gradingPrompt}</TooltipContent>
-        : <TooltipHint>No custom rules — built-in defaults will be used.</TooltipHint>
-      }
-      {!showGrading && <TooltipHint>Click to edit</TooltipHint>}
-    </Tooltip>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {!showGrading && (
+        <div className="grading-info-group">
+          <span className="grading-info-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </span>
+          <div className="grading-info-popup">
+            {gradingPrompt.trim()
+              ? <TooltipContent>{gradingPrompt}</TooltipContent>
+              : <TooltipHint>No custom rules — built-in defaults will be used.</TooltipHint>
+            }
+          </div>
+        </div>
+      )}
+    </div>
   );
 
   // ── Theory mode ────────────────────────────────────────────────────────────
