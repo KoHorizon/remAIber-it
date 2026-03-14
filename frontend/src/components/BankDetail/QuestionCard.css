@@ -1,0 +1,293 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   QUESTION CARD - Modern Professional Design
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.qcard {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all var(--transition-fast);
+    animation: qcardSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+.qcard:hover {
+    border-color: var(--border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+@keyframes qcardSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header */
+.qcard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.qcard-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.qcard-number {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.qcard-grading-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    background: var(--accent-muted);
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--accent);
+    cursor: help;
+    transition: all var(--transition-fast);
+}
+
+.qcard-grading-badge:hover {
+    background: var(--accent);
+    color: white;
+}
+
+.qcard-grading-badge svg {
+    flex-shrink: 0;
+}
+
+/* Mastery badge */
+.qcard-mastery {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+}
+
+.qcard-mastery-value {
+    font-weight: 700;
+}
+
+.qcard-mastery-label {
+    font-weight: 500;
+    opacity: 0.85;
+}
+
+/* Mastery colors */
+.qcard-mastery.mastery-excellent {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+}
+
+.qcard-mastery.mastery-good {
+    background: rgba(34, 197, 94, 0.08);
+    color: #4ade80;
+}
+
+.qcard-mastery.mastery-fair {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+}
+
+.qcard-mastery.mastery-needs-work {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.qcard-mastery.mastery-none {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+}
+
+/* Question section */
+.qcard-question {
+    padding: 1.25rem;
+}
+
+.qcard-question-text {
+    font-size: 1rem;
+    color: var(--text-primary);
+    line-height: 1.7;
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.qcard-question-formatted {
+    font-size: 1rem;
+    color: var(--text-primary);
+    line-height: 1.7;
+}
+
+.qcard-question-formatted .formatted-list {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.qcard-question-formatted .formatted-list li {
+    margin-bottom: 0.25rem;
+    color: var(--text-secondary);
+}
+
+.qcard-question-formatted .inline-code {
+    background: var(--bg-elevated);
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 0.875em;
+    color: #e06c75;
+}
+
+/* Answer section */
+.qcard-answer {
+    padding: 0 1.25rem 1.25rem;
+}
+
+.qcard-answer-text {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--accent);
+}
+
+/* Code block */
+.qcard-code-block {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.qcard-code-block:hover {
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+.qcard-code-block .code-editor-container,
+.qcard-code-block .terminal-display {
+    pointer-events: none;
+}
+
+.qcard-expand-hint {
+    display: block;
+    padding: 0.5rem 1rem;
+    background: rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all var(--transition-fast);
+}
+
+.qcard-code-block:hover .qcard-expand-hint {
+    color: var(--accent);
+    background: rgba(0, 0, 0, 0.75);
+}
+
+/* Footer */
+.qcard-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.qcard-stats {
+    display: flex;
+    gap: 2rem;
+}
+
+.qcard-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.qcard-stat-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.qcard-stat-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* Delete button */
+.qcard-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--radius);
+    opacity: 0;
+    transition: all var(--transition-fast);
+}
+
+.qcard:hover .qcard-delete {
+    opacity: 1;
+}
+
+.qcard-delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .qcard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .qcard-stats {
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+
+    .qcard-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .qcard-delete {
+        opacity: 1;
+        align-self: flex-end;
+    }
+}

@@ -1,0 +1,96 @@
+/* Terminal Editor - Monaco with CLI design */
+
+.terminal-editor {
+    display: flex;
+    flex-direction: column;
+    background: #2d2a24;
+    overflow: hidden;
+    border: none;
+    border-radius: 0;
+}
+
+.terminal-editor-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #252219;
+    border-bottom: 1px solid #3d3830;
+    flex-shrink: 0;
+}
+
+.terminal-editor .terminal-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.terminal-editor .terminal-dot.red {
+    background: #e07a5f;
+}
+
+.terminal-editor .terminal-dot.yellow {
+    background: #e9c46a;
+}
+
+.terminal-editor .terminal-dot.green {
+    background: #81b29a;
+}
+
+.terminal-editor .terminal-title {
+    margin-left: 8px;
+    font-size: 0.75rem;
+    color: #8a7a68;
+    font-family: var(--font-sans);
+}
+
+.terminal-editor-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: flex-start;
+    background: #2d2a24;
+    padding: 12px 16px;
+    gap: 8px;
+}
+
+.terminal-editor .terminal-prompt {
+    color: #81b29a;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 14px;
+    font-weight: 600;
+    user-select: none;
+    flex-shrink: 0;
+    line-height: 19px;
+}
+
+.terminal-editor-monaco {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    margin-top: -1px;
+}
+
+/* Override Monaco editor styles for terminal look */
+.terminal-editor .monaco-editor,
+.terminal-editor .monaco-editor-background,
+.terminal-editor .monaco-editor .margin {
+    background: #2d2a24 !important;
+}
+
+/* Remove any left padding from Monaco */
+.terminal-editor .monaco-editor .lines-content {
+    padding-left: 0 !important;
+}
+
+.terminal-editor .monaco-editor .view-lines {
+    padding-left: 0 !important;
+}
+
+/* Style the placeholder */
+.terminal-editor .monaco-placeholder {
+    color: #6b6358 !important;
+    font-style: normal !important;
+    padding-left: 0 !important;
+    margin-top: 3px !important;
+}

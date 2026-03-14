@@ -272,8 +272,32 @@
 .add-question-panel-content {
     flex: 1;
     padding: 1rem 1.5rem;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+.add-question-panel-content:hover {
+    scrollbar-color: var(--border) transparent;
+}
+
+.add-question-panel-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.add-question-panel-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.add-question-panel-content::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 3px;
+}
+
+.add-question-panel-content:hover::-webkit-scrollbar-thumb {
+    background: var(--border);
 }
 
 .add-question-panel-content--code {

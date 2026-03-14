@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { BankType } from "../types";
 import { CodeEditor } from "./CodeEditor";
-import { TerminalInput } from "./TerminalInput";
+import { TerminalEditor } from "./TerminalEditor";
 import { Tooltip, TooltipTitle, TooltipContent, TooltipHint } from "./ui";
 import { DEFAULT_GRADING_RULES, EXTRA_TEMPLATES } from "../utils/gradingTemplates";
 import "./AddQuestionView.css";
@@ -318,7 +318,7 @@ export function AddQuestionView({
           <div className="add-question-panel-content">
             <textarea
               className="add-question-textarea"
-              placeholder="Describe what the user should implement...\n\nExample:\nWrite a function called `reverseString` that takes a string as input and returns the string reversed.\n\nRequirements:\n- Do not use built-in reverse methods\n- Handle empty strings\n- Handle unicode characters"
+              placeholder="Describe the coding task..."
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               autoFocus
@@ -339,7 +339,7 @@ export function AddQuestionView({
           </div>
           <div className="add-question-panel-content add-question-panel-content--code">
             {bankType === "cli" ? (
-              <TerminalInput
+              <TerminalEditor
                 value={answer}
                 onChange={setAnswer}
                 placeholder="Enter the expected command..."

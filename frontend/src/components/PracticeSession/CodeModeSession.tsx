@@ -1,7 +1,7 @@
 import type { Session, BankType } from "../../types";
 import { renderFormattedText } from "../../utils/formatText";
 import { CodeEditor } from "../CodeEditor";
-import { TerminalInput } from "../TerminalInput";
+import { TerminalEditor } from "../TerminalEditor";
 
 type Props = {
   session: Session;
@@ -116,7 +116,7 @@ export function CodeModeSession({
           </div>
           <div className="panel-content panel-content-editor">
             {currentBankType === "cli" ? (
-              <TerminalInput
+              <TerminalEditor
                 value={answer}
                 onChange={onAnswerChange}
                 placeholder="Type your command..."
