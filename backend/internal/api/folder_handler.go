@@ -102,14 +102,19 @@ func (h *Handler) listFolders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ids := make([]string, len(folders))
+	for i, f := range folders {
+		ids[i] = f.ID
+	}
+	masteryMap, _ := h.store.GetFolderMasteryBatch(ctx, ids)
+
 	response := make([]FolderResponse, len(folders))
 	for i, f := range folders {
-		mastery, _ := h.store.GetFolderMastery(ctx, f.ID)
 		response[i] = FolderResponse{
 			ID:       f.ID,
 			Name:     f.Name,
 			IsSystem: f.IsSystem,
-			Mastery:  mastery,
+			Mastery:  masteryMap[f.ID],
 		}
 	}
 
@@ -141,13 +146,18 @@ func (h *Handler) getFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	catIDs := make([]string, len(categories))
+	for i, cat := range categories {
+		catIDs[i] = cat.ID
+	}
+	catMasteryMap, _ := h.store.GetCategoryMasteryBatch(ctx, catIDs)
+
 	catResponses := make([]CategoryResponse, len(categories))
 	for i, cat := range categories {
-		mastery, _ := h.store.GetCategoryMastery(ctx, cat.ID)
 		catResponses[i] = CategoryResponse{
 			ID:      cat.ID,
 			Name:    cat.Name,
-			Mastery: mastery,
+			Mastery: catMasteryMap[cat.ID],
 		}
 	}
 
@@ -203,7 +213,7 @@ func (h *Handler) updateFolder(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, FolderResponse{
 		ID:       f.ID,
 		Name:     f.Name,
-		IsSystem: false,
+		IsSystem: f.IsSystem,
 		Mastery:  mastery,
 	})
 }
@@ -253,13 +263,18 @@ func (h *Handler) listCategoriesByFolder(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	catIDs := make([]string, len(categories))
+	for i, cat := range categories {
+		catIDs[i] = cat.ID
+	}
+	masteryMap, _ := h.store.GetCategoryMasteryBatch(ctx, catIDs)
+
 	response := make([]CategoryResponse, len(categories))
 	for i, cat := range categories {
-		mastery, _ := h.store.GetCategoryMastery(ctx, cat.ID)
 		response[i] = CategoryResponse{
 			ID:      cat.ID,
 			Name:    cat.Name,
-			Mastery: mastery,
+			Mastery: masteryMap[cat.ID],
 		}
 	}
 

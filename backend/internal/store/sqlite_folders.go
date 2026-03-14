@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/remaimber-it/backend/internal/domain/category"
 	"github.com/remaimber-it/backend/internal/domain/folder"
@@ -244,6 +245,44 @@ func (s *SQLiteStore) GetFolderMastery(ctx context.Context, folderID string) (in
 		return 0, nil
 	}
 	return int(mastery.Float64), nil
+}
+
+func (s *SQLiteStore) GetFolderMasteryBatch(ctx context.Context, folderIDs []string) (map[string]int, error) {
+	result := make(map[string]int, len(folderIDs))
+	if len(folderIDs) == 0 {
+		return result, nil
+	}
+
+	placeholders := make([]string, len(folderIDs))
+	args := make([]interface{}, len(folderIDs))
+	for i, id := range folderIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT c.folder_id, CAST(AVG(COALESCE(qs.mastery, 0)) AS INTEGER)
+		FROM questions q
+		JOIN banks b ON q.bank_id = b.id
+		JOIN categories c ON b.category_id = c.id
+		LEFT JOIN question_stats qs ON q.id = qs.question_id
+		WHERE c.folder_id IN (`+strings.Join(placeholders, ",")+`)
+		GROUP BY c.folder_id
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id string
+		var mastery int
+		if err := rows.Scan(&id, &mastery); err != nil {
+			return nil, err
+		}
+		result[id] = mastery
+	}
+	return result, nil
 }
 
 // ============================================================================

@@ -127,7 +127,9 @@ func (h *Handler) exportAll(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", "attachment; filename=remaimber-export.json")
-	json.NewEncoder(w).Encode(exportData)
+	if err := json.NewEncoder(w).Encode(exportData); err != nil {
+		h.logger.Error("failed to encode export", "error", err)
+	}
 }
 
 // buildExportCategory creates an ExportCategory from a category entity.
@@ -230,8 +232,13 @@ func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 // importBanks imports banks and their questions into a category.
 func (h *Handler) importBanks(ctx context.Context, banks []ExportBank, categoryID string, result *ImportResult) {
 	for _, bank := range banks {
-		bankType := questionbank.BankType(bank.BankType)
-		if bankType == "" {
+		var bankType questionbank.BankType
+		switch questionbank.BankType(bank.BankType) {
+		case questionbank.BankTypeCode:
+			bankType = questionbank.BankTypeCode
+		case questionbank.BankTypeCLI:
+			bankType = questionbank.BankTypeCLI
+		default:
 			bankType = questionbank.BankTypeTheory
 		}
 
