@@ -119,14 +119,19 @@ func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ids := make([]string, len(categories))
+	for i, cat := range categories {
+		ids[i] = cat.ID
+	}
+	masteryMap, _ := h.store.GetCategoryMasteryBatch(ctx, ids)
+
 	response := make([]CategoryResponse, len(categories))
 	for i, cat := range categories {
-		mastery, _ := h.store.GetCategoryMastery(ctx, cat.ID)
 		response[i] = CategoryResponse{
 			ID:       cat.ID,
 			Name:     cat.Name,
 			FolderID: cat.FolderID,
-			Mastery:  mastery,
+			Mastery:  masteryMap[cat.ID],
 		}
 	}
 
@@ -158,16 +163,21 @@ func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	bankIDs := make([]string, len(banks))
+	for i, bank := range banks {
+		bankIDs[i] = bank.ID
+	}
+	bankMasteryMap, _ := h.store.GetBankMasteryBatch(ctx, bankIDs)
+
 	bankResponses := make([]BankResponse, len(banks))
 	for i, bank := range banks {
-		mastery, _ := h.store.GetBankMastery(ctx, bank.ID)
 		bankResponses[i] = BankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
 			CategoryID: bank.CategoryID,
 			BankType:   string(bank.BankType),
 			Language:   bank.Language,
-			Mastery:    mastery,
+			Mastery:    bankMasteryMap[bank.ID],
 		}
 	}
 
@@ -262,7 +272,10 @@ func (h *Handler) updateCategoryFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cat, _ := h.store.GetCategory(ctx, categoryID)
+	cat, err := h.store.GetCategory(ctx, categoryID)
+	if h.handleStoreError(w, err, "category") {
+		return
+	}
 	mastery, _ := h.store.GetCategoryMastery(ctx, categoryID)
 
 	respondJSON(w, http.StatusOK, CategoryResponse{
@@ -318,16 +331,21 @@ func (h *Handler) listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	bankIDs := make([]string, len(banks))
+	for i, bank := range banks {
+		bankIDs[i] = bank.ID
+	}
+	masteryMap, _ := h.store.GetBankMasteryBatch(ctx, bankIDs)
+
 	response := make([]BankResponse, len(banks))
 	for i, bank := range banks {
-		mastery, _ := h.store.GetBankMastery(ctx, bank.ID)
 		response[i] = BankResponse{
 			ID:         bank.ID,
 			Subject:    bank.Subject,
 			CategoryID: bank.CategoryID,
 			BankType:   string(bank.BankType),
 			Language:   bank.Language,
-			Mastery:    mastery,
+			Mastery:    masteryMap[bank.ID],
 		}
 	}
 

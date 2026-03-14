@@ -25,6 +25,7 @@ type Store interface {
 	UpdateFolder(ctx context.Context, f *folder.Folder) error
 	DeleteFolder(ctx context.Context, id string) error
 	GetFolderMastery(ctx context.Context, folderID string) (int, error)
+	GetFolderMasteryBatch(ctx context.Context, folderIDs []string) (map[string]int, error)
 
 	// System "Deleted" folder
 	GetOrCreateDeletedFolder(ctx context.Context) (*folder.Folder, error)
@@ -39,6 +40,7 @@ type Store interface {
 	UpdateCategoryFolder(ctx context.Context, categoryID string, folderID *string) error
 	DeleteCategory(ctx context.Context, id string) error
 	GetCategoryMastery(ctx context.Context, categoryID string) (int, error)
+	GetCategoryMasteryBatch(ctx context.Context, categoryIDs []string) (map[string]int, error)
 
 	// Banks
 	SaveBank(ctx context.Context, bank *questionbank.QuestionBank) error
@@ -50,6 +52,7 @@ type Store interface {
 	UpdateBankGradingPrompt(ctx context.Context, bankID string, gradingPrompt *string) error
 	DeleteBank(ctx context.Context, id string) error
 	GetBankMastery(ctx context.Context, bankID string) (int, error)
+	GetBankMasteryBatch(ctx context.Context, bankIDs []string) (map[string]int, error)
 
 	// Questions
 	AddQuestion(ctx context.Context, bankID string, question questionbank.Question) error

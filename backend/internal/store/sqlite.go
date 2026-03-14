@@ -114,6 +114,9 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	// Add bank_id to session_questions for cross-bank sessions
 	_ = addColumnIfNotExists(db, "session_questions", "bank_id", "TEXT")
 
+	// Add grading_prompt to questions for per-question grading override
+	_ = addColumnIfNotExists(db, "questions", "grading_prompt", "TEXT")
+
 	// Ensure only one grade per question per session.
 	_, _ = db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_grades_session_question ON grades (session_id, question_id)")
 
@@ -122,8 +125,25 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	}, nil
 }
 
+// validIdentifier reports whether s is a safe SQL identifier (letters, digits, underscores only).
+func validIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, c := range s {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+			return false
+		}
+	}
+	return true
+}
+
 // addColumnIfNotExists tries to add a column; ignores the error if it already exists.
+// table and column must be plain identifiers (letters/digits/underscores); definition may be any SQL fragment.
 func addColumnIfNotExists(db *sql.DB, table, column, definition string) error {
+	if !validIdentifier(table) || !validIdentifier(column) {
+		panic("addColumnIfNotExists: invalid identifier: table=" + table + " column=" + column)
+	}
 	query := "ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition
 	_, err := db.Exec(query)
 	if err != nil && !isColumnExistsError(err) {
@@ -302,7 +322,7 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 		bank.Language = &language.String
 	}
 
-	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, expected_answer FROM questions WHERE bank_id = ?", id)
+	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, expected_answer, grading_prompt FROM questions WHERE bank_id = ?", id)
 	if err != nil {
 		return nil, err
 	}
@@ -310,8 +330,12 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 
 	for rows.Next() {
 		var q questionbank.Question
-		if err := rows.Scan(&q.ID, &q.Subject, &q.ExpectedAnswer); err != nil {
+		var gradingPrompt sql.NullString
+		if err := rows.Scan(&q.ID, &q.Subject, &q.ExpectedAnswer, &gradingPrompt); err != nil {
 			return nil, err
+		}
+		if gradingPrompt.Valid {
+			q.GradingPrompt = &gradingPrompt.String
 		}
 		bank.Questions = append(bank.Questions, q)
 	}
@@ -346,6 +370,46 @@ func (s *SQLiteStore) ListBanks(ctx context.Context) ([]*questionbank.QuestionBa
 			bank.BankType = questionbank.BankType(bankType.String)
 		} else {
 			bank.BankType = questionbank.BankTypeTheory
+		}
+		if language.Valid {
+			bank.Language = &language.String
+		}
+		banks = append(banks, &bank)
+	}
+	return banks, nil
+}
+
+func (s *SQLiteStore) ListBanksWithCounts(ctx context.Context) ([]*BankWithCount, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT b.id, b.subject, b.category_id, b.grading_prompt, b.bank_type, b.language,
+		       (SELECT COUNT(*) FROM questions q WHERE q.bank_id = b.id) as question_count
+		FROM banks b
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var banks []*BankWithCount
+	for rows.Next() {
+		var bank BankWithCount
+		var categoryID sql.NullString
+		var gradingPrompt sql.NullString
+		var bankType sql.NullString
+		var language sql.NullString
+		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt, &bankType, &language, &bank.QuestionCount); err != nil {
+			return nil, err
+		}
+		if categoryID.Valid {
+			bank.CategoryID = &categoryID.String
+		}
+		if gradingPrompt.Valid {
+			bank.GradingPrompt = &gradingPrompt.String
+		}
+		if bankType.Valid {
+			bank.BankType = bankType.String
+		} else {
+			bank.BankType = "theory"
 		}
 		if language.Valid {
 			bank.Language = &language.String
@@ -460,8 +524,8 @@ func (s *SQLiteStore) DeleteBank(ctx context.Context, id string) error {
 
 func (s *SQLiteStore) AddQuestion(ctx context.Context, bankID string, question questionbank.Question) error {
 	_, err := s.db.ExecContext(ctx,
-		"INSERT INTO questions (id, bank_id, subject, expected_answer) VALUES (?, ?, ?, ?)",
-		question.ID, bankID, question.Subject, question.ExpectedAnswer,
+		"INSERT INTO questions (id, bank_id, subject, expected_answer, grading_prompt) VALUES (?, ?, ?, ?, ?)",
+		question.ID, bankID, question.Subject, question.ExpectedAnswer, question.GradingPrompt,
 	)
 	return err
 }
@@ -696,18 +760,21 @@ func (s *SQLiteStore) updateQuestionStats(ctx context.Context, questionID string
 	}
 
 	if exists {
+		// Compute mastery using the new total_score and times_answered AFTER incrementing.
+		// new_avg = (total_score + score) / (times_answered + 1)
+		// mastery  = latest_score * 0.6 + new_avg * 0.4
 		_, err = s.db.ExecContext(ctx, `
-			UPDATE question_stats 
+			UPDATE question_stats
 			SET times_answered = times_answered + 1,
-			    times_correct = times_correct + ?,
-			    total_score = total_score + ?,
-			    latest_score = ?,
-			    mastery = CAST(
-			        ? * 0.6 + 
-			        (CAST(total_score AS REAL) / times_answered) * 0.4
+			    times_correct  = times_correct + ?,
+			    total_score    = total_score + ?,
+			    latest_score   = ?,
+			    mastery        = CAST(
+			        ? * 0.6 +
+			        (CAST(total_score + ? AS REAL) / (times_answered + 1)) * 0.4
 			    AS INTEGER)
 			WHERE question_id = ?
-		`, isCorrect, score, score, score, questionID)
+		`, isCorrect, score, score, score, score, questionID)
 	} else {
 		_, err = s.db.ExecContext(ctx, `
 			INSERT INTO question_stats (question_id, times_answered, times_correct, total_score, latest_score, mastery)
@@ -776,6 +843,42 @@ func (s *SQLiteStore) GetBankMastery(ctx context.Context, bankID string) (int, e
 	return int(mastery.Float64), nil
 }
 
+func (s *SQLiteStore) GetBankMasteryBatch(ctx context.Context, bankIDs []string) (map[string]int, error) {
+	result := make(map[string]int, len(bankIDs))
+	if len(bankIDs) == 0 {
+		return result, nil
+	}
+
+	placeholders := make([]string, len(bankIDs))
+	args := make([]interface{}, len(bankIDs))
+	for i, id := range bankIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT q.bank_id, CAST(AVG(COALESCE(qs.mastery, 0)) AS INTEGER)
+		FROM questions q
+		LEFT JOIN question_stats qs ON q.id = qs.question_id
+		WHERE q.bank_id IN (`+strings.Join(placeholders, ",")+`)
+		GROUP BY q.bank_id
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id string
+		var mastery int
+		if err := rows.Scan(&id, &mastery); err != nil {
+			return nil, err
+		}
+		result[id] = mastery
+	}
+	return result, nil
+}
+
 func (s *SQLiteStore) GetCategoryMastery(ctx context.Context, categoryID string) (int, error) {
 	var mastery sql.NullFloat64
 	err := s.db.QueryRowContext(ctx, `
@@ -793,6 +896,43 @@ func (s *SQLiteStore) GetCategoryMastery(ctx context.Context, categoryID string)
 		return 0, nil
 	}
 	return int(mastery.Float64), nil
+}
+
+func (s *SQLiteStore) GetCategoryMasteryBatch(ctx context.Context, categoryIDs []string) (map[string]int, error) {
+	result := make(map[string]int, len(categoryIDs))
+	if len(categoryIDs) == 0 {
+		return result, nil
+	}
+
+	placeholders := make([]string, len(categoryIDs))
+	args := make([]interface{}, len(categoryIDs))
+	for i, id := range categoryIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT b.category_id, CAST(AVG(COALESCE(qs.mastery, 0)) AS INTEGER)
+		FROM questions q
+		JOIN banks b ON q.bank_id = b.id
+		LEFT JOIN question_stats qs ON q.id = qs.question_id
+		WHERE b.category_id IN (`+strings.Join(placeholders, ",")+`)
+		GROUP BY b.category_id
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id string
+		var mastery int
+		if err := rows.Scan(&id, &mastery); err != nil {
+			return nil, err
+		}
+		result[id] = mastery
+	}
+	return result, nil
 }
 
 // GetWeakQuestionsAcrossBanks returns weak questions from multiple banks, sorted by mastery ascending
