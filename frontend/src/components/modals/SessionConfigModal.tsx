@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Modal, Button } from "../ui";
 import "./SessionConfigModal.css";
 
 type Props = {
@@ -47,12 +48,17 @@ export function SessionConfigModal({
   }
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div
-        className="modal-content session-config-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2>Configure Session</h2>
+    <Modal
+      title="Configure Session"
+      onClose={onCancel}
+      actions={
+        <>
+          <Button variant="secondary" onClick={onCancel}>Cancel</Button>
+          <Button variant="primary" onClick={handleStart}>Start Session</Button>
+        </>
+      }
+    >
+      <div className="session-config-modal">
         <p className="modal-subtitle">
           {totalQuestions} question{totalQuestions !== 1 ? "s" : ""} in this
           bank
@@ -198,15 +204,7 @@ export function SessionConfigModal({
           )}
         </div>
 
-        <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onCancel}>
-            Cancel
-          </button>
-          <button className="btn btn-primary" onClick={handleStart}>
-            Start Session
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -3,7 +3,7 @@ import type { SessionResult, BankType } from "../types";
 import { renderFormattedText } from "../utils/formatText";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalDisplay } from "./TerminalDisplay";
-import { Tooltip, TooltipTitle, TooltipContent, TooltipHint } from "./ui/Tooltip";
+import { Button, Tooltip, TooltipTitle, TooltipContent, TooltipHint } from "./ui";
 import "./Results.css";
 
 type ResultQuestion = {
@@ -127,12 +127,12 @@ export function Results({
           </div>
 
           <div className="results-sidebar-actions">
-            <button className="btn btn-primary btn-full" onClick={onRetry}>
+            <Button variant="primary" className="btn-full" onClick={onRetry}>
               Retry Questions
-            </button>
-            <button className="btn btn-secondary btn-full" onClick={onBack}>
+            </Button>
+            <Button variant="secondary" className="btn-full" onClick={onBack}>
               Back to Home
-            </button>
+            </Button>
           </div>
         </div>
       </aside>

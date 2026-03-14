@@ -1,4 +1,5 @@
 import type { Bank } from "../../types";
+import { Button } from "../ui";
 import { getMasteryLevel } from "../../utils/mastery";
 import type { SortField, SortDirection } from "./types";
 
@@ -172,9 +173,9 @@ export function LibraryTable({
       {isFilteredEmpty && (
         <div className="table-empty">
           <p>No banks match your filters.</p>
-          <button className="btn btn-secondary btn-sm" onClick={onClearFilters}>
+          <Button variant="secondary" size="sm" onClick={onClearFilters}>
             Clear filters
-          </button>
+          </Button>
         </div>
       )}
 

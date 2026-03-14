@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../../api";
 import { useLibrary } from "../../context/LibraryContext";
 import type { Bank, Session, BankType } from "../../types";
+import { Button } from "../ui";
 import { SessionConfigModal } from "../modals";
 import { BankHeader } from "./BankHeader";
 import { QuestionCard } from "./QuestionCard";
@@ -123,9 +124,9 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
     return (
       <div className="bank-detail animate-fade-in">
         <p>Bank not found</p>
-        <button className="btn btn-secondary" onClick={onBack}>
+        <Button variant="secondary" onClick={onBack}>
           Go Back
-        </button>
+        </Button>
       </div>
     );
   }

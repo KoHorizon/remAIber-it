@@ -458,13 +458,13 @@
 .bcard-chip--covered {
     background: var(--success-muted);
     color: var(--success);
-    border: 1px solid rgba(107, 159, 120, 0.25);
+    border: 1px solid var(--success-muted);
 }
 
 .bcard-chip--missed {
     background: var(--error-muted);
     color: var(--error);
-    border: 1px solid rgba(196, 92, 74, 0.25);
+    border: 1px solid var(--error-muted);
 }
 
 /* ── Answer toggle button (theory mode) ───── */
@@ -531,7 +531,7 @@
 
 .expected-answer {
     background: var(--success-muted);
-    border: 1px solid rgba(107, 159, 120, 0.25);
+    border: 1px solid var(--success-muted);
 }
 
 .expected-answer .answer-label { color: var(--success); }

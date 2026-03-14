@@ -1,4 +1,5 @@
 import type { Session, BankType } from "../../types";
+import { Button } from "../ui";
 import { renderFormattedText } from "../../utils/formatText";
 import { CodeEditor } from "../CodeEditor";
 import { TerminalEditor } from "../TerminalEditor";
@@ -71,9 +72,9 @@ export function CodeModeSession({
               {formatTime(timeRemaining)}
             </span>
           )}
-          <button className="btn btn-ghost" onClick={onCancel}>
+          <Button variant="ghost" onClick={onCancel}>
             Exit
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -135,15 +136,11 @@ export function CodeModeSession({
           <div className="panel-footer">
             <span className="submit-hint">Press ⌘+Enter to submit</span>
             <div className="panel-actions">
-              <button
-                className="btn btn-secondary"
-                onClick={onSkip}
-                disabled={isSubmitting}
-              >
+              <Button variant="secondary" onClick={onSkip} disabled={isSubmitting}>
                 Skip
-              </button>
-              <button
-                className="btn btn-primary"
+              </Button>
+              <Button
+                variant="primary"
                 onClick={onSubmit}
                 disabled={!answer.trim() || isSubmitting}
               >
@@ -152,7 +149,7 @@ export function CodeModeSession({
                   : isLastQuestion
                     ? "Submit & See Results"
                     : "Submit & Next"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

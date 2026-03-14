@@ -114,12 +114,12 @@ p {
 
 .btn-primary {
     background: var(--accent);
-    color: #fff;
+    color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
     background: var(--accent-hover);
-    box-shadow: 0 4px 12px rgba(212, 160, 86, 0.3);
+    box-shadow: var(--shadow-glow);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -149,11 +149,11 @@ p {
 
 .btn-danger {
     background: var(--error);
-    color: #fff;
+    color: white;
 }
 
 .btn-danger:hover:not(:disabled) {
-    background: #f87171;
+    filter: brightness(1.1);
 }
 
 .btn-lg {
