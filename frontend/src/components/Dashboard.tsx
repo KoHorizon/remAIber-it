@@ -44,7 +44,7 @@ export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
   }
 
   // Progress ring calculation
-  const circumference = 2 * Math.PI * 22; // radius = 22
+  const circumference = 2 * Math.PI * 28; // radius = 28
   const strokeDashoffset = circumference - (overallMastery / 100) * circumference;
 
   if (isLoading) {
@@ -75,25 +75,25 @@ export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
         <div className="stat-card">
           <div className="stat-card-mastery">
             <div className="mastery-ring-container">
-              <svg className="mastery-ring" width="56" height="56" viewBox="0 0 56 56">
+              <svg className="mastery-ring" width="72" height="72" viewBox="0 0 72 72">
                 <circle
                   className="mastery-ring-bg"
-                  cx="28"
-                  cy="28"
-                  r="22"
+                  cx="36"
+                  cy="36"
+                  r="28"
                 />
                 <circle
                   className={`mastery-ring-fill ${getMasteryLevel(overallMastery)}`}
-                  cx="28"
-                  cy="28"
-                  r="22"
+                  cx="36"
+                  cy="36"
+                  r="28"
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
                 />
               </svg>
               <span className="mastery-ring-value">{overallMastery}%</span>
             </div>
-            <div>
+            <div className="stat-card-info">
               <div className="stat-card-label">Overall Mastery</div>
               <div className="stat-card-sub">
                 {overallMastery >= 70 ? "Great progress!" : overallMastery > 0 ? "Keep practicing" : "Start learning"}

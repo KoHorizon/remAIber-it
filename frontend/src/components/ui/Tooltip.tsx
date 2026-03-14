@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import "./Tooltip.css";
 
 type Props = {
@@ -15,25 +16,58 @@ export function Tooltip({
   width = "320px",
 }: Props) {
   const [isVisible, setIsVisible] = useState(false);
-  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const triggerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isVisible && tooltipRef.current && triggerRef.current) {
-      const tooltip = tooltipRef.current;
-      const rect = tooltip.getBoundingClientRect();
+    if (isVisible && triggerRef.current) {
+      const triggerRect = triggerRef.current.getBoundingClientRect();
+      const tooltipWidth = parseInt(width) || 320;
+      const gap = 8;
 
-      // Adjust if tooltip goes off screen
-      if (rect.right > window.innerWidth) {
-        tooltip.style.left = "auto";
-        tooltip.style.right = "0";
+      let top = 0;
+      let left = 0;
+
+      switch (position) {
+        case "top":
+          top = triggerRect.top - gap;
+          left = triggerRect.left + triggerRect.width / 2 - tooltipWidth / 2;
+          break;
+        case "bottom":
+          top = triggerRect.bottom + gap;
+          left = triggerRect.left + triggerRect.width / 2 - tooltipWidth / 2;
+          break;
+        case "left":
+          top = triggerRect.top + triggerRect.height / 2;
+          left = triggerRect.left - tooltipWidth - gap;
+          break;
+        case "right":
+          top = triggerRect.top + triggerRect.height / 2;
+          left = triggerRect.right + gap;
+          break;
       }
-      if (rect.left < 0) {
-        tooltip.style.left = "0";
-        tooltip.style.right = "auto";
+
+      // Adjust if tooltip goes off screen horizontally
+      if (left + tooltipWidth > window.innerWidth - 16) {
+        left = window.innerWidth - tooltipWidth - 16;
       }
+      if (left < 16) {
+        left = 16;
+      }
+
+      // Adjust if tooltip goes off screen vertically
+      if (top < 16) {
+        top = 16;
+      }
+
+      setTooltipStyle({
+        top: position === "top" ? undefined : top,
+        bottom: position === "top" ? window.innerHeight - triggerRect.top + gap : undefined,
+        left,
+        width,
+      });
     }
-  }, [isVisible]);
+  }, [isVisible, position, width]);
 
   return (
     <div
@@ -44,13 +78,15 @@ export function Tooltip({
       <div ref={triggerRef} className="tooltip-trigger">
         {trigger}
       </div>
-      <div
-        ref={tooltipRef}
-        className={`tooltip tooltip-${position} ${isVisible ? "visible" : ""}`}
-        style={{ width }}
-      >
-        {children}
-      </div>
+      {createPortal(
+        <div
+          className={`tooltip-portal tooltip-${position} ${isVisible ? "visible" : ""}`}
+          style={tooltipStyle}
+        >
+          {children}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

@@ -55,11 +55,15 @@ func (s *SQLiteStore) GetFolder(ctx context.Context, id string) (*folder.Folder,
 	return &f, nil
 }
 
-// ListFolders returns all folders (including the system "Deleted" folder).
+// ListFolders returns all folders. System folders (like "Deleted") are only
+// included if they have at least one category.
 func (s *SQLiteStore) ListFolders(ctx context.Context) ([]*folder.Folder, error) {
-	rows, err := s.db.QueryContext(ctx,
-		"SELECT id, name, COALESCE(is_system, FALSE) FROM folders",
-	)
+	// Query folders and count categories for system folders
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT f.id, f.name, COALESCE(f.is_system, FALSE),
+		       (SELECT COUNT(*) FROM categories c WHERE c.folder_id = f.id) as cat_count
+		FROM folders f
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +72,13 @@ func (s *SQLiteStore) ListFolders(ctx context.Context) ([]*folder.Folder, error)
 	var folders []*folder.Folder
 	for rows.Next() {
 		var f folder.Folder
-		if err := rows.Scan(&f.ID, &f.Name, &f.IsSystem); err != nil {
+		var catCount int
+		if err := rows.Scan(&f.ID, &f.Name, &f.IsSystem, &catCount); err != nil {
 			return nil, err
+		}
+		// Only include system folders if they have categories
+		if f.IsSystem && catCount == 0 {
+			continue
 		}
 		folders = append(folders, &f)
 	}
@@ -184,8 +193,8 @@ func (s *SQLiteStore) GetOrCreateDeletedFolder(ctx context.Context) (*folder.Fol
 	return &f, nil
 }
 
-// EmptyDeletedFolder cascade-deletes all categories, banks, questions, and stats
-// inside the system "Deleted" folder. The folder itself is NOT removed.
+// EmptyDeletedFolder moves all categories from the "Deleted" folder back to "All"
+// (folder_id = NULL), then removes the "Deleted" folder itself.
 func (s *SQLiteStore) EmptyDeletedFolder(ctx context.Context) error {
 	deletedFolder, err := s.GetOrCreateDeletedFolder(ctx)
 	if err != nil {
@@ -200,51 +209,13 @@ func (s *SQLiteStore) EmptyDeletedFolder(ctx context.Context) error {
 
 	folderID := deletedFolder.ID
 
-	// 1. Delete question stats
-	_, err = tx.ExecContext(ctx, `
-		DELETE FROM question_stats
-		WHERE question_id IN (
-			SELECT q.id FROM questions q
-			JOIN banks b ON q.bank_id = b.id
-			JOIN categories c ON b.category_id = c.id
-			WHERE c.folder_id = ?
-		)
-	`, folderID)
+	// 1. Move all categories back to "All" (folder_id = NULL)
+	_, err = tx.ExecContext(ctx, "UPDATE categories SET folder_id = NULL WHERE folder_id = ?", folderID)
 	if err != nil {
 		return err
 	}
 
-	// 2. Delete questions
-	_, err = tx.ExecContext(ctx, `
-		DELETE FROM questions
-		WHERE bank_id IN (
-			SELECT b.id FROM banks b
-			JOIN categories c ON b.category_id = c.id
-			WHERE c.folder_id = ?
-		)
-	`, folderID)
-	if err != nil {
-		return err
-	}
-
-	// 3. Delete banks
-	_, err = tx.ExecContext(ctx, `
-		DELETE FROM banks
-		WHERE category_id IN (
-			SELECT id FROM categories WHERE folder_id = ?
-		)
-	`, folderID)
-	if err != nil {
-		return err
-	}
-
-	// 4. Delete categories
-	_, err = tx.ExecContext(ctx, "DELETE FROM categories WHERE folder_id = ?", folderID)
-	if err != nil {
-		return err
-	}
-
-	// 5. Delete the "Deleted" folder itself — it will be recreated on next folder delete
+	// 2. Delete the "Deleted" folder itself — it will be recreated on next folder delete
 	_, err = tx.ExecContext(ctx, "DELETE FROM folders WHERE id = ?", folderID)
 	if err != nil {
 		return err

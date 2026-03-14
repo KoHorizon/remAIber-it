@@ -13,101 +13,26 @@
     cursor: help;
 }
 
-/* Tooltip container */
-.tooltip {
-    position: absolute;
+/* Portal-based tooltip (rendered at body level) */
+.tooltip-portal {
+    position: fixed;
     max-width: 90vw;
     padding: 0.875rem;
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 300;
+    z-index: 10000;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-4px);
-    transition: all 0.15s ease;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
     pointer-events: none;
 }
 
-.tooltip.visible {
+.tooltip-portal.visible {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0);
     pointer-events: auto;
-}
-
-/* Positions */
-.tooltip-bottom {
-    top: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%) translateY(-4px);
-}
-
-.tooltip-bottom.visible {
-    transform: translateX(-50%) translateY(0);
-}
-
-.tooltip-top {
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%) translateY(4px);
-}
-
-.tooltip-top.visible {
-    transform: translateX(-50%) translateY(0);
-}
-
-.tooltip-left {
-    right: calc(100% + 8px);
-    top: 50%;
-    transform: translateY(-50%) translateX(4px);
-}
-
-.tooltip-left.visible {
-    transform: translateY(-50%) translateX(0);
-}
-
-.tooltip-right {
-    left: calc(100% + 8px);
-    top: 50%;
-    transform: translateY(-50%) translateX(-4px);
-}
-
-.tooltip-right.visible {
-    transform: translateY(-50%) translateX(0);
-}
-
-/* Invisible bridge to prevent gap */
-.tooltip::before {
-    content: "";
-    position: absolute;
-    width: 100%;
-    height: 12px;
-}
-
-.tooltip-bottom::before {
-    top: -12px;
-    left: 0;
-}
-
-.tooltip-top::before {
-    bottom: -12px;
-    left: 0;
-}
-
-.tooltip-left::before {
-    right: -12px;
-    top: 0;
-    width: 12px;
-    height: 100%;
-}
-
-.tooltip-right::before {
-    left: -12px;
-    top: 0;
-    width: 12px;
-    height: 100%;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
