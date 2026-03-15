@@ -256,8 +256,8 @@ function App() {
             bankSubject={view.bankSubject}
             bankType={view.bankType}
             bankLanguage={view.bankLanguage}
-            onBack={() => {
-              refreshAll(); // Refresh mastery data after practice
+            onBack={async () => {
+              await refreshAll();
               navigate.toMain(view.returnTo);
             }}
             onRetry={() =>

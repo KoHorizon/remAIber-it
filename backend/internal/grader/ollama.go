@@ -1,12 +1,3 @@
-// FIXED LLM GRADER — semantic code grading
-// ------------------------------------------------------------
-// Key fixes applied:
-// 1. Code questions are no longer split into line-by-line key points.
-// 2. Prompt enforces SEMANTIC equivalence instead of structural matching.
-// 3. Stronger JSON‑only response enforcement for small models.
-// 4. Bias toward COVERED when behavior is equivalent.
-// ------------------------------------------------------------
-
 package grader
 
 import (
@@ -258,18 +249,24 @@ func extractJSON(s string) string {
 // -----------------------------------------------------------------------------
 // Prompt Builders
 // -----------------------------------------------------------------------------
+//
+// Note: customRules is user-supplied text injected directly into the prompt.
+// This is intentionally unsanitized — the app is single-user (local Tauri desktop),
+// so the only person affected by prompt injection is the user themselves.
+// If this ever becomes a multi-user server, customRules must be sanitized before
+// being included in any LLM prompt.
 
-// *** NEW: semantic code grading ***
 func buildSemanticCodePrompt(question, expected, user, customRules string) string {
-	rules := `SEMANTIC GRADING RULES:
+	baseRules := `SEMANTIC GRADING RULES:
 - Compare structure and logic, not exact variable names.
 - The code must be syntactically valid and achieve the same result.
 - If a key element is partially correct (right idea, small typo), mark it COVERED.
 - If a key element is completely wrong or missing, mark it MISSED.
 - Do NOT check for imports unless they are critical to the logic.`
 
+	rules := baseRules
 	if customRules != "" {
-		rules = customRules
+		rules = baseRules + "\n\nADDITIONAL RULES (override base rules if conflicting):\n" + customRules
 	}
 
 	return fmt.Sprintf(`/no_think
@@ -286,22 +283,21 @@ EXPECTED CODE:
 USER CODE:
 %s
 
-Return ONLY valid JSON with score (0-100), covered points, and missed points:
-{"score": <0-100>, "covered": ["logical element", ...], "missed": ["logical element", ...]}`,
+Return ONLY valid JSON. Items in "covered" and "missed" must be SHORT labels (the key point itself, ≤5 words). No sentences, no explanations.
+{"score": <0-100>, "covered": ["label", ...], "missed": ["label", ...]}`,
 		rules, question, expected, user)
 }
-
-// Theory + CLI prompts reused from original (unchanged semantics)
 
 func buildTheoryPrompt(question, expectedAnswer, userAnswer, customRules string) string {
 	keyPoints := splitKeyPoints(expectedAnswer)
 
-	rules := `RULES:
+	baseRules := `RULES:
 - Same meaning with different wording = COVERED.
 - Missing or incorrect concept = MISSED.`
 
+	rules := baseRules
 	if customRules != "" {
-		rules = customRules
+		rules = baseRules + "\n\nADDITIONAL RULES (override base rules if conflicting):\n" + customRules
 	}
 
 	return fmt.Sprintf(`/no_think
@@ -318,43 +314,41 @@ KEY POINTS:
 USER ANSWER:
 %s
 
-Return ONLY valid JSON with score (0-100), covered points, and missed points:
-{"score": <0-100>, "covered": [...], "missed": [...]}`,
+Return ONLY valid JSON. Items in "covered" and "missed" must be SHORT labels (the key point itself, ≤5 words). No sentences, no explanations.
+{"score": <0-100>, "covered": ["label", ...], "missed": ["label", ...]}`,
 		rules, question, keyPoints, userAnswer)
 }
 
-// Previous prompt :
-// - Commands must match in structure: correct binary, subcommand, and required flags.
-// - Flag ORDER does not matter (e.g. "-a -m" equals "-m -a").
-// - Typos in command names = MISSED (e.g. "git comit" instead of "git commit").
-// - Extra harmless flags = still COVERED.
-// - Missing required flags or arguments = MISSED.`
 func buildCLIPrompt(question, expectedAnswer, userAnswer, customRules string) string {
-	rules := `RULES:
-- Correct command structure required.
-- Flag order irrelevant.
-- Missing required flags = MISSED.`
+	baseRules := `BASE RULES:
+- Break the expected command into logical requirements (e.g. "correct tool", "correct subcommand", "container name arg", "required flag -f").
+- Check each requirement against the user command.
+- Correct tool + subcommand = COVERED. Wrong or missing = MISSED.
+- Required arguments present = COVERED. Missing = MISSED.
+- Flag order is irrelevant. Extra harmless flags = still COVERED.
+- Completely unrelated command = all requirements MISSED, score 0.`
 
+	rules := baseRules
 	if customRules != "" {
-		rules = customRules
+		rules = baseRules + "\n\nADDITIONAL RULES (override base rules if conflicting):\n" + customRules
 	}
 
 	return fmt.Sprintf(`/no_think
-Grade the CLI answer.
+You are a strict CLI command grader. Identify the logical requirements of the expected command, then check each one against the user's command.
 
 %s
 
 QUESTION:
 %s
 
-EXPECTED:
+EXPECTED COMMAND:
 %s
 
-USER:
+USER COMMAND:
 %s
 
-Return ONLY valid JSON with score (0-100), covered points, and missed points:
-{"score": <0-100>, "covered": [...], "missed": [...]}`,
+Return ONLY valid JSON. Each item in "covered"/"missed" is a brief requirement phrase (e.g. "correct tool", "container name arg", "missing -d flag") — not a token, not a sentence.
+{"score": <0-100>, "covered": ["requirement phrase", ...], "missed": ["requirement phrase", ...]}`,
 		rules, question, expectedAnswer, userAnswer)
 }
 
