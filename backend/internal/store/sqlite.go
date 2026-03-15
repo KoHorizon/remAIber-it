@@ -288,18 +288,17 @@ func (s *SQLiteStore) DeleteCategory(ctx context.Context, id string) error {
 // ============================================================================
 
 func (s *SQLiteStore) SaveBank(ctx context.Context, bank *questionbank.QuestionBank) error {
-	_, err := s.db.ExecContext(ctx, "INSERT INTO banks (id, subject, category_id, grading_prompt, bank_type, language) VALUES (?, ?, ?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.GradingPrompt, bank.BankType, bank.Language)
+	_, err := s.db.ExecContext(ctx, "INSERT INTO banks (id, subject, category_id, bank_type, language) VALUES (?, ?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.BankType, bank.Language)
 	return err
 }
 
 func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.QuestionBank, error) {
 	var bank questionbank.QuestionBank
 	var categoryID sql.NullString
-	var gradingPrompt sql.NullString
 	var bankType sql.NullString
 	var language sql.NullString
 
-	err := s.db.QueryRowContext(ctx, "SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt, &bankType, &language)
+	err := s.db.QueryRowContext(ctx, "SELECT id, subject, category_id, bank_type, language FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -309,9 +308,6 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 
 	if categoryID.Valid {
 		bank.CategoryID = &categoryID.String
-	}
-	if gradingPrompt.Valid {
-		bank.GradingPrompt = &gradingPrompt.String
 	}
 	if bankType.Valid {
 		bank.BankType = questionbank.BankType(bankType.String)
@@ -344,7 +340,7 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 }
 
 func (s *SQLiteStore) ListBanks(ctx context.Context) ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks")
+	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, bank_type, language FROM banks")
 	if err != nil {
 		return nil, err
 	}
@@ -354,17 +350,13 @@ func (s *SQLiteStore) ListBanks(ctx context.Context) ([]*questionbank.QuestionBa
 	for rows.Next() {
 		var bank questionbank.QuestionBank
 		var categoryID sql.NullString
-		var gradingPrompt sql.NullString
 		var bankType sql.NullString
 		var language sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt, &bankType, &language); err != nil {
+		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language); err != nil {
 			return nil, err
 		}
 		if categoryID.Valid {
 			bank.CategoryID = &categoryID.String
-		}
-		if gradingPrompt.Valid {
-			bank.GradingPrompt = &gradingPrompt.String
 		}
 		if bankType.Valid {
 			bank.BankType = questionbank.BankType(bankType.String)
@@ -381,7 +373,7 @@ func (s *SQLiteStore) ListBanks(ctx context.Context) ([]*questionbank.QuestionBa
 
 func (s *SQLiteStore) ListBanksWithCounts(ctx context.Context) ([]*BankWithCount, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT b.id, b.subject, b.category_id, b.grading_prompt, b.bank_type, b.language,
+		SELECT b.id, b.subject, b.category_id, b.bank_type, b.language,
 		       (SELECT COUNT(*) FROM questions q WHERE q.bank_id = b.id) as question_count
 		FROM banks b
 	`)
@@ -394,17 +386,13 @@ func (s *SQLiteStore) ListBanksWithCounts(ctx context.Context) ([]*BankWithCount
 	for rows.Next() {
 		var bank BankWithCount
 		var categoryID sql.NullString
-		var gradingPrompt sql.NullString
 		var bankType sql.NullString
 		var language sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &gradingPrompt, &bankType, &language, &bank.QuestionCount); err != nil {
+		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language, &bank.QuestionCount); err != nil {
 			return nil, err
 		}
 		if categoryID.Valid {
 			bank.CategoryID = &categoryID.String
-		}
-		if gradingPrompt.Valid {
-			bank.GradingPrompt = &gradingPrompt.String
 		}
 		if bankType.Valid {
 			bank.BankType = bankType.String
@@ -420,7 +408,7 @@ func (s *SQLiteStore) ListBanksWithCounts(ctx context.Context) ([]*BankWithCount
 }
 
 func (s *SQLiteStore) ListBanksByCategory(ctx context.Context, categoryID string) ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, grading_prompt, bank_type, language FROM banks WHERE category_id = ?", categoryID)
+	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, bank_type, language FROM banks WHERE category_id = ?", categoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -430,17 +418,13 @@ func (s *SQLiteStore) ListBanksByCategory(ctx context.Context, categoryID string
 	for rows.Next() {
 		var bank questionbank.QuestionBank
 		var catID sql.NullString
-		var gradingPrompt sql.NullString
 		var bankType sql.NullString
 		var language sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &catID, &gradingPrompt, &bankType, &language); err != nil {
+		if err := rows.Scan(&bank.ID, &bank.Subject, &catID, &bankType, &language); err != nil {
 			return nil, err
 		}
 		if catID.Valid {
 			bank.CategoryID = &catID.String
-		}
-		if gradingPrompt.Valid {
-			bank.GradingPrompt = &gradingPrompt.String
 		}
 		if bankType.Valid {
 			bank.BankType = questionbank.BankType(bankType.String)
@@ -457,21 +441,6 @@ func (s *SQLiteStore) ListBanksByCategory(ctx context.Context, categoryID string
 
 func (s *SQLiteStore) UpdateBankCategory(ctx context.Context, bankID string, categoryID *string) error {
 	result, err := s.db.ExecContext(ctx, "UPDATE banks SET category_id = ? WHERE id = ?", categoryID, bankID)
-	if err != nil {
-		return err
-	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rowsAffected == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
-func (s *SQLiteStore) UpdateBankGradingPrompt(ctx context.Context, bankID string, gradingPrompt *string) error {
-	result, err := s.db.ExecContext(ctx, "UPDATE banks SET grading_prompt = ? WHERE id = ?", gradingPrompt, bankID)
 	if err != nil {
 		return err
 	}

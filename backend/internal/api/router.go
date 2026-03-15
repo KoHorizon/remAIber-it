@@ -29,7 +29,6 @@ func RegisterRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("GET /banks/{bankID}", h.getBank)
 	mux.HandleFunc("DELETE /banks/{bankID}", h.deleteBank)
 	mux.HandleFunc("PATCH /banks/{bankID}/category", h.updateBankCategory)
-	mux.HandleFunc("PUT /banks/{bankID}/grading-prompt", h.updateBankGradingPrompt)
 	mux.HandleFunc("GET /banks/{bankID}/stats", h.getBankStats)
 
 	// Questions

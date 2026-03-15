@@ -308,20 +308,6 @@ func TestDeleteBank(t *testing.T) {
 	}
 }
 
-func TestUpdateBankGradingPrompt(t *testing.T) {
-	ts := newTestServer(t)
-	catID := createCategory(t, ts)
-
-	rr := ts.do("POST", "/banks", map[string]any{"subject": "Test", "category_id": catID, "bank_type": "theory"})
-	resp := decode[map[string]any](t, rr)
-	bankID := resp["id"].(string)
-
-	rr = ts.do("PUT", "/banks/"+bankID+"/grading-prompt", map[string]any{"grading_prompt": "Be strict"})
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body)
-	}
-}
-
 // ── Questions ─────────────────────────────────────────────────────────────────
 
 func createBankWithQuestion(t *testing.T, ts *testServer) (bankID, questionID string) {

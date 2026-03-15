@@ -175,19 +175,6 @@ export async function updateBankCategory(
   return res.json();
 }
 
-export async function updateBankGradingPrompt(
-  bankId: string,
-  gradingPrompt: string | null
-): Promise<Bank> {
-  const res = await fetch(`${API_BASE}/banks/${bankId}/grading-prompt`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ grading_prompt: gradingPrompt }),
-  });
-  if (!res.ok) throw new Error("Failed to update grading prompt");
-  return res.json();
-}
-
 export async function deleteBank(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/banks/${id}`, {
     method: "DELETE",
@@ -344,7 +331,6 @@ export const api = {
   getBank,
   createBank,
   updateBankCategory,
-  updateBankGradingPrompt,
   deleteBank,
   addQuestion,
   deleteQuestion,

@@ -14,16 +14,16 @@ import (
 // ── Request / Response types ────────────────────────────────────────────────
 
 type ExportQuestion struct {
-	Subject        string `json:"subject" example:"What is a goroutine?"`
-	ExpectedAnswer string `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
+	Subject        string  `json:"subject" example:"What is a goroutine?"`
+	ExpectedAnswer string  `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
+	GradingPrompt  *string `json:"grading_prompt,omitempty"`
 }
 
 type ExportBank struct {
-	Subject       string           `json:"subject" example:"Go concurrency patterns"`
-	GradingPrompt *string          `json:"grading_prompt,omitempty"`
-	BankType      string           `json:"bank_type" example:"theory"`
-	Language      *string          `json:"language,omitempty" example:"go"`
-	Questions     []ExportQuestion `json:"questions"`
+	Subject   string           `json:"subject" example:"Go concurrency patterns"`
+	BankType  string           `json:"bank_type" example:"theory"`
+	Language  *string          `json:"language,omitempty" example:"go"`
+	Questions []ExportQuestion `json:"questions"`
 }
 
 type ExportCategory struct {
@@ -153,17 +153,17 @@ func (h *Handler) buildExportCategory(ctx context.Context, cat *category.Categor
 		}
 
 		exportBank := ExportBank{
-			Subject:       fullBank.Subject,
-			GradingPrompt: fullBank.GradingPrompt,
-			BankType:      string(fullBank.BankType),
-			Language:      fullBank.Language,
-			Questions:     make([]ExportQuestion, len(fullBank.Questions)),
+			Subject:   fullBank.Subject,
+			BankType:  string(fullBank.BankType),
+			Language:  fullBank.Language,
+			Questions: make([]ExportQuestion, len(fullBank.Questions)),
 		}
 
 		for i, q := range fullBank.Questions {
 			exportBank.Questions[i] = ExportQuestion{
 				Subject:        q.Subject,
 				ExpectedAnswer: q.ExpectedAnswer,
+				GradingPrompt:  q.GradingPrompt,
 			}
 		}
 
@@ -243,9 +243,6 @@ func (h *Handler) importBanks(ctx context.Context, banks []ExportBank, categoryI
 		}
 
 		newBank := questionbank.NewWithOptions(bank.Subject, &categoryID, bankType, bank.Language)
-		if bank.GradingPrompt != nil {
-			newBank.SetGradingPrompt(bank.GradingPrompt)
-		}
 
 		if err := h.store.SaveBank(ctx, newBank); err != nil {
 			h.logger.Error("failed to create bank", "subject", bank.Subject, "error", err)
@@ -254,7 +251,7 @@ func (h *Handler) importBanks(ctx context.Context, banks []ExportBank, categoryI
 		result.BanksCreated++
 
 		for _, q := range bank.Questions {
-			if err := newBank.AddQuestion(q.Subject, q.ExpectedAnswer); err != nil {
+			if err := newBank.AddQuestionWithGradingPrompt(q.Subject, q.ExpectedAnswer, q.GradingPrompt); err != nil {
 				h.logger.Error("failed to add question", "error", err)
 				continue
 			}

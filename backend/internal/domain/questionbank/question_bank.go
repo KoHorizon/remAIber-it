@@ -15,36 +15,30 @@ const (
 )
 
 type QuestionBank struct {
-	ID            string
-	Subject       string
-	CategoryID    *string  // Optional - can be nil for uncategorized banks
-	GradingPrompt *string  // Optional - custom grading prompt for this bank
-	BankType      BankType // theory, code, or cli
-	Language      *string  // Optional - programming language for code banks
-	Questions     []Question
+	ID         string
+	Subject    string
+	CategoryID *string  // Optional - can be nil for uncategorized banks
+	BankType   BankType // theory, code, or cli
+	Language   *string  // Optional - programming language for code banks
+	Questions  []Question
 }
 
 func New(subject string) *QuestionBank {
 	return &QuestionBank{
-		ID:            id.GenerateID(),
-		Subject:       subject,
-		CategoryID:    nil,
-		GradingPrompt: nil,
-		BankType:      BankTypeTheory,
-		Language:      nil,
-		Questions:     []Question{},
+		ID:        id.GenerateID(),
+		Subject:   subject,
+		BankType:  BankTypeTheory,
+		Questions: []Question{},
 	}
 }
 
 func NewWithCategory(subject string, categoryID string) *QuestionBank {
 	return &QuestionBank{
-		ID:            id.GenerateID(),
-		Subject:       subject,
-		CategoryID:    &categoryID,
-		GradingPrompt: nil,
-		BankType:      BankTypeTheory,
-		Language:      nil,
-		Questions:     []Question{},
+		ID:         id.GenerateID(),
+		Subject:    subject,
+		CategoryID: &categoryID,
+		BankType:   BankTypeTheory,
+		Questions:  []Question{},
 	}
 }
 
@@ -54,22 +48,17 @@ func NewWithOptions(subject string, categoryID *string, bankType BankType, langu
 		bt = BankTypeTheory
 	}
 	return &QuestionBank{
-		ID:            id.GenerateID(),
-		Subject:       subject,
-		CategoryID:    categoryID,
-		GradingPrompt: nil,
-		BankType:      bt,
-		Language:      language,
-		Questions:     []Question{},
+		ID:         id.GenerateID(),
+		Subject:    subject,
+		CategoryID: categoryID,
+		BankType:   bt,
+		Language:   language,
+		Questions:  []Question{},
 	}
 }
 
 func (qb *QuestionBank) SetCategory(categoryID *string) {
 	qb.CategoryID = categoryID
-}
-
-func (qb *QuestionBank) SetGradingPrompt(prompt *string) {
-	qb.GradingPrompt = prompt
 }
 
 // AddQuestion appends a single question to the bank.

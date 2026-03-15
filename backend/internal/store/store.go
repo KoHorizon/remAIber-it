@@ -49,7 +49,6 @@ type Store interface {
 	ListBanksWithCounts(ctx context.Context) ([]*BankWithCount, error)
 	ListBanksByCategory(ctx context.Context, categoryID string) ([]*questionbank.QuestionBank, error)
 	UpdateBankCategory(ctx context.Context, bankID string, categoryID *string) error
-	UpdateBankGradingPrompt(ctx context.Context, bankID string, gradingPrompt *string) error
 	DeleteBank(ctx context.Context, id string) error
 	GetBankMastery(ctx context.Context, bankID string) (int, error)
 	GetBankMasteryBatch(ctx context.Context, bankIDs []string) (map[string]int, error)
@@ -106,7 +105,6 @@ type BankWithCount struct {
 	ID            string
 	Subject       string
 	CategoryID    *string
-	GradingPrompt *string
 	BankType      string
 	Language      *string
 	QuestionCount int

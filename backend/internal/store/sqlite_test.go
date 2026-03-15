@@ -177,23 +177,6 @@ func TestDeleteBank_NotFound(t *testing.T) {
 	}
 }
 
-func TestUpdateBankGradingPrompt(t *testing.T) {
-	s := newTestStore(t)
-	ctx := context.Background()
-
-	bank := questionbank.New("Test")
-	s.SaveBank(ctx, bank)
-
-	prompt := "Be strict about terminology"
-	if err := s.UpdateBankGradingPrompt(ctx, bank.ID, &prompt); err != nil {
-		t.Fatalf("UpdateBankGradingPrompt: %v", err)
-	}
-
-	got, _ := s.GetBank(ctx, bank.ID)
-	if got.GradingPrompt == nil || *got.GradingPrompt != prompt {
-		t.Errorf("expected grading prompt %q, got %v", prompt, got.GradingPrompt)
-	}
-}
 
 // ============================================================================
 // Questions

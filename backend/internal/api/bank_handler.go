@@ -42,24 +42,22 @@ type CreateBankResponse struct {
 
 // BankResponse is used when banks appear nested inside a category response.
 type BankResponse struct {
-	ID            string  `json:"id" example:"x9y8z7w6v5u4t3s2"`
-	Subject       string  `json:"subject" example:"Go concurrency patterns"`
-	CategoryID    *string `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
-	GradingPrompt *string `json:"grading_prompt,omitempty"`
-	BankType      string  `json:"bank_type" example:"theory"`
-	Language      *string `json:"language,omitempty" example:"go"`
-	Mastery       int     `json:"mastery" example:"42"`
+	ID         string  `json:"id" example:"x9y8z7w6v5u4t3s2"`
+	Subject    string  `json:"subject" example:"Go concurrency patterns"`
+	CategoryID *string `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
+	BankType   string  `json:"bank_type" example:"theory"`
+	Language   *string `json:"language,omitempty" example:"go"`
+	Mastery    int     `json:"mastery" example:"42"`
 }
 
 type GetBankResponse struct {
-	ID            string             `json:"id" example:"x9y8z7w6v5u4t3s2"`
-	Subject       string             `json:"subject" example:"Go concurrency patterns"`
-	CategoryID    *string            `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
-	GradingPrompt *string            `json:"grading_prompt,omitempty"`
-	BankType      string             `json:"bank_type" example:"theory"`
-	Language      *string            `json:"language,omitempty" example:"go"`
-	Mastery       int                `json:"mastery" example:"42"`
-	Questions     []QuestionResponse `json:"questions"`
+	ID         string             `json:"id" example:"x9y8z7w6v5u4t3s2"`
+	Subject    string             `json:"subject" example:"Go concurrency patterns"`
+	CategoryID *string            `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
+	BankType   string             `json:"bank_type" example:"theory"`
+	Language   *string            `json:"language,omitempty" example:"go"`
+	Mastery    int                `json:"mastery" example:"42"`
+	Questions  []QuestionResponse `json:"questions"`
 }
 
 type QuestionResponse struct {
@@ -74,10 +72,6 @@ type QuestionResponse struct {
 
 type UpdateBankCategoryRequest struct {
 	CategoryID *string `json:"category_id" example:"a1b2c3d4e5f6g7h8"`
-}
-
-type UpdateGradingPromptRequest struct {
-	GradingPrompt *string `json:"grading_prompt" example:"Be strict about exact terminology."`
 }
 
 type BankStatsResponse struct {
@@ -225,14 +219,13 @@ func (h *Handler) getBank(w http.ResponseWriter, r *http.Request) {
 	bankMastery, _ := h.store.GetBankMastery(ctx, bankID)
 
 	respondJSON(w, http.StatusOK, GetBankResponse{
-		ID:            bank.ID,
-		Subject:       bank.Subject,
-		CategoryID:    bank.CategoryID,
-		GradingPrompt: bank.GradingPrompt,
-		BankType:      string(bank.BankType),
-		Language:      bank.Language,
-		Mastery:       bankMastery,
-		Questions:     questions,
+		ID:         bank.ID,
+		Subject:    bank.Subject,
+		CategoryID: bank.CategoryID,
+		BankType:   string(bank.BankType),
+		Language:   bank.Language,
+		Mastery:    bankMastery,
+		Questions:  questions,
 	})
 }
 
@@ -298,51 +291,6 @@ func (h *Handler) updateBankCategory(w http.ResponseWriter, r *http.Request) {
 		BankType:   string(bank.BankType),
 		Language:   bank.Language,
 		Mastery:    mastery,
-	})
-}
-
-// updateBankGradingPrompt sets or clears a custom grading prompt.
-// @Summary      Update grading prompt
-// @Description  Set or clear a custom grading prompt for a question bank.
-// @Tags         Banks
-// @Accept       json
-// @Produce      json
-// @Param        bankID  path      string                      true  "Bank ID"
-// @Param        body    body      UpdateGradingPromptRequest   true  "Grading prompt"
-// @Success      200     {object}  GetBankResponse
-// @Failure      400     {object}  map[string]string
-// @Failure      404     {object}  map[string]string
-// @Router       /banks/{bankID}/grading-prompt [put]
-func (h *Handler) updateBankGradingPrompt(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	bankID := r.PathValue("bankID")
-
-	var req UpdateGradingPromptRequest
-	if !decodeJSON(w, r, &req) {
-		return
-	}
-
-	var promptToSave *string
-	if req.GradingPrompt != nil && *req.GradingPrompt != "" {
-		promptToSave = req.GradingPrompt
-	}
-
-	if h.handleStoreError(w, h.store.UpdateBankGradingPrompt(ctx, bankID, promptToSave), "bank") {
-		return
-	}
-
-	bank, _ := h.store.GetBank(ctx, bankID)
-	mastery, _ := h.store.GetBankMastery(ctx, bankID)
-
-	respondJSON(w, http.StatusOK, GetBankResponse{
-		ID:            bank.ID,
-		Subject:       bank.Subject,
-		CategoryID:    bank.CategoryID,
-		GradingPrompt: bank.GradingPrompt,
-		BankType:      string(bank.BankType),
-		Language:      bank.Language,
-		Mastery:       mastery,
-		Questions:     nil,
 	})
 }
 

@@ -21,7 +21,6 @@ export type Bank = {
   id: string;
   subject: string;
   category_id?: string | null;
-  grading_prompt?: string | null;
   bank_type: BankType;
   language?: string | null;
   mastery: number;
@@ -84,11 +83,11 @@ export type QuestionResult = {
 export type ExportQuestion = {
   subject: string;
   expected_answer: string;
+  grading_prompt?: string | null;
 };
 
 export type ExportBank = {
   subject: string;
-  grading_prompt?: string | null;
   bank_type: string;
   language?: string | null;
   questions: ExportQuestion[];
