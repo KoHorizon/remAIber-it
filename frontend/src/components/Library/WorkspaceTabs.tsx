@@ -1,6 +1,6 @@
-import { useState } from "react";
 import type { Folder } from "../../types";
-import { Chip, AddChip, ChipIcons } from "../ui";
+import { Tabs, ChipIcons } from "../ui";
+import type { TabItem } from "../ui";
 
 type Props = {
   folders: Folder[];
@@ -16,6 +16,9 @@ type Props = {
   onCreateFolder: (name: string) => Promise<void>;
 };
 
+// Reserved id for the "All" tab
+const ALL_ID = "__all__";
+
 export function WorkspaceTabs({
   folders,
   selectedFolderId,
@@ -29,75 +32,48 @@ export function WorkspaceTabs({
   onDelete,
   onCreateFolder,
 }: Props) {
-  const [isCreating, setIsCreating] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
+  const tabs: TabItem[] = [
+    { id: ALL_ID, label: "All" },
+    ...folders.map((folder) => ({
+      id: folder.id,
+      label: folder.name,
+      actions: [
+        {
+          icon: ChipIcons.edit,
+          label: "Rename",
+          onClick: () => onStartEdit(folder),
+        },
+        {
+          icon: ChipIcons.delete,
+          label: "Delete",
+          onClick: () => onDelete(folder),
+          variant: "danger" as const,
+        },
+      ],
+    })),
+  ];
 
-  async function handleCreate() {
-    if (!newFolderName.trim()) {
-      setIsCreating(false);
-      return;
+  function handleSelect(id: string | null) {
+    if (id === ALL_ID || id === null) {
+      onSelectFolder(null);
+    } else {
+      onSelectFolder(id);
     }
-    try {
-      await onCreateFolder(newFolderName.trim());
-      setNewFolderName("");
-      setIsCreating(false);
-    } catch (err) {
-      console.error("Failed to create workspace:", err);
-    }
-  }
-
-  function handleCancel() {
-    setNewFolderName("");
-    setIsCreating(false);
   }
 
   return (
-    <div className="library-workspace-chips">
-      <Chip
-        label="All"
-        isActive={!selectedFolderId}
-        onClick={() => onSelectFolder(null)}
-      />
-
-      {folders.map((folder) => (
-        <Chip
-          key={folder.id}
-          label={folder.name}
-          isActive={selectedFolderId === folder.id}
-          onClick={() =>
-            onSelectFolder(selectedFolderId === folder.id ? null : folder.id)
-          }
-          isEditing={editingFolderId === folder.id}
-          editValue={editFolderName}
-          onEditChange={onEditNameChange}
-          onEditSave={() => onSaveEdit(folder.id)}
-          onEditCancel={onCancelEdit}
-          actions={[
-            {
-              icon: ChipIcons.edit,
-              label: "Rename",
-              onClick: () => onStartEdit(folder),
-            },
-            {
-              icon: ChipIcons.delete,
-              label: "Delete",
-              onClick: () => onDelete(folder),
-              variant: "danger",
-            },
-          ]}
-        />
-      ))}
-
-      <AddChip
-        label="+ Workspace"
-        isCreating={isCreating}
-        createValue={newFolderName}
-        placeholder="Workspace name..."
-        onStartCreate={() => setIsCreating(true)}
-        onCreateChange={setNewFolderName}
-        onCreateSave={handleCreate}
-        onCreateCancel={handleCancel}
-      />
-    </div>
+    <Tabs
+      tabs={tabs}
+      activeId={selectedFolderId ?? ALL_ID}
+      onSelect={handleSelect}
+      editingId={editingFolderId}
+      editValue={editFolderName}
+      onEditChange={onEditNameChange}
+      onEditSave={onSaveEdit}
+      onEditCancel={onCancelEdit}
+      addLabel="+ Workspace"
+      addPlaceholder="Workspace name…"
+      onAdd={onCreateFolder}
+    />
   );
 }

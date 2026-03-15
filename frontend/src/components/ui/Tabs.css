@@ -1,0 +1,155 @@
+.tabs {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+    display: none;
+}
+
+/* Individual tab button */
+.tab {
+    position: relative;
+    padding: 0.5rem 1rem;
+    background: none;
+    border: none;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.tab::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+    transition: background var(--transition-fast);
+}
+
+.tab:hover {
+    color: var(--text-primary);
+}
+
+.tab.active,
+.tab-group.active .tab {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.tab.active::after,
+.tab-group.active .tab::after {
+    background: var(--accent);
+}
+
+/* Add tab */
+.tab-add {
+    font-weight: 400;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+    padding-left: 0.75rem;
+}
+
+.tab-add:hover {
+    color: var(--accent);
+    opacity: 1;
+}
+
+/* Tab group: tab + action icons */
+.tab-group {
+    display: flex;
+    align-items: center;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.tab-group::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+    transition: background var(--transition-fast);
+}
+
+.tab-group.active::after {
+    background: var(--accent);
+}
+
+/* Action icons revealed on group hover */
+.tab-actions {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-width 0.25s ease, opacity 0.2s ease;
+    padding-right: 0;
+}
+
+.tab-group:hover .tab-actions {
+    max-width: 48px;
+    opacity: 1;
+    pointer-events: auto;
+    padding-right: 0.5rem;
+}
+
+.tab-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.tab-action:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.tab-action.danger:hover {
+    background: var(--error-muted);
+    color: var(--error);
+}
+
+/* Inline rename / create input */
+.tab-input-wrap {
+    display: flex;
+    align-items: center;
+    padding: 0 0.25rem;
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: -1px;
+    flex-shrink: 0;
+}
+
+.tab-input {
+    background: transparent;
+    border: none;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    padding: 0.5rem 0.5rem;
+    outline: none;
+    width: 120px;
+}
