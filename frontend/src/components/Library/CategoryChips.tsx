@@ -95,10 +95,10 @@ export function CategoryChips({
             onClick={() =>
               onFilterChange(filterCategory === category.id ? null : category.id)
             }
-            badges={[
+            badges={categoryBanks.length > 0 ? [
               { content: `${category.mastery}%`, className: masteryLevel },
               { content: categoryBanks.length },
-            ]}
+            ] : []}
             actions={actions}
             isEditing={editingCategoryId === category.id}
             editValue={editCategoryName}

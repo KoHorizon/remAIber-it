@@ -254,9 +254,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const deleteBank = useCallback(
     async (bankId: string) => {
       await api.deleteBank(bankId);
-      setBanks((prev) => prev.filter((b) => b.id !== bankId));
+      await loadData();
     },
-    []
+    [loadData]
   );
 
   const refreshBank = useCallback(

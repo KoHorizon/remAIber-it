@@ -268,20 +268,6 @@ export function Library({ onSelectBank }: Props) {
         }}
       />
 
-      {/* Filters */}
-      <LibraryFilters
-        searchQuery={filters.searchQuery}
-        filterType={filters.filterType}
-        hasActiveFilters={filters.hasActiveFilters}
-        canCreateBank={visibleCategories.length > 0}
-        onSearchChange={filters.setSearchQuery}
-        onTypeChange={filters.setFilterType}
-        onClearFilters={filters.clearFilters}
-        onCreateBank={() =>
-          setShowCreateBank(selectedCategoryId || visibleCategories[0]?.id || null)
-        }
-      />
-
       {/* Category Chips */}
       <CategoryChips
         categories={visibleCategories}
@@ -301,6 +287,20 @@ export function Library({ onSelectBank }: Props) {
           const category = await createCategory(name, selectedFolderId || undefined);
           selectCategory(category.id);
         }}
+      />
+
+      {/* Filters */}
+      <LibraryFilters
+        searchQuery={filters.searchQuery}
+        filterType={filters.filterType}
+        hasActiveFilters={filters.hasActiveFilters}
+        canCreateBank={visibleCategories.length > 0}
+        onSearchChange={filters.setSearchQuery}
+        onTypeChange={filters.setFilterType}
+        onClearFilters={filters.clearFilters}
+        onCreateBank={() =>
+          setShowCreateBank(selectedCategoryId || visibleCategories[0]?.id || null)
+        }
       />
 
       {/* Table or Empty State */}
