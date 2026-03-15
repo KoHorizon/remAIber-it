@@ -20,6 +20,7 @@ func RegisterRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("PUT /categories/{categoryID}", h.updateCategory)
 	mux.HandleFunc("DELETE /categories/{categoryID}", h.deleteCategory)
 	mux.HandleFunc("PATCH /categories/{categoryID}/folder", h.updateCategoryFolder)
+	mux.HandleFunc("PATCH /categories/reorder", h.reorderCategories)
 	mux.HandleFunc("GET /categories/{categoryID}/banks", h.listBanksByCategory)
 	mux.HandleFunc("GET /categories/{categoryID}/stats", h.getCategoryStats)
 

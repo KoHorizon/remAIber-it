@@ -117,6 +117,9 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	// Add grading_prompt to questions for per-question grading override
 	_ = addColumnIfNotExists(db, "questions", "grading_prompt", "TEXT")
 
+	// Add sort_order to categories for user-defined ordering
+	_ = addColumnIfNotExists(db, "categories", "sort_order", "INTEGER NOT NULL DEFAULT 0")
+
 	// Ensure only one grade per question per session.
 	_, _ = db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_grades_session_question ON grades (session_id, question_id)")
 
@@ -170,7 +173,7 @@ func (s *SQLiteStore) Close() error {
 
 func (s *SQLiteStore) SaveCategory(ctx context.Context, cat *category.Category) error {
 	_, err := s.db.ExecContext(ctx,
-		"INSERT INTO categories (id, name, folder_id) VALUES (?, ?, ?)",
+		"INSERT INTO categories (id, name, folder_id, sort_order) VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort_order)+1, 0) FROM categories))",
 		cat.ID, cat.Name, cat.FolderID,
 	)
 	return err
@@ -180,8 +183,8 @@ func (s *SQLiteStore) GetCategory(ctx context.Context, id string) (*category.Cat
 	var cat category.Category
 	var folderID sql.NullString
 	err := s.db.QueryRowContext(ctx,
-		"SELECT id, name, folder_id FROM categories WHERE id = ?", id,
-	).Scan(&cat.ID, &cat.Name, &folderID)
+		"SELECT id, name, folder_id, sort_order FROM categories WHERE id = ?", id,
+	).Scan(&cat.ID, &cat.Name, &folderID, &cat.SortOrder)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -195,7 +198,7 @@ func (s *SQLiteStore) GetCategory(ctx context.Context, id string) (*category.Cat
 }
 
 func (s *SQLiteStore) ListCategories(ctx context.Context) ([]*category.Category, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, name, folder_id FROM categories")
+	rows, err := s.db.QueryContext(ctx, "SELECT id, name, folder_id, sort_order FROM categories ORDER BY sort_order ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +208,7 @@ func (s *SQLiteStore) ListCategories(ctx context.Context) ([]*category.Category,
 	for rows.Next() {
 		var cat category.Category
 		var folderID sql.NullString
-		if err := rows.Scan(&cat.ID, &cat.Name, &folderID); err != nil {
+		if err := rows.Scan(&cat.ID, &cat.Name, &folderID, &cat.SortOrder); err != nil {
 			return nil, err
 		}
 		if folderID.Valid {
@@ -214,6 +217,21 @@ func (s *SQLiteStore) ListCategories(ctx context.Context) ([]*category.Category,
 		categories = append(categories, &cat)
 	}
 	return categories, nil
+}
+
+func (s *SQLiteStore) ReorderCategories(ctx context.Context, ids []string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for i, id := range ids {
+		if _, err := tx.ExecContext(ctx, "UPDATE categories SET sort_order = ? WHERE id = ?", i, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *SQLiteStore) UpdateCategory(ctx context.Context, cat *category.Category) error {

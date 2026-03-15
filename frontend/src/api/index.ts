@@ -128,6 +128,15 @@ export async function deleteCategory(id: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete category");
 }
 
+export async function reorderCategories(ids: string[]): Promise<void> {
+  const res = await fetch(`${API_BASE}/categories/reorder`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error("Failed to reorder categories");
+}
+
 // Banks
 
 export async function getBanks(): Promise<Bank[]> {
@@ -327,6 +336,7 @@ export const api = {
   updateCategory,
   updateCategoryFolder,
   deleteCategory,
+  reorderCategories,
   getBanks,
   getBank,
   createBank,

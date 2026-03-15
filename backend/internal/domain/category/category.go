@@ -3,9 +3,10 @@ package category
 import "github.com/remaimber-it/backend/internal/id"
 
 type Category struct {
-	ID       string
-	Name     string
-	FolderID *string // Optional — nil means uncategorized (no folder)
+	ID        string
+	Name      string
+	FolderID  *string // Optional — nil means uncategorized (no folder)
+	SortOrder int
 }
 
 func New(name string) *Category {

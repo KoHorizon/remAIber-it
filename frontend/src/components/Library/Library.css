@@ -218,6 +218,21 @@
     margin-bottom: 1rem;
 }
 
+.category-chip-drag-wrapper {
+    cursor: grab;
+    border-radius: 999px;
+    transition: box-shadow 120ms ease;
+}
+
+.category-chip-drag-wrapper:active {
+    cursor: grabbing;
+}
+
+.category-chip-drag-wrapper.drop-target {
+    box-shadow: 0 0 0 2px var(--accent-primary),
+                0 0 10px 2px color-mix(in srgb, var(--accent-primary) 40%, transparent);
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    Table
    ───────────────────────────────────────────────────────────────────────────── */

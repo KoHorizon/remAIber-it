@@ -42,6 +42,7 @@ export function Library({ onSelectBank }: Props) {
     updateCategory,
     moveCategory,
     deleteCategory,
+    reorderCategories,
     createBank,
     deleteBank,
     exportData,
@@ -287,6 +288,7 @@ export function Library({ onSelectBank }: Props) {
           const category = await createCategory(name, selectedFolderId || undefined);
           selectCategory(category.id);
         }}
+        onReorder={reorderCategories}
       />
 
       {/* Filters */}

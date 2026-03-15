@@ -38,6 +38,7 @@ type Store interface {
 	ListCategoriesByFolder(ctx context.Context, folderID string) ([]*category.Category, error)
 	UpdateCategory(ctx context.Context, cat *category.Category) error
 	UpdateCategoryFolder(ctx context.Context, categoryID string, folderID *string) error
+	ReorderCategories(ctx context.Context, ids []string) error
 	DeleteCategory(ctx context.Context, id string) error
 	GetCategoryMastery(ctx context.Context, categoryID string) (int, error)
 	GetCategoryMasteryBatch(ctx context.Context, categoryIDs []string) (map[string]int, error)

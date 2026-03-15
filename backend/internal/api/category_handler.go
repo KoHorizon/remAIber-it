@@ -22,10 +22,11 @@ func (r *CreateCategoryRequest) Validate() error {
 }
 
 type CategoryResponse struct {
-	ID       string  `json:"id" example:"a1b2c3d4e5f6g7h8"`
-	Name     string  `json:"name" example:"Golang"`
-	FolderID *string `json:"folder_id,omitempty" example:"f1o2l3d4e5r6i7d8"`
-	Mastery  int     `json:"mastery" example:"42"`
+	ID        string  `json:"id" example:"a1b2c3d4e5f6g7h8"`
+	Name      string  `json:"name" example:"Golang"`
+	FolderID  *string `json:"folder_id,omitempty" example:"f1o2l3d4e5r6i7d8"`
+	Mastery   int     `json:"mastery" example:"42"`
+	SortOrder int     `json:"sort_order" example:"0"`
 }
 
 type GetCategoryResponse struct {
@@ -49,6 +50,10 @@ func (r *UpdateCategoryRequest) Validate() error {
 
 type UpdateCategoryFolderRequest struct {
 	FolderID *string `json:"folder_id" example:"f1o2l3d4e5r6i7d8"`
+}
+
+type ReorderCategoriesRequest struct {
+	IDs []string `json:"ids"`
 }
 
 type CategoryStatsResponse struct {
@@ -96,10 +101,11 @@ func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusCreated, CategoryResponse{
-		ID:       cat.ID,
-		Name:     cat.Name,
-		FolderID: cat.FolderID,
-		Mastery:  0,
+		ID:        cat.ID,
+		Name:      cat.Name,
+		FolderID:  cat.FolderID,
+		Mastery:   0,
+		SortOrder: cat.SortOrder,
 	})
 }
 
@@ -128,10 +134,11 @@ func (h *Handler) listCategories(w http.ResponseWriter, r *http.Request) {
 	response := make([]CategoryResponse, len(categories))
 	for i, cat := range categories {
 		response[i] = CategoryResponse{
-			ID:       cat.ID,
-			Name:     cat.Name,
-			FolderID: cat.FolderID,
-			Mastery:  masteryMap[cat.ID],
+			ID:        cat.ID,
+			Name:      cat.Name,
+			FolderID:  cat.FolderID,
+			Mastery:   masteryMap[cat.ID],
+			SortOrder: cat.SortOrder,
 		}
 	}
 
@@ -220,9 +227,10 @@ func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cat := &category.Category{
-		ID:       categoryID,
-		Name:     req.Name,
-		FolderID: existing.FolderID,
+		ID:        categoryID,
+		Name:      req.Name,
+		FolderID:  existing.FolderID,
+		SortOrder: existing.SortOrder,
 	}
 
 	if h.handleStoreError(w, h.store.UpdateCategory(ctx, cat), "category") {
@@ -232,10 +240,11 @@ func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) {
 	mastery, _ := h.store.GetCategoryMastery(ctx, categoryID)
 
 	respondJSON(w, http.StatusOK, CategoryResponse{
-		ID:       cat.ID,
-		Name:     cat.Name,
-		FolderID: cat.FolderID,
-		Mastery:  mastery,
+		ID:        cat.ID,
+		Name:      cat.Name,
+		FolderID:  cat.FolderID,
+		Mastery:   mastery,
+		SortOrder: cat.SortOrder,
 	})
 }
 
@@ -279,11 +288,30 @@ func (h *Handler) updateCategoryFolder(w http.ResponseWriter, r *http.Request) {
 	mastery, _ := h.store.GetCategoryMastery(ctx, categoryID)
 
 	respondJSON(w, http.StatusOK, CategoryResponse{
-		ID:       cat.ID,
-		Name:     cat.Name,
-		FolderID: cat.FolderID,
-		Mastery:  mastery,
+		ID:        cat.ID,
+		Name:      cat.Name,
+		FolderID:  cat.FolderID,
+		Mastery:   mastery,
+		SortOrder: cat.SortOrder,
 	})
+}
+
+// reorderCategories updates the sort_order of categories.
+func (h *Handler) reorderCategories(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req ReorderCategoriesRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if len(req.IDs) == 0 {
+		respondError(w, http.StatusBadRequest, "ids is required")
+		return
+	}
+	if err := h.store.ReorderCategories(ctx, req.IDs); err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to reorder categories")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // deleteCategory removes a category and all its banks.

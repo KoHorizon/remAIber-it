@@ -32,6 +32,7 @@ type LibraryContextType = {
   updateCategory: (categoryId: string, name: string) => Promise<Category>;
   moveCategory: (categoryId: string, folderId: string | null) => Promise<Category>;
   deleteCategory: (categoryId: string) => Promise<void>;
+  reorderCategories: (ids: string[]) => Promise<void>;
 
   // Bank operations
   createBank: (subject: string, categoryId: string, bankType: BankType, language?: string) => Promise<Bank>;
@@ -241,6 +242,21 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     [selectedCategoryId]
   );
 
+  const reorderCategories = useCallback(
+    async (ids: string[]) => {
+      // Optimistic update: reorder in local state immediately
+      setCategories((prev) => {
+        const ordered = ids
+          .map((id) => prev.find((c) => c.id === id))
+          .filter((c): c is Category => c !== undefined);
+        const rest = prev.filter((c) => !ids.includes(c.id));
+        return [...ordered, ...rest];
+      });
+      await api.reorderCategories(ids);
+    },
+    []
+  );
+
   // Bank operations
   const createBank = useCallback(
     async (subject: string, categoryId: string, bankType: BankType, language?: string) => {
@@ -327,6 +343,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     updateCategory,
     moveCategory,
     deleteCategory,
+    reorderCategories,
     createBank,
     deleteBank,
     refreshBank,

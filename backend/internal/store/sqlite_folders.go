@@ -291,7 +291,7 @@ func (s *SQLiteStore) GetFolderMasteryBatch(ctx context.Context, folderIDs []str
 
 // ListCategoriesByFolder returns all categories belonging to a folder.
 func (s *SQLiteStore) ListCategoriesByFolder(ctx context.Context, folderID string) ([]*category.Category, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, name, folder_id FROM categories WHERE folder_id = ?", folderID)
+	rows, err := s.db.QueryContext(ctx, "SELECT id, name, folder_id, sort_order FROM categories WHERE folder_id = ? ORDER BY sort_order ASC", folderID)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +301,7 @@ func (s *SQLiteStore) ListCategoriesByFolder(ctx context.Context, folderID strin
 	for rows.Next() {
 		var cat category.Category
 		var fID sql.NullString
-		if err := rows.Scan(&cat.ID, &cat.Name, &fID); err != nil {
+		if err := rows.Scan(&cat.ID, &cat.Name, &fID, &cat.SortOrder); err != nil {
 			return nil, err
 		}
 		if fID.Valid {

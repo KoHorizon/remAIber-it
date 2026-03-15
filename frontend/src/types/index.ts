@@ -12,6 +12,7 @@ export type Category = {
   name: string;
   mastery: number;
   folder_id?: string | null;
+  sort_order?: number;
   banks?: Bank[];
 };
 
