@@ -315,6 +315,7 @@ export function Library({ onSelectBank }: Props) {
               ? banks.filter((b) => b.category_id === selectedCategoryId).length
               : banks.length
           }
+          hasCategories={visibleCategories.length > 0}
           getCategoryName={getCategoryName}
           onSort={filters.handleSort}
           onSelectBank={onSelectBank}

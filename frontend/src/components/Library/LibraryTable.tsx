@@ -9,6 +9,7 @@ type Props = {
   sortDirection: SortDirection;
   hasActiveFilters: boolean;
   totalBanksInCategory: number;
+  hasCategories: boolean;
   getCategoryName: (categoryId: string | null | undefined) => string;
   onSort: (field: SortField) => void;
   onSelectBank: (bankId: string) => void;
@@ -77,6 +78,7 @@ export function LibraryTable({
   sortDirection,
   hasActiveFilters,
   totalBanksInCategory,
+  hasCategories,
   getCategoryName,
   onSort,
   onSelectBank,
@@ -181,8 +183,17 @@ export function LibraryTable({
 
       {isTrulyEmpty && (
         <div className="table-empty">
-          <p>No banks in this category yet.</p>
-          <p className="table-empty-hint">Click "+ Bank" to create one.</p>
+          {hasCategories ? (
+            <>
+              <p>No banks in this category yet.</p>
+              <p className="table-empty-hint">Click "+ Bank" to create one.</p>
+            </>
+          ) : (
+            <>
+              <p>No categories yet.</p>
+              <p className="table-empty-hint">Create a category above to get started.</p>
+            </>
+          )}
         </div>
       )}
     </div>
