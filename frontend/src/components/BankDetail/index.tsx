@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../../api";
-import { useLibrary } from "../../context/LibraryContext";
+import { useLibraryData, useLibraryActions } from "../../context";
 import type { Bank, Session, BankType } from "../../types";
 import { Button } from "../ui";
 import { SessionConfigModal } from "../modals";
@@ -28,7 +28,8 @@ type Props = {
 };
 
 export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: Props) {
-  const { getCategoryName: getCategory, refreshBank } = useLibrary();
+  const { getCategoryName: getCategory } = useLibraryData();
+  const { refreshBank } = useLibraryActions();
 
   const [bank, setBank] = useState<Bank | null>(null);
   const [isLoading, setIsLoading] = useState(true);

@@ -164,7 +164,11 @@ Library/
 
 ### State Management
 
-- Use `LibraryContext` for library data (folders, categories, banks)
+- Use the split context hooks from `src/context/` for library data:
+  - `useLibraryData()` — read data (folders, categories, banks, isLoading, error)
+  - `useLibraryActions()` — CRUD mutations (create/update/delete/refresh)
+  - `useLibrarySelection()` — workspace/category selection state
+- Subscribe only to the hook(s) you need — don't import all three if one suffices
 - Keep component state local when possible
 - Lift state up only when needed by siblings
 
@@ -250,7 +254,7 @@ export function Chip({ label, isActive = false, onClick }: Props) {
 ```tsx
 import { useState, useEffect } from "react";
 import { Button, Modal } from "../ui";
-import { useLibrary } from "../../context/LibraryContext";
+import { useLibraryData, useLibraryActions } from "../../context";
 import { formatDate } from "../../utils";
 import type { Category } from "../../types";
 import "./Library.css";

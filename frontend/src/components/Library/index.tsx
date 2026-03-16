@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useLibrary } from "../../context/LibraryContext";
+import { useLibraryData, useLibraryActions, useLibrarySelection } from "../../context";
 import {
   CreateBankModal,
   DeleteConfirmModal,
@@ -23,18 +23,9 @@ type Props = {
 };
 
 export function Library({ onSelectBank }: Props) {
+  const { folders, categories, banks, isLoading, hasFolders, getCategoryName } = useLibraryData();
+  const { selectedFolderId, selectedCategoryId, visibleCategories, selectFolder, selectCategory } = useLibrarySelection();
   const {
-    folders,
-    categories,
-    banks,
-    isLoading,
-    selectedFolderId,
-    selectedCategoryId,
-    hasFolders,
-    visibleCategories,
-    getCategoryName,
-    selectFolder,
-    selectCategory,
     createFolder,
     updateFolder,
     deleteFolder,
@@ -47,7 +38,7 @@ export function Library({ onSelectBank }: Props) {
     deleteBank,
     exportData,
     importData,
-  } = useLibrary();
+  } = useLibraryActions();
 
   // Filters hook
   const filters = useLibraryFilters({

@@ -6,7 +6,7 @@ import { BankDetail } from "./components/BankDetail/index";
 import { AddQuestionView } from "./components/AddQuestionView";
 import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
-import { useLibrary } from "./context/LibraryContext";
+import { useLibraryActions } from "./context";
 import { api } from "./api";
 import type { BankType, Session, SessionQuestion, SessionResult } from "./types";
 import "./App.css";
@@ -45,7 +45,7 @@ type View =
     };
 
 function App() {
-  const { refreshAll } = useLibrary();
+  const { refreshAll } = useLibraryActions();
   const [view, setView] = useState<View>({ type: "main", mainView: "dashboard" });
 
   const currentMainView = view.type === "main" ? view.mainView : "dashboard";

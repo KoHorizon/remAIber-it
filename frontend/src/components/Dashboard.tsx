@@ -1,4 +1,4 @@
-import { useLibrary } from "../context/LibraryContext";
+import { useLibraryData } from "../context";
 import { getMasteryLevel } from "../utils/mastery";
 import "./Dashboard.css";
 
@@ -8,7 +8,7 @@ type Props = {
 };
 
 export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
-  const { categories, banks, isLoading, getCategoryName } = useLibrary();
+  const { categories, banks, isLoading, getCategoryName } = useLibraryData();
 
   // Calculate stats
   const totalQuestions = banks.reduce(
