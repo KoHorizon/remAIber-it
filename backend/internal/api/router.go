@@ -43,6 +43,9 @@ func RegisterRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("POST /sessions/{sessionID}/answers", h.submitAnswer)
 	mux.HandleFunc("POST /sessions/{sessionID}/complete", h.completeSession)
 
+	// Stats
+	mux.HandleFunc("GET /stats", h.getOverallStats)
+
 	// Export/Import
 	mux.HandleFunc("GET /export", h.exportAll)
 	mux.HandleFunc("POST /import", h.importAll)

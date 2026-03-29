@@ -43,6 +43,9 @@ type Store interface {
 	GetCategoryMastery(ctx context.Context, categoryID string) (int, error)
 	GetCategoryMasteryBatch(ctx context.Context, categoryIDs []string) (map[string]int, error)
 
+	// Global stats
+	GetOverallMastery(ctx context.Context) (int, error)
+
 	// Banks
 	SaveBank(ctx context.Context, bank *questionbank.QuestionBank) error
 	GetBank(ctx context.Context, id string) (*questionbank.QuestionBank, error)

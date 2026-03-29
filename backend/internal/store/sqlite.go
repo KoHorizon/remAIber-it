@@ -866,6 +866,22 @@ func (s *SQLiteStore) GetBankMasteryBatch(ctx context.Context, bankIDs []string)
 	return result, nil
 }
 
+func (s *SQLiteStore) GetOverallMastery(ctx context.Context) (int, error) {
+	var mastery sql.NullFloat64
+	err := s.db.QueryRowContext(ctx, `
+		SELECT AVG(qs.mastery) * COUNT(qs.mastery) / COUNT(q.id)
+		FROM questions q
+		LEFT JOIN question_stats qs ON q.id = qs.question_id
+	`).Scan(&mastery)
+	if err != nil {
+		return 0, err
+	}
+	if !mastery.Valid {
+		return 0, nil
+	}
+	return int(mastery.Float64), nil
+}
+
 func (s *SQLiteStore) GetCategoryMastery(ctx context.Context, categoryID string) (int, error) {
 	var mastery sql.NullFloat64
 	err := s.db.QueryRowContext(ctx, `

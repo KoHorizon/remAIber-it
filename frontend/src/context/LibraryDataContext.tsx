@@ -7,13 +7,14 @@ import React, {
   useMemo,
   type ReactNode,
 } from "react";
-import { api } from "../api";
+import { api, getOverallStats } from "../api";
 import type { Folder, Category, Bank } from "../types";
 
 type LibraryDataContextType = {
   folders: Folder[];
   categories: Category[];
   banks: Bank[];
+  overallMastery: number;
   isLoading: boolean;
   error: string | null;
   hasFolders: boolean;
@@ -36,6 +37,7 @@ export function LibraryDataProvider({ children, onInitialLoad }: Props) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
+  const [overallMastery, setOverallMastery] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,14 +47,16 @@ export function LibraryDataProvider({ children, onInitialLoad }: Props) {
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [foldersData, categoriesData, banksData] = await Promise.all([
+      const [foldersData, categoriesData, banksData, statsData] = await Promise.all([
         api.getFolders(),
         api.getCategories(),
         api.getBanks(),
+        getOverallStats(),
       ]);
       setFolders(foldersData || []);
       setCategories(categoriesData || []);
       setBanks(banksData || []);
+      setOverallMastery(statsData.mastery);
 
       if (categoriesData && categoriesData.length > 0) {
         onInitialLoadRef.current(categoriesData[0].id);
@@ -86,6 +90,7 @@ export function LibraryDataProvider({ children, onInitialLoad }: Props) {
       folders,
       categories,
       banks,
+      overallMastery,
       isLoading,
       error,
       hasFolders,
@@ -95,7 +100,7 @@ export function LibraryDataProvider({ children, onInitialLoad }: Props) {
       setBanks,
       refreshAll: loadData,
     }),
-    [folders, categories, banks, isLoading, error, hasFolders, getCategoryName, loadData]
+    [folders, categories, banks, overallMastery, isLoading, error, hasFolders, getCategoryName, loadData]
   );
 
   return (

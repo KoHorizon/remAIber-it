@@ -305,6 +305,14 @@ export async function createQuickSession(
   return res.json();
 }
 
+// Stats
+
+export async function getOverallStats(): Promise<{ mastery: number }> {
+  const res = await fetch(`${API_BASE}/stats`);
+  if (!res.ok) throw new Error("Failed to fetch stats");
+  return res.json();
+}
+
 // Export/Import
 
 export async function exportAll(): Promise<ExportData> {

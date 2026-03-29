@@ -8,17 +8,13 @@ type Props = {
 };
 
 export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
-  const { categories, banks, isLoading, getCategoryName } = useLibraryData();
+  const { categories, banks, overallMastery, isLoading, getCategoryName } = useLibraryData();
 
   // Calculate stats
   const totalQuestions = banks.reduce(
     (sum, b) => sum + (b.question_count ?? 0),
     0
   );
-
-  const overallMastery = banks.length > 0
-    ? Math.round(banks.reduce((sum, b) => sum + b.mastery, 0) / banks.length)
-    : 0;
 
   // Banks that need attention (mastery < 50%)
   const needsAttention = banks
@@ -190,9 +186,11 @@ export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
                         {getCategoryName(bank.category_id)}
                       </div>
                     </div>
-                    <span className={`bank-item-mastery ${getMasteryLevel(bank.mastery)}`}>
-                      {bank.mastery}%
-                    </span>
+                    {bank.mastery > 0 && (
+                      <span className={`bank-item-mastery ${getMasteryLevel(bank.mastery)}`}>
+                        {bank.mastery}%
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
