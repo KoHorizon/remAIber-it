@@ -815,7 +815,7 @@ func (s *SQLiteStore) GetQuestionStatsByBank(ctx context.Context, bankID string)
 func (s *SQLiteStore) GetBankMastery(ctx context.Context, bankID string) (int, error) {
 	var mastery sql.NullFloat64
 	err := s.db.QueryRowContext(ctx, `
-		SELECT AVG(COALESCE(qs.mastery, 0))
+		SELECT AVG(qs.mastery) * COUNT(qs.mastery) / COUNT(q.id)
 		FROM questions q
 		LEFT JOIN question_stats qs ON q.id = qs.question_id
 		WHERE q.bank_id = ?
@@ -844,7 +844,7 @@ func (s *SQLiteStore) GetBankMasteryBatch(ctx context.Context, bankIDs []string)
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT q.bank_id, CAST(AVG(COALESCE(qs.mastery, 0)) AS INTEGER)
+		SELECT q.bank_id, CAST(AVG(qs.mastery) * COUNT(qs.mastery) / COUNT(q.id) AS INTEGER)
 		FROM questions q
 		LEFT JOIN question_stats qs ON q.id = qs.question_id
 		WHERE q.bank_id IN (`+strings.Join(placeholders, ",")+`)

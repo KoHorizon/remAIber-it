@@ -64,7 +64,7 @@ export function QuestionCard({
           )}
         </div>
         <div className={`qcard-mastery ${getMasteryColor(question.mastery)}`}>
-          <span className="qcard-mastery-value">{question.mastery}%</span>
+          {question.mastery > 0 && <span className="qcard-mastery-value">{question.mastery}%</span>}
           <span className="qcard-mastery-label">{getMasteryLabel(question.mastery)}</span>
         </div>
       </div>
