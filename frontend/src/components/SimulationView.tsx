@@ -68,7 +68,6 @@ export function SimulationView({ onBack }: Props) {
     null
   );
   const [gradeError, setGradeError] = useState<string | null>(null);
-  const [resultStale, setResultStale] = useState(false);
 
   // Save to bank state
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
@@ -89,7 +88,6 @@ export function SimulationView({ onBack }: Props) {
     setGradingPrompt(getDefaultRules(bankType));
     setGradeResult(null);
     setGradeError(null);
-    setResultStale(false);
   }, [bankType]);
 
   // Focus grading textarea when panel opens
@@ -103,10 +101,11 @@ export function SimulationView({ onBack }: Props) {
     }
   }, [showGrading]);
 
-  // Mark results as stale when inputs change
+  // Close results when inputs change
   useEffect(() => {
     if (gradeResult) {
-      setResultStale(true);
+      setGradeResult(null);
+      setShowSaveView(false);
     }
   }, [question, expectedAnswer, testAnswer, gradingPrompt]);
 
@@ -136,13 +135,12 @@ export function SimulationView({ onBack }: Props) {
 
   const canGrade =
     question.trim() && expectedAnswer.trim() && testAnswer.trim();
-  const canSave = gradeResult && selectedBankId && !resultStale;
+  const canSave = gradeResult && selectedBankId;
 
   async function handleGrade() {
     if (!canGrade || isGrading) return;
     setIsGrading(true);
     setGradeError(null);
-    setResultStale(false);
     try {
       const result = await api.simulateGrade({
         question: question.trim(),
@@ -179,7 +177,6 @@ export function SimulationView({ onBack }: Props) {
         // Reset everything after animation completes
         setGradeResult(null);
         setGradeError(null);
-        setResultStale(false);
         setIsClosingResult(false);
         setShowSaveView(false);
         setQuestion("");
@@ -340,12 +337,7 @@ export function SimulationView({ onBack }: Props) {
 
   // Result card with save functionality
   const resultCard = gradeResult && (
-    <div className={`simulation-result-row ${resultStale ? "simulation-result--stale" : ""} ${isClosingResult ? "animate-slide-down" : "animate-slide-up"}`}>
-      {resultStale && (
-        <div className="simulation-result-stale-notice">
-          Results are outdated — run simulation again
-        </div>
-      )}
+    <div className={`simulation-result-row ${isClosingResult ? "animate-slide-down" : "animate-slide-up"}`}>
       <div className={`simulation-result-slider ${showSaveView ? "simulation-result-slider--save" : ""}`}>
         {/* Score view */}
         <div className="simulation-result-slide">
@@ -353,7 +345,6 @@ export function SimulationView({ onBack }: Props) {
             type="button"
             className="simulation-save-btn"
             onClick={() => setShowSaveView(true)}
-            disabled={resultStale}
           >
             <svg
               width="14"
