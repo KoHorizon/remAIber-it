@@ -10,10 +10,11 @@ import (
 // ── Request / Response types ────────────────────────────────────────────────
 
 type GenerateQuestionsRequest struct {
-	Content  string  `json:"content" example:"Go is a statically typed language..."`
-	BankType string  `json:"bank_type" example:"theory"`
-	Language *string `json:"language,omitempty" example:"go"`
-	Count    int     `json:"count" example:"10"`
+	Content   string  `json:"content" example:"Go is a statically typed language..."`
+	BankType  string  `json:"bank_type" example:"theory"`
+	Language  *string `json:"language,omitempty" example:"go"`
+	Count     int     `json:"count" example:"10"`
+	Direction string  `json:"direction,omitempty" example:"Focus on practical scenarios"`
 }
 
 func (r *GenerateQuestionsRequest) Validate() error {
@@ -69,10 +70,11 @@ func (h *Handler) generateQuestions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	genReq := grader.GenerateRequest{
-		Content:  req.Content,
-		BankType: bankType,
-		Language: req.Language,
-		Count:    count,
+		Content:   req.Content,
+		BankType:  bankType,
+		Language:  req.Language,
+		Count:     count,
+		Direction: req.Direction,
 	}
 
 	questions, err := h.grading.GenerateQuestions(ctx, genReq)

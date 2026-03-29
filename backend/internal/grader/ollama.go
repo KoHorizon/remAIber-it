@@ -413,10 +413,11 @@ func stripNumberedPrefix(s string) string {
 
 // GenerateRequest contains the parameters for question generation.
 type GenerateRequest struct {
-	Content  string
-	BankType string  // "theory" | "code" | "cli"
-	Language *string // only when BankType == "code"
-	Count    int     // 1-20
+	Content   string
+	BankType  string  // "theory" | "code" | "cli"
+	Language  *string // only when BankType == "code"
+	Count     int     // 1-20
+	Direction string  // optional user instructions for question style/focus
 }
 
 // GeneratedQuestion represents a single generated question.
@@ -483,6 +484,11 @@ func buildGenerationPrompt(req GenerateRequest) string {
 		answerFormat = "expected_answer is the exact terminal command"
 	}
 
+	directionBlock := ""
+	if req.Direction != "" {
+		directionBlock = fmt.Sprintf("\nADDITIONAL INSTRUCTIONS:\n%s\n", req.Direction)
+	}
+
 	return fmt.Sprintf(`/no_think
 You are creating flashcard questions for a student studying the material below.
 
@@ -495,11 +501,11 @@ RULES:
 - grading_prompt: provide a short custom rule ONLY if the default grading rules would be misleading; otherwise set it to null.
 - Questions should test understanding, not just recall.
 - Vary question difficulty and style.
-
+%s
 MATERIAL:
 %s
 
 Return ONLY valid JSON, no markdown fences:
 {"questions": [{"subject": "question text here", "expected_answer": "answer here", "grading_prompt": null}, ...]}`,
-		bankTypeDesc, req.Count, answerFormat, req.Content)
+		bankTypeDesc, req.Count, answerFormat, directionBlock, req.Content)
 }

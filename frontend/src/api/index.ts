@@ -366,6 +366,7 @@ export type GenerateQuestionsRequest = {
   bank_type: BankType;
   language?: string | null;
   count: number;
+  direction?: string;
 };
 
 export type GeneratedQuestion = {

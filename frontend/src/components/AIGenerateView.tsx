@@ -25,6 +25,8 @@ export function AIGenerateView({ onBack }: Props) {
   const [categoryName, setCategoryName] = useState("");
   const [contentItems, setContentItems] = useState<string[]>([]);
   const [count, setCount] = useState(10);
+  const [direction, setDirection] = useState("");
+  const [showDirection, setShowDirection] = useState(false);
 
   // Content modal state
   const [showContentModal, setShowContentModal] = useState(false);
@@ -64,6 +66,7 @@ export function AIGenerateView({ onBack }: Props) {
         bank_type: bankType,
         language: bankType === "code" ? language : null,
         count,
+        direction: direction.trim() || undefined,
       });
 
       setQuestions(
@@ -323,6 +326,80 @@ export function AIGenerateView({ onBack }: Props) {
                 />
                 <span className="aigen-count-value">{count}</span>
               </div>
+            </div>
+
+            <div className="aigen-config-section">
+              <button
+                type="button"
+                className={`aigen-direction-toggle ${showDirection ? "aigen-direction-toggle--open" : ""}`}
+                onClick={() => setShowDirection(!showDirection)}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                AI Direction
+                {direction && <span className="aigen-direction-indicator" />}
+                <svg
+                  className={`aigen-direction-chevron ${showDirection ? "aigen-direction-chevron--open" : ""}`}
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+              {showDirection && (
+                <div className="aigen-direction-section">
+                  <textarea
+                    className="aigen-direction-textarea"
+                    value={direction}
+                    onChange={(e) => setDirection(e.target.value)}
+                    placeholder="e.g., Focus on practical scenarios, make questions harder..."
+                    rows={3}
+                  />
+                  <div className="aigen-direction-presets">
+                    <span className="aigen-presets-label">Presets:</span>
+                    <button
+                      type="button"
+                      className="aigen-preset-btn"
+                      onClick={() => setDirection("Keep questions simple and beginner-friendly")}
+                    >
+                      Beginner
+                    </button>
+                    <button
+                      type="button"
+                      className="aigen-preset-btn"
+                      onClick={() => setDirection("Make questions challenging, focus on edge cases")}
+                    >
+                      Advanced
+                    </button>
+                    <button
+                      type="button"
+                      className="aigen-preset-btn"
+                      onClick={() => setDirection("Focus on practical real-world scenarios")}
+                    >
+                      Practical
+                    </button>
+                    <button
+                      type="button"
+                      className="aigen-preset-btn aigen-preset-btn--clear"
+                      onClick={() => setDirection("")}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="aigen-config-section aigen-config-section--grow">
