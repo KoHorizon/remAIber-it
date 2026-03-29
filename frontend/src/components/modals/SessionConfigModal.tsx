@@ -33,20 +33,6 @@ export function SessionConfigModal({
     });
   }
 
-  function handleQuestionChange(value: string) {
-    const num = parseInt(value, 10);
-    if (!isNaN(num)) {
-      setMaxQuestions(Math.max(1, Math.min(num, totalQuestions)));
-    }
-  }
-
-  function handleTimeChange(value: string) {
-    const num = parseInt(value, 10);
-    if (!isNaN(num)) {
-      setMaxDurationMin(Math.max(1, Math.min(num, 120)));
-    }
-  }
-
   const questionCount = useQuestionLimit ? maxQuestions : totalQuestions;
 
   return (

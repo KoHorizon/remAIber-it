@@ -105,6 +105,33 @@ func (gs *GradingService) Shutdown() {
 	gs.logger.Info("all grading goroutines finished")
 }
 
+// GradeOnce performs a synchronous, one-shot grading without persisting results.
+// This is used for simulation/testing grading prompts before adding questions.
+func (gs *GradingService) GradeOnce(ctx context.Context, req GradeRequest) (score int, covered []string, missed []string, err error) {
+	response, err := gs.grader.GradeAnswer(
+		ctx,
+		req.Question,
+		req.ExpectedAnswer,
+		req.UserAnswer,
+		req.GradingPrompt,
+		req.BankType,
+	)
+	if err != nil {
+		return 0, nil, nil, fmt.Errorf("grading error: %w", err)
+	}
+
+	var result struct {
+		Score   int      `json:"score"`
+		Covered []string `json:"covered"`
+		Missed  []string `json:"missed"`
+	}
+	if err := json.Unmarshal([]byte(response), &result); err != nil {
+		return 0, nil, nil, fmt.Errorf("failed to parse grading response: %w", err)
+	}
+
+	return result.Score, result.Covered, result.Missed, nil
+}
+
 // grade does the actual LLM call and persists the result.
 // It uses context.Background because grading runs asynchronously
 // and must not be cancelled when the originating HTTP request ends.
