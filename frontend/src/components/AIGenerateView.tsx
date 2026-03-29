@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { BankType, ExportData } from "../types";
 import { api, type GeneratedQuestion } from "../api";
-import { Button, Dropdown, Input } from "./ui";
+import { Button, Dropdown, Input, Modal } from "./ui";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalEditor } from "./TerminalEditor";
 import { PROGRAMMING_LANGUAGES } from "../utils/languages";
@@ -23,8 +23,13 @@ export function AIGenerateView({ onBack }: Props) {
   const [language, setLanguage] = useState<string | null>("javascript");
   const [bankSubject, setBankSubject] = useState("");
   const [categoryName, setCategoryName] = useState("");
-  const [content, setContent] = useState("");
+  const [contentItems, setContentItems] = useState<string[]>([]);
   const [count, setCount] = useState(10);
+
+  // Content modal state
+  const [showContentModal, setShowContentModal] = useState(false);
+  const [modalContent, setModalContent] = useState("");
+  const [editingContentIndex, setEditingContentIndex] = useState<number | null>(null);
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -34,7 +39,9 @@ export function AIGenerateView({ onBack }: Props) {
   const [questions, setQuestions] = useState<DraftQuestion[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const canGenerate = content.trim().length > 0 && bankSubject.trim().length > 0;
+  // Combine all content items for generation
+  const combinedContent = contentItems.join("\n\n---\n\n");
+  const canGenerate = contentItems.length > 0 && bankSubject.trim().length > 0;
   const canExport = questions.length > 0;
 
   async function handleGenerate() {
@@ -53,7 +60,7 @@ export function AIGenerateView({ onBack }: Props) {
 
     try {
       const response = await api.generateQuestions({
-        content: content.trim(),
+        content: combinedContent,
         bank_type: bankType,
         language: bankType === "code" ? language : null,
         count,
@@ -139,6 +146,37 @@ export function AIGenerateView({ onBack }: Props) {
     };
     setQuestions((prev) => [...prev, newQuestion]);
     setEditingId(newQuestion.id);
+  }
+
+  function handleOpenContentModal(index?: number) {
+    if (index !== undefined) {
+      setModalContent(contentItems[index]);
+      setEditingContentIndex(index);
+    } else {
+      setModalContent("");
+      setEditingContentIndex(null);
+    }
+    setShowContentModal(true);
+  }
+
+  function handleSaveContent() {
+    const trimmed = modalContent.trim();
+    if (!trimmed) return;
+
+    if (editingContentIndex !== null) {
+      setContentItems((prev) =>
+        prev.map((item, i) => (i === editingContentIndex ? trimmed : item))
+      );
+    } else {
+      setContentItems((prev) => [...prev, trimmed]);
+    }
+    setShowContentModal(false);
+    setModalContent("");
+    setEditingContentIndex(null);
+  }
+
+  function handleDeleteContent(index: number) {
+    setContentItems((prev) => prev.filter((_, i) => i !== index));
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -289,14 +327,59 @@ export function AIGenerateView({ onBack }: Props) {
 
             <div className="aigen-config-section aigen-config-section--grow">
               <label className="aigen-label">Study Material</label>
-              <textarea
-                className="aigen-content-textarea"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Paste your study material, documentation, or notes here..."
-              />
+              <div className="aigen-content-cards">
+                {contentItems.map((item, index) => (
+                  <div
+                    key={index}
+                    className="aigen-content-card"
+                    onClick={() => handleOpenContentModal(index)}
+                  >
+                    <div className="aigen-content-card-text">
+                      {item.length > 100 ? item.slice(0, 100) + "..." : item}
+                    </div>
+                    <button
+                      type="button"
+                      className="aigen-content-card-delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteContent(index);
+                      }}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="aigen-add-content-btn"
+                  onClick={() => handleOpenContentModal()}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Add</span>
+                </button>
+              </div>
               <span className="aigen-char-count">
-                {content.length.toLocaleString()} characters
+                {contentItems.length} item{contentItems.length !== 1 ? "s" : ""} · {combinedContent.length.toLocaleString()} characters
               </span>
             </div>
 
@@ -419,6 +502,54 @@ export function AIGenerateView({ onBack }: Props) {
           )}
         </div>
       </div>
+
+      {/* Content Modal */}
+      {showContentModal && (
+        <div className="aigen-content-modal">
+          <Modal
+            title={editingContentIndex !== null ? "Edit Content" : "Add Study Material"}
+            onClose={() => {
+              setShowContentModal(false);
+              setModalContent("");
+              setEditingContentIndex(null);
+            }}
+            actions={
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowContentModal(false);
+                    setModalContent("");
+                    setEditingContentIndex(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSaveContent}
+                  disabled={!modalContent.trim()}
+                >
+                  {editingContentIndex !== null ? "Save" : "Add"}
+                </Button>
+              </>
+            }
+          >
+            <div className="aigen-modal-content">
+              <textarea
+                className="aigen-modal-textarea"
+                value={modalContent}
+                onChange={(e) => setModalContent(e.target.value)}
+                placeholder="Paste your study material, documentation, or notes here..."
+                autoFocus
+              />
+              <span className="aigen-modal-char-count">
+                {modalContent.length.toLocaleString()} characters
+              </span>
+            </div>
+          </Modal>
+        </div>
+      )}
     </div>
   );
 }

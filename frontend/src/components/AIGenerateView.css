@@ -146,26 +146,140 @@
   text-align: right;
 }
 
-.aigen-content-textarea {
+/* ── Content cards ─────────────────────────────────────────────────────────── */
+
+.aigen-content-cards {
   flex: 1;
-  min-height: 150px;
-  padding: 0.75rem;
-  font-size: 0.875rem;
-  line-height: 1.6;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+  min-height: 80px;
+  align-content: start;
+}
+
+.aigen-content-card {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 0.5rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  overflow: hidden;
+}
+
+.aigen-content-card:hover {
+  border-color: var(--border-hover);
+}
+
+.aigen-content-card-text {
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+}
+
+.aigen-content-card:hover .aigen-content-card-text {
+  color: var(--text-primary);
+}
+
+.aigen-content-card-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--transition-fast);
+}
+
+.aigen-content-card:hover .aigen-content-card-delete {
+  opacity: 1;
+}
+
+.aigen-content-card-delete:hover {
+  color: var(--error);
+  background: var(--error-bg);
+  border-color: var(--error);
+}
+
+.aigen-add-content-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  aspect-ratio: 1;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.aigen-add-content-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+/* ── Content modal ─────────────────────────────────────────────────────────── */
+
+.aigen-content-modal .modal {
+  width: 90vw;
+  max-width: 800px;
+  max-height: 90vh;
+}
+
+.aigen-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.aigen-modal-textarea {
+  width: 100%;
+  min-height: 500px;
+  padding: 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.7;
   color: var(--text-primary);
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  resize: none;
+  resize: vertical;
 }
 
-.aigen-content-textarea:focus {
+.aigen-modal-textarea:focus {
   outline: none;
   border-color: var(--accent);
 }
 
-.aigen-content-textarea::placeholder {
+.aigen-modal-textarea::placeholder {
   color: var(--text-muted);
+}
+
+.aigen-modal-char-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
 }
 
 .aigen-char-count {
