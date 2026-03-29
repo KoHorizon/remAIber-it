@@ -6,6 +6,7 @@ import { BankDetail } from "./components/BankDetail/index";
 import { AddQuestionView } from "./components/AddQuestionView";
 import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
+import { SimulationView } from "./components/SimulationView";
 import { useLibraryActions } from "./context";
 import { api } from "./api";
 import type { BankType, Session, SessionQuestion, SessionResult } from "./types";
@@ -41,6 +42,10 @@ type View =
       bankSubject: string;
       bankType: BankType;
       bankLanguage?: string | null;
+      returnTo: MainView;
+    }
+  | {
+      type: "simulate";
       returnTo: MainView;
     };
 
@@ -105,6 +110,8 @@ function App() {
         bankLanguage,
         returnTo,
       }),
+    toSimulate: (returnTo: MainView = currentMainView) =>
+      setView({ type: "simulate", returnTo }),
   };
 
   async function handleRetry(
@@ -164,8 +171,8 @@ function App() {
     }
   }
 
-  // Check if we're in a full-screen view (practice/results/addQuestion)
-  const isFullScreen = view.type === "practice" || view.type === "results" || view.type === "addQuestion";
+  // Check if we're in a full-screen view (practice/results/addQuestion/simulate)
+  const isFullScreen = view.type === "practice" || view.type === "results" || view.type === "addQuestion" || view.type === "simulate";
 
   return (
     <div className={`app ${isFullScreen ? "app-fullscreen" : "app-with-sidebar"}`}>
@@ -174,6 +181,7 @@ function App() {
         <Sidebar
           currentView={currentMainView}
           onNavigate={(mainView) => navigate.toMain(mainView)}
+          onSimulate={() => navigate.toSimulate()}
         />
       )}
 
@@ -271,6 +279,11 @@ function App() {
               )
             }
           />
+        )}
+
+        {/* Simulation */}
+        {view.type === "simulate" && (
+          <SimulationView onBack={() => navigate.toMain(view.returnTo)} />
         )}
       </main>
     </div>

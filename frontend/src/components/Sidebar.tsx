@@ -5,9 +5,10 @@ type View = "dashboard" | "library";
 type Props = {
   currentView: View;
   onNavigate: (view: View) => void;
+  onSimulate?: () => void;
 };
 
-export function Sidebar({ currentView, onNavigate }: Props) {
+export function Sidebar({ currentView, onNavigate, onSimulate }: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
@@ -43,6 +44,22 @@ export function Sidebar({ currentView, onNavigate }: Props) {
           </span>
           <span className="nav-label">Library</span>
         </button>
+
+        {onSimulate && (
+          <button
+            className="sidebar-nav-item"
+            onClick={onSimulate}
+          >
+            <span className="nav-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 3h6l2 4H7l2-4z" />
+                <path d="M7 7v10a4 4 0 0 0 4 4h2a4 4 0 0 0 4-4V7" />
+                <path d="M10 11h4" />
+              </svg>
+            </span>
+            <span className="nav-label">Simulate</span>
+          </button>
+        )}
       </nav>
 
       <div className="sidebar-footer">

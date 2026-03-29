@@ -331,6 +331,34 @@ export async function importAll(data: ExportData): Promise<ImportResult> {
   return res.json();
 }
 
+// Simulate Grading
+
+export type SimulateGradeRequest = {
+  question: string;
+  expected_answer: string;
+  user_answer: string;
+  bank_type: BankType;
+  grading_prompt?: string | null;
+};
+
+export type SimulateGradeResult = {
+  score: number;
+  covered: string[];
+  missed: string[];
+};
+
+export async function simulateGrade(
+  req: SimulateGradeRequest
+): Promise<SimulateGradeResult> {
+  const res = await fetch(`${API_BASE}/simulate/grade`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error("Failed to simulate grading");
+  return res.json();
+}
+
 // Convenience object for backward compatibility
 export const api = {
   getFolders,
@@ -358,4 +386,5 @@ export const api = {
   completeSession,
   exportAll,
   importAll,
+  simulateGrade,
 };
