@@ -77,6 +77,15 @@
   box-shadow: var(--shadow-sm);
 }
 
+.aigen-type-switcher--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.aigen-type-btn:disabled {
+  cursor: not-allowed;
+}
+
 /* ── Body layout ──────────────────────────────────────────────────────────── */
 
 .aigen-body {
@@ -407,6 +416,18 @@
   margin: 0;
 }
 
+.aigen-questions-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aigen-select-count {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--accent);
+}
+
 .aigen-questions-count {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -425,6 +446,11 @@
 
 .aigen-empty svg {
   opacity: 0.4;
+}
+
+.aigen-empty-icon--spinning {
+  animation: spin 1.5s linear infinite;
+  opacity: 0.6 !important;
 }
 
 .aigen-empty p {
@@ -503,6 +529,30 @@
   color: var(--text-muted);
   background: var(--bg-secondary);
   border-radius: var(--radius-sm);
+}
+
+.aigen-question-checkbox {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-primary);
+  transition: all var(--transition-fast);
+}
+
+.aigen-question-checkbox--checked {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.aigen-question-card--selected {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
 }
 
 .aigen-question-content {
@@ -621,8 +671,8 @@
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  resize: vertical;
-  min-height: 60px;
+  resize: none;
+  overflow: hidden;
 }
 
 .aigen-question-field textarea:focus {

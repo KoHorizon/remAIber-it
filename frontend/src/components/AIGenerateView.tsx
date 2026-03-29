@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { BankType, ExportData } from "../types";
 import { api, type GeneratedQuestion } from "../api";
 import { Button, Dropdown, Input, Modal } from "./ui";
@@ -40,6 +40,9 @@ export function AIGenerateView({ onBack }: Props) {
   // Questions state
   const [questions, setQuestions] = useState<DraftQuestion[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showClearModal, setShowClearModal] = useState(false);
 
   // Combine all content items for generation
   const combinedContent = contentItems.join("\n\n---\n\n");
@@ -124,6 +127,44 @@ export function AIGenerateView({ onBack }: Props) {
   function handleDeleteQuestion(id: string) {
     setQuestions((prev) => prev.filter((q) => q.id !== id));
     if (editingId === id) setEditingId(null);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  function handleConfirmClearAll() {
+    setQuestions([]);
+    setEditingId(null);
+    setSelectMode(false);
+    setSelectedIds(new Set());
+    setShowClearModal(false);
+  }
+
+  function handleToggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function handleDeleteSelected() {
+    if (selectedIds.size === 0) return;
+    setQuestions((prev) => prev.filter((q) => !selectedIds.has(q.id)));
+    if (editingId && selectedIds.has(editingId)) setEditingId(null);
+    setSelectedIds(new Set());
+    setSelectMode(false);
+  }
+
+  function handleExitSelectMode() {
+    setSelectMode(false);
+    setSelectedIds(new Set());
   }
 
   function handleUpdateQuestion(
@@ -200,27 +241,31 @@ export function AIGenerateView({ onBack }: Props) {
     }
   }
 
-  // Type switcher
+  // Type switcher - disabled when questions exist
+  const hasQuestions = questions.length > 0;
   const typeSwitcher = (
-    <div className="aigen-type-switcher">
+    <div className={`aigen-type-switcher ${hasQuestions ? "aigen-type-switcher--disabled" : ""}`}>
       <button
         type="button"
         className={`aigen-type-btn ${bankType === "theory" ? "active" : ""}`}
-        onClick={() => setBankType("theory")}
+        onClick={() => !hasQuestions && setBankType("theory")}
+        disabled={hasQuestions}
       >
         Theory
       </button>
       <button
         type="button"
         className={`aigen-type-btn ${bankType === "code" ? "active" : ""}`}
-        onClick={() => setBankType("code")}
+        onClick={() => !hasQuestions && setBankType("code")}
+        disabled={hasQuestions}
       >
         Code
       </button>
       <button
         type="button"
         className={`aigen-type-btn ${bankType === "cli" ? "active" : ""}`}
-        onClick={() => setBankType("cli")}
+        onClick={() => !hasQuestions && setBankType("cli")}
+        disabled={hasQuestions}
       >
         CLI
       </button>
@@ -469,36 +514,17 @@ export function AIGenerateView({ onBack }: Props) {
               onClick={handleGenerate}
               disabled={!canGenerate || isGenerating}
             >
-              {isGenerating ? (
-                <>
-                  <svg
-                    className="aigen-spinner"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                  </svg>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                  </svg>
-                  Generate Questions
-                </>
-              )}
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+              {isGenerating ? "Generating..." : "Generate Questions"}
             </Button>
 
             {generateError && (
@@ -525,14 +551,48 @@ export function AIGenerateView({ onBack }: Props) {
         <div className="aigen-right">
           <div className="aigen-questions-header">
             <h2>Generated Questions</h2>
-            <span className="aigen-questions-count">
-              {questions.length} question{questions.length !== 1 ? "s" : ""}
-            </span>
+            <div className="aigen-questions-header-actions">
+              {questions.length > 0 && (
+                <>
+                  {selectMode ? (
+                    <>
+                      <span className="aigen-select-count">
+                        {selectedIds.size} selected
+                      </span>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={handleDeleteSelected}
+                        disabled={selectedIds.size === 0}
+                      >
+                        Delete Selected
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={handleExitSelectMode}>
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectMode(true)}>
+                        Select
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setShowClearModal(true)}>
+                        Clear All
+                      </Button>
+                    </>
+                  )}
+                </>
+              )}
+              <span className="aigen-questions-count">
+                {questions.length} question{questions.length !== 1 ? "s" : ""}
+              </span>
+            </div>
           </div>
 
           {questions.length === 0 ? (
             <div className="aigen-empty">
               <svg
+                className={isGenerating ? "aigen-empty-icon--spinning" : ""}
                 width="48"
                 height="48"
                 viewBox="0 0 24 24"
@@ -542,8 +602,8 @@ export function AIGenerateView({ onBack }: Props) {
               >
                 <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
               </svg>
-              <p>Generated questions will appear here</p>
-              <span>Paste your study material and click Generate</span>
+              <p>{isGenerating ? "Generating questions..." : "Generated questions will appear here"}</p>
+              <span>{isGenerating ? "This may take a moment" : "Paste your study material and click Generate"}</span>
             </div>
           ) : (
             <div className="aigen-questions-list">
@@ -555,6 +615,9 @@ export function AIGenerateView({ onBack }: Props) {
                   bankType={bankType}
                   language={language}
                   isEditing={editingId === q.id}
+                  selectMode={selectMode}
+                  isSelected={selectedIds.has(q.id)}
+                  onToggleSelect={() => handleToggleSelect(q.id)}
                   onEdit={() => handleEditCard(q.id)}
                   onDelete={() => handleDeleteQuestion(q.id)}
                   onUpdate={(field, value) => handleUpdateQuestion(q.id, field, value)}
@@ -630,6 +693,28 @@ export function AIGenerateView({ onBack }: Props) {
           </Modal>
         </div>
       )}
+
+      {/* Clear All Confirmation Modal */}
+      {showClearModal && (
+        <Modal
+          title="Clear All Questions"
+          onClose={() => setShowClearModal(false)}
+          actions={
+            <>
+              <Button variant="secondary" onClick={() => setShowClearModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={handleConfirmClearAll}>
+                Delete All
+              </Button>
+            </>
+          }
+        >
+          <p style={{ margin: 0, color: "var(--text-secondary)" }}>
+            Are you sure you want to delete all {questions.length} question{questions.length !== 1 ? "s" : ""}? This action cannot be undone.
+          </p>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -640,6 +725,9 @@ type QuestionCardProps = {
   bankType: BankType;
   language: string | null;
   isEditing: boolean;
+  selectMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onUpdate: (field: "subject" | "expected_answer" | "grading_prompt", value: string) => void;
@@ -651,6 +739,9 @@ function QuestionCard({
   bankType,
   language,
   isEditing,
+  selectMode,
+  isSelected,
+  onToggleSelect,
   onEdit,
   onDelete,
   onUpdate,
@@ -664,20 +755,22 @@ function QuestionCard({
         <div className="aigen-question-content">
           <div className="aigen-question-field">
             <label>Question</label>
-            <textarea
+            <AutoResizeTextarea
               value={question.subject}
               onChange={(e) => onUpdate("subject", e.target.value)}
               placeholder="Enter question..."
               autoFocus
+              minRows={1}
             />
           </div>
           <div className="aigen-question-field">
             <label>Expected Answer</label>
             {bankType === "theory" ? (
-              <textarea
+              <AutoResizeTextarea
                 value={question.expected_answer}
                 onChange={(e) => onUpdate("expected_answer", e.target.value)}
                 placeholder="Enter expected answer..."
+                minRows={2}
               />
             ) : bankType === "cli" ? (
               <TerminalEditor
@@ -812,8 +905,21 @@ function QuestionCard({
   }
 
   return (
-    <div className="aigen-question-card" onClick={onEdit}>
-      <div className="aigen-question-number">{index + 1}</div>
+    <div
+      className={`aigen-question-card ${isSelected ? "aigen-question-card--selected" : ""}`}
+      onClick={selectMode ? onToggleSelect : onEdit}
+    >
+      {selectMode ? (
+        <div className={`aigen-question-checkbox ${isSelected ? "aigen-question-checkbox--checked" : ""}`}>
+          {isSelected && (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          )}
+        </div>
+      ) : (
+        <div className="aigen-question-number">{index + 1}</div>
+      )}
       <div className="aigen-question-content">
         <div className="aigen-question-subject">{question.subject || "(empty question)"}</div>
         <div className="aigen-question-answer">
@@ -839,47 +945,89 @@ function QuestionCard({
           </div>
         )}
       </div>
-      <div className="aigen-question-actions">
-        <button
-          type="button"
-          className="aigen-action-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
+      {!selectMode && (
+        <div className="aigen-question-actions">
+          <button
+            type="button"
+            className="aigen-action-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
           >
-            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="aigen-action-btn aigen-action-btn--delete"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="aigen-action-btn aigen-action-btn--delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
           >
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          </svg>
-        </button>
-      </div>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
+  );
+}
+
+type AutoResizeTextareaProps = {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  className?: string;
+  autoFocus?: boolean;
+  minRows?: number;
+};
+
+function AutoResizeTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+  autoFocus,
+  minRows = 2,
+}: AutoResizeTextareaProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className={className}
+      autoFocus={autoFocus}
+      rows={minRows}
+    />
   );
 }
