@@ -16,6 +16,7 @@ type Props = {
 };
 
 type DraftQuestion = GeneratedQuestion & { id: string };
+type ContentItem = { id: string; content: string };
 
 export function AIGenerateView({ onBack }: Props) {
   // Configuration
@@ -24,7 +25,7 @@ export function AIGenerateView({ onBack }: Props) {
   const [bankMode, setBankMode] = useState<"existing" | "new">("new");
   const [bankSubject, setBankSubject] = useState("");
   const [categoryName, setCategoryName] = useState("");
-  const [contentItems, setContentItems] = useState<string[]>([]);
+  const [contentItems, setContentItems] = useState<ContentItem[]>([]);
   const [count, setCount] = useState(10);
   const [direction, setDirection] = useState("");
   const [showDirection, setShowDirection] = useState(false);
@@ -44,6 +45,7 @@ export function AIGenerateView({ onBack }: Props) {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
 
   // Existing banks state
   const [existingBanks, setExistingBanks] = useState<Bank[]>([]);
@@ -65,7 +67,7 @@ export function AIGenerateView({ onBack }: Props) {
   }, [bankType]);
 
   // Combine all content items for generation
-  const combinedContent = contentItems.join("\n\n---\n\n");
+  const combinedContent = contentItems.map((item) => item.content).join("\n\n---\n\n");
   const hasBankTarget = bankMode === "existing"
     ? selectedBankId !== null
     : bankSubject.trim().length > 0;
@@ -76,16 +78,19 @@ export function AIGenerateView({ onBack }: Props) {
   async function handleGenerate() {
     if (!canGenerate || isGenerating) return;
 
-    // Confirm if questions already exist
+    // Show confirmation modal if questions already exist
     if (questions.length > 0) {
-      const confirmed = window.confirm(
-        "This will replace the current questions. Continue?"
-      );
-      if (!confirmed) return;
+      setShowRegenerateModal(true);
+      return;
     }
 
+    await doGenerate();
+  }
+
+  async function doGenerate() {
     setIsGenerating(true);
     setGenerateError(null);
+    setShowRegenerateModal(false);
 
     try {
       const response = await api.generateQuestions({
@@ -155,14 +160,16 @@ export function AIGenerateView({ onBack }: Props) {
     setSaveError(null);
 
     try {
-      for (const q of questions) {
-        await api.addQuestion(
-          selectedBankId,
-          q.subject,
-          q.expected_answer,
-          q.grading_prompt
-        );
-      }
+      await Promise.all(
+        questions.map((q) =>
+          api.addQuestion(
+            selectedBankId,
+            q.subject,
+            q.expected_answer,
+            q.grading_prompt
+          )
+        )
+      );
       // Clear questions after successful save
       setQuestions([]);
       setEditingId(null);
@@ -248,7 +255,7 @@ export function AIGenerateView({ onBack }: Props) {
 
   function handleOpenContentModal(index?: number) {
     if (index !== undefined) {
-      setModalContent(contentItems[index]);
+      setModalContent(contentItems[index].content);
       setEditingContentIndex(index);
     } else {
       setModalContent("");
@@ -263,18 +270,23 @@ export function AIGenerateView({ onBack }: Props) {
 
     if (editingContentIndex !== null) {
       setContentItems((prev) =>
-        prev.map((item, i) => (i === editingContentIndex ? trimmed : item))
+        prev.map((item, i) =>
+          i === editingContentIndex ? { ...item, content: trimmed } : item
+        )
       );
     } else {
-      setContentItems((prev) => [...prev, trimmed]);
+      setContentItems((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), content: trimmed },
+      ]);
     }
     setShowContentModal(false);
     setModalContent("");
     setEditingContentIndex(null);
   }
 
-  function handleDeleteContent(index: number) {
-    setContentItems((prev) => prev.filter((_, i) => i !== index));
+  function handleDeleteContent(id: string) {
+    setContentItems((prev) => prev.filter((item) => item.id !== id));
   }
 
   function handleEditCard(id: string) {
@@ -573,19 +585,19 @@ export function AIGenerateView({ onBack }: Props) {
               <div className="aigen-content-cards">
                 {contentItems.map((item, index) => (
                   <div
-                    key={index}
+                    key={item.id}
                     className="aigen-content-card"
                     onClick={() => handleOpenContentModal(index)}
                   >
                     <div className="aigen-content-card-text">
-                      {item.length > 100 ? item.slice(0, 100) + "..." : item}
+                      {item.content.length > 100 ? item.content.slice(0, 100) + "..." : item.content}
                     </div>
                     <button
                       type="button"
                       className="aigen-content-card-delete"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteContent(index);
+                        handleDeleteContent(item.id);
                       }}
                     >
                       <svg
@@ -829,6 +841,28 @@ export function AIGenerateView({ onBack }: Props) {
         >
           <p style={{ margin: 0, color: "var(--text-secondary)" }}>
             Are you sure you want to delete all {questions.length} question{questions.length !== 1 ? "s" : ""}? This action cannot be undone.
+          </p>
+        </Modal>
+      )}
+
+      {/* Regenerate Confirmation Modal */}
+      {showRegenerateModal && (
+        <Modal
+          title="Replace Questions"
+          onClose={() => setShowRegenerateModal(false)}
+          actions={
+            <>
+              <Button variant="secondary" onClick={() => setShowRegenerateModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={doGenerate}>
+                Replace
+              </Button>
+            </>
+          }
+        >
+          <p style={{ margin: 0, color: "var(--text-secondary)" }}>
+            This will replace the current {questions.length} question{questions.length !== 1 ? "s" : ""} with newly generated ones. Continue?
           </p>
         </Modal>
       )}

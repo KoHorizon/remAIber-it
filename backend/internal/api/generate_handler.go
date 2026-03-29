@@ -24,7 +24,10 @@ func (r *GenerateQuestionsRequest) Validate() error {
 	if len(r.Content) > 50000 {
 		return errors.New("content exceeds maximum length of 50000 characters")
 	}
-	// bank_type defaults to "theory" if empty
+	// Validate bank_type if provided (defaults to "theory" if empty)
+	if r.BankType != "" && r.BankType != "theory" && r.BankType != "code" && r.BankType != "cli" {
+		return errors.New("bank_type must be one of: theory, code, cli")
+	}
 	// count defaults to 10 if not provided, clamped to 1-20
 	return nil
 }

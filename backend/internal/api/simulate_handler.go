@@ -27,7 +27,10 @@ func (r *SimulateGradeRequest) Validate() error {
 	if r.UserAnswer == "" {
 		return errors.New("user_answer is required")
 	}
-	// bank_type defaults to "theory" if empty
+	// Validate bank_type if provided (defaults to "theory" if empty)
+	if r.BankType != "" && r.BankType != "theory" && r.BankType != "code" && r.BankType != "cli" {
+		return errors.New("bank_type must be one of: theory, code, cli")
+	}
 	return nil
 }
 

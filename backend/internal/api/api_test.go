@@ -28,6 +28,18 @@ func (stubGrader) GradeAnswer(_ context.Context, _, _, _ string, _ *string, _ st
 
 var _ grader.Grader = stubGrader{}
 
+// ── stub generator ───────────────────────────────────────────────────────────
+
+type stubGenerator struct{}
+
+func (stubGenerator) GenerateQuestions(_ context.Context, _ grader.GenerateRequest) ([]grader.GeneratedQuestion, error) {
+	return []grader.GeneratedQuestion{
+		{Subject: "Test question", ExpectedAnswer: "Test answer", GradingPrompt: nil},
+	}, nil
+}
+
+var _ service.Generator = stubGenerator{}
+
 // ── test server setup ────────────────────────────────────────────────────────
 
 type testServer struct {
@@ -44,7 +56,7 @@ func newTestServer(t *testing.T) *testServer {
 	t.Cleanup(func() { s.Close() })
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	gs := service.NewGradingService(s, stubGrader{}, logger)
+	gs := service.NewGradingService(s, stubGrader{}, stubGenerator{}, logger)
 	h := api.NewHandler(s, gs, logger)
 
 	mux := http.NewServeMux()
@@ -710,6 +722,120 @@ func TestCORSMiddleware_Preflight(t *testing.T) {
 	}
 	if rr.Header().Get("Access-Control-Allow-Origin") != "*" {
 		t.Error("expected CORS allow-origin header")
+	}
+}
+
+// ── Simulate grading ──────────────────────────────────────────────────────────
+
+func TestSimulateGrade(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]any{
+		"question":        "What is a goroutine?",
+		"expected_answer": "A goroutine is a lightweight thread managed by the Go runtime.",
+		"user_answer":     "A goroutine is a concurrent unit of execution.",
+		"bank_type":       "theory",
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body)
+	}
+
+	resp := decode[map[string]any](t, rr)
+	if _, ok := resp["score"]; !ok {
+		t.Error("expected score in response")
+	}
+	if _, ok := resp["covered"]; !ok {
+		t.Error("expected covered in response")
+	}
+	if _, ok := resp["missed"]; !ok {
+		t.Error("expected missed in response")
+	}
+}
+
+func TestSimulateGrade_MissingQuestion(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]any{
+		"expected_answer": "A goroutine is a lightweight thread.",
+		"user_answer":     "A concurrent unit.",
+		"bank_type":       "theory",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rr.Code)
+	}
+}
+
+func TestSimulateGrade_MissingExpectedAnswer(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]any{
+		"question":    "What is a goroutine?",
+		"user_answer": "A concurrent unit.",
+		"bank_type":   "theory",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rr.Code)
+	}
+}
+
+func TestSimulateGrade_MissingUserAnswer(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]any{
+		"question":        "What is a goroutine?",
+		"expected_answer": "A goroutine is a lightweight thread.",
+		"bank_type":       "theory",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rr.Code)
+	}
+}
+
+func TestSimulateGrade_InvalidBankType(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]any{
+		"question":        "What is a goroutine?",
+		"expected_answer": "A lightweight thread.",
+		"user_answer":     "A concurrent unit.",
+		"bank_type":       "invalid_type",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid bank_type, got %d", rr.Code)
+	}
+}
+
+func TestSimulateGrade_DefaultBankType(t *testing.T) {
+	ts := newTestServer(t)
+
+	// Empty bank_type should default to "theory" and succeed
+	rr := ts.do("POST", "/simulate/grade", map[string]any{
+		"question":        "What is a goroutine?",
+		"expected_answer": "A lightweight thread.",
+		"user_answer":     "A concurrent unit.",
+	})
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200 for empty bank_type (default), got %d: %s", rr.Code, rr.Body)
+	}
+}
+
+func TestSimulateGrade_WithGradingPrompt(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]any{
+		"question":        "What is a goroutine?",
+		"expected_answer": "A lightweight thread managed by the Go runtime.",
+		"user_answer":     "A concurrent execution unit.",
+		"bank_type":       "theory",
+		"grading_prompt":  "Be strict about mentioning the Go scheduler.",
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body)
+	}
+
+	resp := decode[map[string]any](t, rr)
+	if _, ok := resp["score"]; !ok {
+		t.Error("expected score in response")
 	}
 }
 

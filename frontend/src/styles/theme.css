@@ -44,6 +44,7 @@
     --warning-muted: rgba(224, 159, 62, 0.15);
     --error: #c45c4a;
     --error-muted: rgba(196, 92, 74, 0.15);
+    --error-bg: rgba(196, 92, 74, 0.1);
     --info: #6b8cae;
     --info-muted: rgba(107, 140, 174, 0.15);
 
@@ -109,6 +110,7 @@
     --warning-muted: rgba(232, 169, 74, 0.2);
     --error: #e06050;
     --error-muted: rgba(224, 96, 80, 0.2);
+    --error-bg: rgba(224, 96, 80, 0.15);
     --info: #7a9fc0;
     --info-muted: rgba(122, 159, 192, 0.2);
 
@@ -146,8 +148,10 @@
 :root {
     /* Typography */
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
     /* Spacing & Sizing */
+    --radius-xs: 4px;
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;

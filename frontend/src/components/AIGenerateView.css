@@ -667,7 +667,7 @@
 .aigen-question-checkbox--checked {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--bg-primary);
 }
 
 .aigen-question-card--selected {

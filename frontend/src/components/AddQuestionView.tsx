@@ -39,6 +39,7 @@ export function AddQuestionView({
   const [gradingPrompt, setGradingPrompt] = useState(() => getDefaultRules(bankType));
   const [showGrading, setShowGrading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const extraTemplates = getAvailableTemplates(bankType);
   const defaultRules = getDefaultRules(bankType);
@@ -50,11 +51,12 @@ export function AddQuestionView({
   async function handleSave() {
     if (!question.trim() || !answer.trim() || isSaving) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const prompt = gradingPrompt.trim() || null;
       await onSave(question.trim(), answer.trim(), prompt);
     } catch (err: unknown) {
-      console.error("Failed to save question:", err);
+      setSaveError(err instanceof Error ? err.message : "Failed to save question");
       setIsSaving(false);
     }
   }
@@ -188,6 +190,17 @@ export function AddQuestionView({
 
         {gradingPanel}
 
+        {saveError && (
+          <div className="theory-doc-error">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            {saveError}
+          </div>
+        )}
+
         {/* Cards */}
         <div className="theory-doc-body">
 
@@ -255,6 +268,17 @@ export function AddQuestionView({
 
       {/* Grading panel — collapsed by default, toggled by pill */}
       {gradingPanel}
+
+      {saveError && (
+        <div className="add-question-error">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          {saveError}
+        </div>
+      )}
 
       {/* Main Content - Split View */}
       <div className="add-question-view-content">

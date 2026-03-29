@@ -431,6 +431,31 @@
     color: var(--text-muted);
 }
 
+/* Error display */
+.add-question-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin: 0 1.5rem 1rem;
+    background: var(--error-muted);
+    color: var(--error);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+}
+
+.theory-doc-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin: 0 1.5rem;
+    background: var(--error-muted);
+    color: var(--error);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+}
+
 @media (max-width: 640px) {
     .add-question-view-header {
         flex-direction: column;

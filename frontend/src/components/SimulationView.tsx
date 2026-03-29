@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { BankType } from "../types";
 import { useLibraryData } from "../context";
 import { api, type SimulateGradeResult } from "../api";
@@ -82,6 +82,7 @@ export function SimulationView({ onBack }: Props) {
   const answerRef = useRef<HTMLTextAreaElement>(null);
   const testRef = useRef<HTMLTextAreaElement>(null);
   const gradingRef = useRef<HTMLTextAreaElement>(null);
+  const closeTimerRef = useRef<number | null>(null);
 
   // Reset grading prompt and clear results when bank type changes
   useEffect(() => {
@@ -102,17 +103,30 @@ export function SimulationView({ onBack }: Props) {
   }, [showGrading]);
 
   // Close results when inputs change
+  const clearResultOnInputChange = useCallback(() => {
+    setGradeResult(null);
+    setShowSaveView(false);
+  }, []);
+
   useEffect(() => {
     if (gradeResult) {
-      setGradeResult(null);
-      setShowSaveView(false);
+      clearResultOnInputChange();
     }
-  }, [question, expectedAnswer, testAnswer, gradingPrompt]);
+  }, [question, expectedAnswer, testAnswer, gradingPrompt, gradeResult, clearResultOnInputChange]);
 
   // Reset bank selection when category or bank type changes
   useEffect(() => {
     setSelectedBankId(null);
   }, [selectedCategoryId, bankType]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current !== null) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
 
   // Filter banks by category and bank type
   const matchingBanks = banks.filter(
@@ -163,7 +177,7 @@ export function SimulationView({ onBack }: Props) {
 
       // Start close animation (slide down)
       setIsClosingResult(true);
-      setTimeout(() => {
+      closeTimerRef.current = window.setTimeout(() => {
         // Reset everything after animation completes
         setGradeResult(null);
         setGradeError(null);
@@ -174,9 +188,10 @@ export function SimulationView({ onBack }: Props) {
         setTestAnswer("");
         setShowGrading(false);
         setGradingPrompt(getDefaultRules(bankType));
+        closeTimerRef.current = null;
       }, 300);
     } catch (err) {
-      console.error("Failed to save question:", err);
+      setGradeError(err instanceof Error ? err.message : "Failed to save question");
       setIsSaving(false);
     }
   }
@@ -379,8 +394,8 @@ export function SimulationView({ onBack }: Props) {
                       Covered
                     </span>
                     <div className="simulation-chips">
-                      {gradeResult.covered.map((item, i) => (
-                        <span key={i} className="simulation-chip simulation-chip--covered">
+                      {gradeResult.covered.map((item) => (
+                        <span key={item} className="simulation-chip simulation-chip--covered">
                           {item}
                         </span>
                       ))}
@@ -404,8 +419,8 @@ export function SimulationView({ onBack }: Props) {
                       Missed
                     </span>
                     <div className="simulation-chips">
-                      {gradeResult.missed.map((item, i) => (
-                        <span key={i} className="simulation-chip simulation-chip--missed">
+                      {gradeResult.missed.map((item) => (
+                        <span key={item} className="simulation-chip simulation-chip--missed">
                           {item}
                         </span>
                       ))}
