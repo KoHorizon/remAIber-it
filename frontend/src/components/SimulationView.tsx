@@ -76,11 +76,13 @@ export function SimulationView({ onBack }: Props) {
   );
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [showSaveView, setShowSaveView] = useState(false);
+  const [isClosingResult, setIsClosingResult] = useState(false);
 
   const questionRef = useRef<HTMLTextAreaElement>(null);
   const answerRef = useRef<HTMLTextAreaElement>(null);
   const testRef = useRef<HTMLTextAreaElement>(null);
+  const gradingRef = useRef<HTMLTextAreaElement>(null);
 
   // Reset grading prompt and clear results when bank type changes
   useEffect(() => {
@@ -89,6 +91,17 @@ export function SimulationView({ onBack }: Props) {
     setGradeError(null);
     setResultStale(false);
   }, [bankType]);
+
+  // Focus grading textarea when panel opens
+  useEffect(() => {
+    if (showGrading && gradingRef.current) {
+      gradingRef.current.focus();
+      gradingRef.current.setSelectionRange(
+        gradingRef.current.value.length,
+        gradingRef.current.value.length
+      );
+    }
+  }, [showGrading]);
 
   // Mark results as stale when inputs change
   useEffect(() => {
@@ -157,8 +170,21 @@ export function SimulationView({ onBack }: Props) {
         expectedAnswer.trim(),
         gradingPrompt.trim() || null
       );
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 2000);
+      // Trigger closing animation
+      setIsClosingResult(true);
+      setTimeout(() => {
+        // Reset everything after animation completes
+        setQuestion("");
+        setExpectedAnswer("");
+        setTestAnswer("");
+        setGradeResult(null);
+        setGradeError(null);
+        setResultStale(false);
+        setShowSaveView(false);
+        setShowGrading(false);
+        setGradingPrompt(getDefaultRules(bankType));
+        setIsClosingResult(false);
+      }, 300);
     } catch (err) {
       console.error("Failed to save question:", err);
     } finally {
@@ -182,16 +208,11 @@ export function SimulationView({ onBack }: Props) {
   const gradingPanel = showGrading ? (
     <div className="simulation-grading-section">
       <textarea
+        ref={gradingRef}
         className="simulation-grading-textarea"
         value={gradingPrompt}
         onChange={(e) => setGradingPrompt(e.target.value)}
         rows={Math.max(1, gradingPrompt.split("\n").length)}
-        ref={(el) => {
-          if (el) {
-            el.focus();
-            el.setSelectionRange(el.value.length, el.value.length);
-          }
-        }}
       />
       <div className="simulation-grading-templates">
         <span className="templates-label">Presets:</span>
@@ -315,94 +336,198 @@ export function SimulationView({ onBack }: Props) {
     </div>
   );
 
-  // Result card
+  // Result card with save functionality
   const resultCard = gradeResult && (
-    <div className={`simulation-result-row ${resultStale ? "simulation-result--stale" : ""} animate-slide-up`}>
+    <div className={`simulation-result-row ${resultStale ? "simulation-result--stale" : ""} ${isClosingResult ? "animate-slide-down" : "animate-slide-up"}`}>
       {resultStale && (
         <div className="simulation-result-stale-notice">
           Results are outdated — run simulation again
         </div>
       )}
-      <div className="simulation-result-grid">
-        <div className="simulation-result">
-          <div className="simulation-result-header">
-            <div
-              className={`simulation-score-badge ${getScoreClass(gradeResult.score)}`}
-            >
-              <span className="simulation-score-value">{gradeResult.score}%</span>
-              <span className="simulation-score-label">
-                {getScoreLabel(gradeResult.score)}
-              </span>
-            </div>
-          </div>
-          <div className="simulation-result-feedback">
-            {gradeResult.covered.length > 0 && (
-              <div className="simulation-feedback-group">
-                <span className="simulation-feedback-heading simulation-feedback-heading--covered">
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Covered
-                </span>
-                <div className="simulation-chips">
-                  {gradeResult.covered.map((item, i) => (
-                    <span key={i} className="simulation-chip simulation-chip--covered">
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {gradeResult.missed.length > 0 && (
-              <div className="simulation-feedback-group">
-                <span className="simulation-feedback-heading simulation-feedback-heading--missed">
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                  Missed
-                </span>
-                <div className="simulation-chips">
-                  {gradeResult.missed.map((item, i) => (
-                    <span key={i} className="simulation-chip simulation-chip--missed">
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="simulation-result-prompt">
-          <div className="simulation-result-prompt-header">
+      <div className={`simulation-result-slider ${showSaveView ? "simulation-result-slider--save" : ""}`}>
+        {/* Score view */}
+        <div className="simulation-result-slide">
+          <button
+            type="button"
+            className="simulation-save-btn"
+            onClick={() => setShowSaveView(true)}
+            disabled={resultStale}
+          >
             <svg
-              width="12"
-              height="12"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
             >
-              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
             </svg>
-            Grading Rules
+            Save
+          </button>
+          <div className="simulation-result-grid">
+            <div className="simulation-result">
+              <div className="simulation-result-header">
+                <div
+                  className={`simulation-score-badge ${getScoreClass(gradeResult.score)}`}
+                >
+                  <span className="simulation-score-value">{gradeResult.score}%</span>
+                  <span className="simulation-score-label">
+                    {getScoreLabel(gradeResult.score)}
+                  </span>
+                </div>
+              </div>
+              <div className="simulation-result-feedback">
+                {gradeResult.covered.length > 0 && (
+                  <div className="simulation-feedback-group">
+                    <span className="simulation-feedback-heading simulation-feedback-heading--covered">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Covered
+                    </span>
+                    <div className="simulation-chips">
+                      {gradeResult.covered.map((item, i) => (
+                        <span key={i} className="simulation-chip simulation-chip--covered">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {gradeResult.missed.length > 0 && (
+                  <div className="simulation-feedback-group">
+                    <span className="simulation-feedback-heading simulation-feedback-heading--missed">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                      Missed
+                    </span>
+                    <div className="simulation-chips">
+                      {gradeResult.missed.map((item, i) => (
+                        <span key={i} className="simulation-chip simulation-chip--missed">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="simulation-result-prompt">
+              <div className="simulation-result-prompt-header">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                Grading Rules
+              </div>
+              <div className="simulation-result-prompt-content">
+                {gradingPrompt.trim() || "Using built-in default rules"}
+              </div>
+            </div>
           </div>
-          <div className="simulation-result-prompt-content">
-            {gradingPrompt.trim() || "Using built-in default rules"}
+        </div>
+        {/* Save view */}
+        <div className="simulation-result-slide simulation-result-slide--save">
+          <button
+            type="button"
+            className="simulation-back-btn"
+            onClick={() => setShowSaveView(false)}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
+          <div className="simulation-save-content">
+            <h3 className="simulation-save-title">Save Question</h3>
+            <p className="simulation-save-hint">Add to an existing bank to practice later</p>
+
+            {/* Category chips */}
+            <div className="simulation-save-section">
+              <span className="simulation-save-label">Category</span>
+              <div className="simulation-save-chips">
+                <button
+                  type="button"
+                  className={`simulation-save-chip ${selectedCategoryId === null ? "simulation-save-chip--selected" : ""}`}
+                  onClick={() => setSelectedCategoryId(null)}
+                >
+                  Uncategorized
+                </button>
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`simulation-save-chip ${selectedCategoryId === c.id ? "simulation-save-chip--selected" : ""}`}
+                    onClick={() => setSelectedCategoryId(c.id)}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Bank chips */}
+            <div className="simulation-save-section">
+              <span className="simulation-save-label">Bank</span>
+              {matchingBanks.length > 0 ? (
+                <div className="simulation-save-chips">
+                  {matchingBanks.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      className={`simulation-save-chip ${selectedBankId === b.id ? "simulation-save-chip--selected" : ""}`}
+                      onClick={() => setSelectedBankId(b.id)}
+                    >
+                      {b.subject}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="simulation-save-empty">
+                  No {bankType} banks in this category
+                </p>
+              )}
+            </div>
+
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              disabled={!canSave || isSaving}
+            >
+              {isSaving ? "Saving..." : "Save to Bank"}
+            </Button>
           </div>
         </div>
       </div>
@@ -428,75 +553,6 @@ export function SimulationView({ onBack }: Props) {
     </div>
   );
 
-  // Save section (only visible after successful grade)
-  const saveSection = gradeResult && (
-    <div className="simulation-save-section">
-      <div className="simulation-save-header">
-        <h3>Save this question</h3>
-        <span className="simulation-save-hint">
-          Add to an existing bank to practice later
-        </span>
-      </div>
-      <div className="simulation-save-controls">
-        <div className="simulation-save-dropdowns">
-          <Dropdown
-            options={categoryOptions}
-            value={selectedCategoryId === null ? "__uncategorized__" : selectedCategoryId}
-            onChange={(v) =>
-              setSelectedCategoryId(v === "__uncategorized__" ? null : v)
-            }
-            placeholder="Select category..."
-          />
-          <Dropdown
-            options={bankOptions}
-            value={selectedBankId}
-            onChange={setSelectedBankId}
-            placeholder={
-              bankOptions.length === 0
-                ? `No ${bankType} banks available`
-                : "Select bank..."
-            }
-          />
-        </div>
-        <Button
-          variant="primary"
-          onClick={handleSave}
-          disabled={!canSave || isSaving || savedSuccess}
-        >
-          {savedSuccess ? (
-            <>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Saved
-            </>
-          ) : isSaving ? (
-            "Saving..."
-          ) : (
-            "Save to Bank"
-          )}
-        </Button>
-      </div>
-      {bankOptions.length === 0 && (
-        <p className="simulation-save-empty">
-          No {bankType} banks found in this category. Create one in your Library
-          first.
-        </p>
-      )}
-      {resultStale && bankOptions.length > 0 && (
-        <p className="simulation-save-stale">
-          Run the simulation again to enable saving.
-        </p>
-      )}
-    </div>
-  );
 
   // ── Theory mode layout ─────────────────────────────────────────────────────
   if (bankType === "theory") {
@@ -628,7 +684,6 @@ export function SimulationView({ onBack }: Props) {
 
           {errorCard}
           {resultCard}
-          {saveSection}
         </div>
       </div>
     );
@@ -767,7 +822,6 @@ export function SimulationView({ onBack }: Props) {
       <div className="simulation-code-results">
         {errorCard}
         {resultCard}
-        {saveSection}
       </div>
     </div>
   );
