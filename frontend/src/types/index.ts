@@ -112,7 +112,7 @@ export type ExportData = {
 };
 
 export type ImportResult = {
-  folders_created?: number;
+  folders_created: number;
   categories_created: number;
   banks_created: number;
   questions_created: number;
