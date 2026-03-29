@@ -182,6 +182,10 @@ export function AIGenerateView({ onBack }: Props) {
     setContentItems((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function handleEditCard(id: string) {
+    setEditingId(editingId === id ? null : id);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape") {
       if (editingId) {
@@ -551,8 +555,7 @@ export function AIGenerateView({ onBack }: Props) {
                   bankType={bankType}
                   language={language}
                   isEditing={editingId === q.id}
-                  onEdit={() => setEditingId(q.id)}
-                  onDone={() => setEditingId(null)}
+                  onEdit={() => handleEditCard(q.id)}
                   onDelete={() => handleDeleteQuestion(q.id)}
                   onUpdate={(field, value) => handleUpdateQuestion(q.id, field, value)}
                 />
@@ -638,7 +641,6 @@ type QuestionCardProps = {
   language: string | null;
   isEditing: boolean;
   onEdit: () => void;
-  onDone: () => void;
   onDelete: () => void;
   onUpdate: (field: "subject" | "expected_answer" | "grading_prompt", value: string) => void;
 };
@@ -650,7 +652,6 @@ function QuestionCard({
   language,
   isEditing,
   onEdit,
-  onDone,
   onDelete,
   onUpdate,
 }: QuestionCardProps) {
@@ -775,7 +776,7 @@ function QuestionCard({
           <button
             type="button"
             className="aigen-action-btn aigen-action-btn--done"
-            onClick={onDone}
+            onClick={onEdit}
           >
             <svg
               width="14"
