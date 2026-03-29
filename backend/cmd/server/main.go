@@ -40,7 +40,7 @@ func main() {
 	defer db.Close()
 
 	llm := grader.NewOllamaGrader(cfg.LLMURL, cfg.LLMModel)
-	gradingSvc := service.NewGradingService(db, llm, logger)
+	gradingSvc := service.NewGradingService(db, llm, llm, logger) // llm implements both Grader and Generator
 	handler := api.NewHandler(db, gradingSvc, logger)
 
 	// ── Routes ──────────────────────────────────────────────────────

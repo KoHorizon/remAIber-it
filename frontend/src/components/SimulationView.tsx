@@ -123,16 +123,6 @@ export function SimulationView({ onBack }: Props) {
         : b.category_id === selectedCategoryId)
   );
 
-  const categoryOptions = [
-    { value: "__uncategorized__", label: "Uncategorized" },
-    ...categories.map((c) => ({ value: c.id, label: c.name })),
-  ];
-
-  const bankOptions = matchingBanks.map((b) => ({
-    value: b.id,
-    label: b.subject,
-  }));
-
   const canGrade =
     question.trim() && expectedAnswer.trim() && testAnswer.trim();
   const canSave = gradeResult && selectedBankId;

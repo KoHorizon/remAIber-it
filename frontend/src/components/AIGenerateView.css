@@ -1,0 +1,532 @@
+/* AIGenerateView.css */
+
+.aigen-view {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+}
+
+/* ── Header / Nav ─────────────────────────────────────────────────────────── */
+
+.aigen-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+}
+
+.aigen-nav-center {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.aigen-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.aigen-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.aigen-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ── Type switcher ────────────────────────────────────────────────────────── */
+
+.aigen-type-switcher {
+  display: flex;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.aigen-type-btn {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.aigen-type-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.aigen-type-btn.active {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Body layout ──────────────────────────────────────────────────────────── */
+
+.aigen-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  overflow: hidden;
+}
+
+.aigen-left {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  background: var(--bg-secondary);
+}
+
+.aigen-right {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Config panel ─────────────────────────────────────────────────────────── */
+
+.aigen-config-panel {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+}
+
+.aigen-config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.aigen-config-section--grow {
+  flex: 1;
+  min-height: 200px;
+}
+
+.aigen-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.aigen-count-input {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.aigen-range {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.aigen-count-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 2ch;
+  text-align: right;
+}
+
+.aigen-content-textarea {
+  flex: 1;
+  min-height: 150px;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  resize: none;
+}
+
+.aigen-content-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.aigen-content-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.aigen-char-count {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.aigen-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--error);
+  background: var(--error-bg);
+  border-radius: var(--radius-sm);
+}
+
+.aigen-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Questions panel ──────────────────────────────────────────────────────── */
+
+.aigen-questions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.aigen-questions-header h2 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.aigen-questions-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.aigen-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  padding: 2rem;
+}
+
+.aigen-empty svg {
+  opacity: 0.4;
+}
+
+.aigen-empty p {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.aigen-empty span {
+  font-size: 0.8125rem;
+}
+
+.aigen-questions-list {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ── Question card ────────────────────────────────────────────────────────── */
+
+.aigen-question-card {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.aigen-question-card:hover {
+  border-color: var(--border-hover);
+}
+
+.aigen-question-card--editing {
+  cursor: default;
+  border-color: var(--accent);
+}
+
+.aigen-question-number {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.aigen-question-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.aigen-question-subject {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.aigen-question-answer {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.aigen-question-answer code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--radius-xs);
+}
+
+.aigen-question-grading {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.aigen-question-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.aigen-question-card:hover .aigen-question-actions,
+.aigen-question-card--editing .aigen-question-actions {
+  opacity: 1;
+}
+
+.aigen-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.aigen-action-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.aigen-action-btn--done {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.aigen-action-btn--done:hover {
+  color: var(--bg-primary);
+  background: var(--success);
+}
+
+.aigen-action-btn--delete:hover {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+/* ── Editing state ────────────────────────────────────────────────────────── */
+
+.aigen-question-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.aigen-question-field label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.aigen-question-field textarea {
+  padding: 0.625rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.aigen-question-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.aigen-grading-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  width: fit-content;
+}
+
+.aigen-grading-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.aigen-chevron {
+  transition: transform var(--transition-fast);
+}
+
+.aigen-chevron--open {
+  transform: rotate(180deg);
+}
+
+.aigen-grading-textarea {
+  margin-top: 0.5rem;
+  padding: 0.625rem;
+  font-size: 0.8125rem;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+}
+
+.aigen-grading-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.aigen-grading-presets {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.aigen-presets-label {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  margin-right: 0.25rem;
+}
+
+.aigen-preset-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.aigen-preset-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.aigen-preset-btn--active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.aigen-preset-btn--clear {
+  color: var(--text-muted);
+}
+
+.aigen-preset-btn--clear:hover {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+/* ── Add question button ──────────────────────────────────────────────────── */
+
+.aigen-add-question {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.aigen-add-question:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background: var(--bg-hover);
+}

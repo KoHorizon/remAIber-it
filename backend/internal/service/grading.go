@@ -11,6 +11,11 @@ import (
 	"github.com/remaimber-it/backend/internal/store"
 )
 
+// Generator is implemented by types that can generate questions from content.
+type Generator interface {
+	GenerateQuestions(ctx context.Context, req grader.GenerateRequest) ([]grader.GeneratedQuestion, error)
+}
+
 // GradeRequest contains everything needed to grade a single answer.
 type GradeRequest struct {
 	SessionID      string
@@ -27,9 +32,10 @@ type GradeRequest struct {
 // persistence layer. A separate inflight WaitGroup tracks every
 // goroutine regardless of session, enabling graceful shutdown.
 type GradingService struct {
-	store  store.Store
-	grader grader.Grader
-	logger *slog.Logger
+	store     store.Store
+	grader    grader.Grader
+	generator Generator
+	logger    *slog.Logger
 
 	mu       sync.RWMutex
 	pending  map[string]*sync.WaitGroup // sessionID → WaitGroup
@@ -37,12 +43,14 @@ type GradingService struct {
 }
 
 // NewGradingService creates a GradingService.
-func NewGradingService(s store.Store, g grader.Grader, logger *slog.Logger) *GradingService {
+// The generator parameter can be nil if question generation is not needed.
+func NewGradingService(s store.Store, g grader.Grader, gen Generator, logger *slog.Logger) *GradingService {
 	return &GradingService{
-		store:   s,
-		grader:  g,
-		logger:  logger,
-		pending: make(map[string]*sync.WaitGroup),
+		store:     s,
+		grader:    g,
+		generator: gen,
+		logger:    logger,
+		pending:   make(map[string]*sync.WaitGroup),
 	}
 }
 
@@ -103,6 +111,15 @@ func (gs *GradingService) Shutdown() {
 	gs.logger.Info("waiting for in-flight grading to complete")
 	gs.inflight.Wait()
 	gs.logger.Info("all grading goroutines finished")
+}
+
+// GenerateQuestions generates flashcard questions from study content.
+// This is a synchronous call to the LLM for question generation.
+func (gs *GradingService) GenerateQuestions(ctx context.Context, req grader.GenerateRequest) ([]grader.GeneratedQuestion, error) {
+	if gs.generator == nil {
+		return nil, fmt.Errorf("question generation not available")
+	}
+	return gs.generator.GenerateQuestions(ctx, req)
 }
 
 // GradeOnce performs a synchronous, one-shot grading without persisting results.

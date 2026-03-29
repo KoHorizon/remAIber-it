@@ -406,3 +406,100 @@ func stripNumberedPrefix(s string) string {
 	}
 	return s
 }
+
+// -----------------------------------------------------------------------------
+// Question Generation
+// -----------------------------------------------------------------------------
+
+// GenerateRequest contains the parameters for question generation.
+type GenerateRequest struct {
+	Content  string
+	BankType string  // "theory" | "code" | "cli"
+	Language *string // only when BankType == "code"
+	Count    int     // 1-20
+}
+
+// GeneratedQuestion represents a single generated question.
+type GeneratedQuestion struct {
+	Subject        string  `json:"subject"`
+	ExpectedAnswer string  `json:"expected_answer"`
+	GradingPrompt  *string `json:"grading_prompt,omitempty"`
+}
+
+// GenerateQuestions generates flashcard questions from study content.
+func (g *OllamaGrader) GenerateQuestions(ctx context.Context, req GenerateRequest) ([]GeneratedQuestion, error) {
+	prompt := buildGenerationPrompt(req)
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		result, err := g.callLLM(ctx, prompt)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		jsonStr := extractJSON(result)
+		if jsonStr == "" {
+			lastErr = &GradeError{Reason: "no JSON object found in LLM response"}
+			continue
+		}
+
+		var response struct {
+			Questions []GeneratedQuestion `json:"questions"`
+		}
+		if err := json.Unmarshal([]byte(jsonStr), &response); err != nil {
+			lastErr = &GradeError{Reason: "invalid JSON from LLM", Wrapped: err}
+			continue
+		}
+
+		if len(response.Questions) == 0 {
+			lastErr = &GradeError{Reason: "LLM returned no questions"}
+			continue
+		}
+
+		return response.Questions, nil
+	}
+
+	return nil, &GradeError{
+		Reason:  fmt.Sprintf("failed after %d attempts", maxRetries),
+		Wrapped: lastErr,
+	}
+}
+
+func buildGenerationPrompt(req GenerateRequest) string {
+	bankTypeDesc := "THEORY (key concepts as bullet points)"
+	answerFormat := "expected_answer is bullet-point key concepts (one per line, prefix with \"- \")"
+
+	switch req.BankType {
+	case "code":
+		lang := "the appropriate language"
+		if req.Language != nil && *req.Language != "" {
+			lang = *req.Language
+		}
+		bankTypeDesc = fmt.Sprintf("CODE (language: %s)", lang)
+		answerFormat = fmt.Sprintf("expected_answer is a complete, runnable code snippet in %s", lang)
+	case "cli":
+		bankTypeDesc = "CLI (terminal commands)"
+		answerFormat = "expected_answer is the exact terminal command"
+	}
+
+	return fmt.Sprintf(`/no_think
+You are creating flashcard questions for a student studying the material below.
+
+BANK TYPE: %s
+
+RULES:
+- Generate exactly %d question/answer pairs.
+- Each question must be directly answerable from the material.
+- For this bank type: %s
+- grading_prompt: provide a short custom rule ONLY if the default grading rules would be misleading; otherwise set it to null.
+- Questions should test understanding, not just recall.
+- Vary question difficulty and style.
+
+MATERIAL:
+%s
+
+Return ONLY valid JSON, no markdown fences:
+{"questions": [{"subject": "question text here", "expected_answer": "answer here", "grading_prompt": null}, ...]}`,
+		bankTypeDesc, req.Count, answerFormat, req.Content)
+}

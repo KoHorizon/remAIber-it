@@ -359,6 +359,37 @@ export async function simulateGrade(
   return res.json();
 }
 
+// Generate Questions
+
+export type GenerateQuestionsRequest = {
+  content: string;
+  bank_type: BankType;
+  language?: string | null;
+  count: number;
+};
+
+export type GeneratedQuestion = {
+  subject: string;
+  expected_answer: string;
+  grading_prompt?: string | null;
+};
+
+export type GenerateQuestionsResponse = {
+  questions: GeneratedQuestion[];
+};
+
+export async function generateQuestions(
+  req: GenerateQuestionsRequest
+): Promise<GenerateQuestionsResponse> {
+  const res = await fetch(`${API_BASE}/generate/questions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error("Failed to generate questions");
+  return res.json();
+}
+
 // Convenience object for backward compatibility
 export const api = {
   getFolders,
@@ -387,4 +418,5 @@ export const api = {
   exportAll,
   importAll,
   simulateGrade,
+  generateQuestions,
 };
