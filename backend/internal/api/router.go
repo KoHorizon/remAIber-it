@@ -52,6 +52,9 @@ func RegisterRoutes(mux *http.ServeMux, h *Handler) {
 
 	// Simulate
 	mux.HandleFunc("POST /simulate/grade", h.simulateGrade)
+
+	// Generate
+	mux.HandleFunc("POST /generate/questions", h.generateQuestions)
 }
 
 // ── Shared response types ───────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import { AddQuestionView } from "./components/AddQuestionView";
 import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
 import { SimulationView } from "./components/SimulationView";
+import { AIGenerateView } from "./components/AIGenerateView";
 import { useLibraryActions } from "./context";
 import { api } from "./api";
 import type { BankType, Session, SessionQuestion, SessionResult } from "./types";
@@ -46,6 +47,10 @@ type View =
     }
   | {
       type: "simulate";
+      returnTo: MainView;
+    }
+  | {
+      type: "generateQuestions";
       returnTo: MainView;
     };
 
@@ -112,6 +117,8 @@ function App() {
       }),
     toSimulate: (returnTo: MainView = currentMainView) =>
       setView({ type: "simulate", returnTo }),
+    toGenerateQuestions: (returnTo: MainView = currentMainView) =>
+      setView({ type: "generateQuestions", returnTo }),
   };
 
   async function handleRetry(
@@ -171,8 +178,8 @@ function App() {
     }
   }
 
-  // Check if we're in a full-screen view (practice/results/addQuestion/simulate)
-  const isFullScreen = view.type === "practice" || view.type === "results" || view.type === "addQuestion" || view.type === "simulate";
+  // Check if we're in a full-screen view (practice/results/addQuestion/simulate/generateQuestions)
+  const isFullScreen = view.type === "practice" || view.type === "results" || view.type === "addQuestion" || view.type === "simulate" || view.type === "generateQuestions";
 
   return (
     <div className={`app ${isFullScreen ? "app-fullscreen" : "app-with-sidebar"}`}>
@@ -182,6 +189,7 @@ function App() {
           currentView={currentMainView}
           onNavigate={(mainView) => navigate.toMain(mainView)}
           onSimulate={() => navigate.toSimulate()}
+          onGenerateQuestions={() => navigate.toGenerateQuestions()}
         />
       )}
 
@@ -284,6 +292,11 @@ function App() {
         {/* Simulation */}
         {view.type === "simulate" && (
           <SimulationView onBack={() => navigate.toMain(view.returnTo)} />
+        )}
+
+        {/* AI Generate Questions */}
+        {view.type === "generateQuestions" && (
+          <AIGenerateView onBack={() => navigate.toMain(view.returnTo)} />
         )}
       </main>
     </div>
