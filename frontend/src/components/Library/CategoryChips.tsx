@@ -150,7 +150,7 @@ export function CategoryChips({
                 onFilterChange(filterCategory === category.id ? null : category.id)
               }
               badges={categoryBanks.length > 0 ? [
-                { content: `${category.mastery}%`, className: masteryLevel },
+                ...(category.mastery > 0 ? [{ content: `${category.mastery}%`, className: masteryLevel }] : []),
                 { content: categoryBanks.length },
               ] : []}
               actions={actions}

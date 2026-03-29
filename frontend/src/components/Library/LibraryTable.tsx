@@ -135,17 +135,19 @@ export function LibraryTable({
                 </span>
               </td>
               <td className="col-mastery">
-                <div className="mastery-cell">
-                  <div className="mastery-bar">
-                    <div
-                      className={`mastery-fill ${getMasteryLevel(bank.mastery)}`}
-                      style={{ width: `${bank.mastery}%` }}
-                    />
+                {(bank.question_count ?? 0) > 0 ? (
+                  <div className="mastery-cell">
+                    <div className="mastery-bar">
+                      <div
+                        className={`mastery-fill ${getMasteryLevel(bank.mastery)}`}
+                        style={{ width: `${bank.mastery}%` }}
+                      />
+                    </div>
+                    <span className={`mastery-value ${getMasteryLevel(bank.mastery)}`}>
+                      {bank.mastery}%
+                    </span>
                   </div>
-                  <span className={`mastery-value ${getMasteryLevel(bank.mastery)}`}>
-                    {bank.mastery}%
-                  </span>
-                </div>
+                ) : null}
               </td>
               <td className="col-questions">{bank.question_count ?? 0}</td>
               <td className="col-actions">
