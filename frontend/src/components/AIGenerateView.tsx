@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import type { BankType, ExportData } from "../types";
+import type { Bank, BankType, ExportData } from "../types";
 import { api, type GeneratedQuestion } from "../api";
 import { Button, Dropdown, Input, Modal } from "./ui";
 import { CodeEditor } from "./CodeEditor";
@@ -21,6 +21,7 @@ export function AIGenerateView({ onBack }: Props) {
   // Configuration
   const [bankType, setBankType] = useState<BankType>("theory");
   const [language, setLanguage] = useState<string | null>("javascript");
+  const [bankMode, setBankMode] = useState<"existing" | "new">("new");
   const [bankSubject, setBankSubject] = useState("");
   const [categoryName, setCategoryName] = useState("");
   const [contentItems, setContentItems] = useState<string[]>([]);
@@ -44,10 +45,33 @@ export function AIGenerateView({ onBack }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showClearModal, setShowClearModal] = useState(false);
 
+  // Existing banks state
+  const [existingBanks, setExistingBanks] = useState<Bank[]>([]);
+  const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
+  const [isSavingToBank, setIsSavingToBank] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Load existing banks on mount
+  useEffect(() => {
+    api.getBanks().then(setExistingBanks).catch(() => setExistingBanks([]));
+  }, []);
+
+  // Filter banks by current bank type
+  const compatibleBanks = existingBanks.filter((b) => b.bank_type === bankType);
+
+  // Clear selected bank when type changes
+  useEffect(() => {
+    setSelectedBankId(null);
+  }, [bankType]);
+
   // Combine all content items for generation
   const combinedContent = contentItems.join("\n\n---\n\n");
-  const canGenerate = contentItems.length > 0 && bankSubject.trim().length > 0;
-  const canExport = questions.length > 0;
+  const hasBankTarget = bankMode === "existing"
+    ? selectedBankId !== null
+    : bankSubject.trim().length > 0;
+  const canGenerate = contentItems.length > 0 && hasBankTarget;
+  const canExport = questions.length > 0 && bankMode === "new";
+  const canSaveToBank = questions.length > 0 && bankMode === "existing" && selectedBankId !== null;
 
   async function handleGenerate() {
     if (!canGenerate || isGenerating) return;
@@ -122,6 +146,36 @@ export function AIGenerateView({ onBack }: Props) {
     a.download = `${bankSubject.trim().replace(/\s+/g, "-").toLowerCase()}-questions.json`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function handleSaveToBank() {
+    if (!canSaveToBank || isSavingToBank || !selectedBankId) return;
+
+    setIsSavingToBank(true);
+    setSaveError(null);
+
+    try {
+      for (const q of questions) {
+        await api.addQuestion(
+          selectedBankId,
+          q.subject,
+          q.expected_answer,
+          q.grading_prompt
+        );
+      }
+      // Clear questions after successful save
+      setQuestions([]);
+      setEditingId(null);
+      setSelectMode(false);
+      setSelectedIds(new Set());
+      setSelectedBankId(null);
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save questions to bank"
+      );
+    } finally {
+      setIsSavingToBank(false);
+    }
   }
 
   function handleDeleteQuestion(id: string) {
@@ -296,26 +350,37 @@ export function AIGenerateView({ onBack }: Props) {
           <span className="aigen-hint">
             {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to generate
           </span>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleExport}
-            disabled={!canExport}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+          {bankMode === "existing" ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSaveToBank}
+              disabled={!canSaveToBank || isSavingToBank}
             >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Export JSON
-          </Button>
+              {isSavingToBank ? "Saving..." : "Save to Bank"}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleExport}
+              disabled={!canExport}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export JSON
+            </Button>
+          )}
         </div>
       </div>
 
@@ -324,28 +389,77 @@ export function AIGenerateView({ onBack }: Props) {
         {/* Left column - Configuration */}
         <div className="aigen-left">
           <div className="aigen-config-panel">
-            <div className="aigen-config-section">
-              <Input
-                label="Bank Subject"
-                value={bankSubject}
-                onChange={(e) => setBankSubject(e.target.value)}
-                placeholder="e.g., Go Concurrency Patterns"
-              />
-            </div>
-
-            <div className="aigen-config-section">
-              <Input
-                label="Category Name (optional)"
-                value={categoryName}
-                onChange={(e) => setCategoryName(e.target.value)}
-                placeholder="e.g., Programming"
-              />
-            </div>
-
+            {/* Bank Type */}
             <div className="aigen-config-section">
               <label className="aigen-label">Bank Type</label>
               {typeSwitcher}
             </div>
+
+            {/* Bank Selection */}
+            <div className="aigen-config-section">
+              <label className="aigen-label">Destination Bank</label>
+              <div className={`aigen-bank-wrapper ${hasQuestions ? "aigen-bank-list--disabled" : ""}`}>
+                {compatibleBanks.length > 0 && (
+                  <div className="aigen-bank-list">
+                    {compatibleBanks.map((bank) => (
+                      <button
+                        key={bank.id}
+                        type="button"
+                        className={`aigen-bank-option ${selectedBankId === bank.id && bankMode === "existing" ? "aigen-bank-option--selected" : ""}`}
+                        onClick={() => {
+                          if (hasQuestions) return;
+                          setBankMode("existing");
+                          setSelectedBankId(bank.id);
+                        }}
+                        disabled={hasQuestions}
+                      >
+                        <span className="aigen-bank-option-name">{bank.subject}</span>
+                        <span className="aigen-bank-option-count">{bank.question_count || 0} questions</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className={`aigen-bank-option aigen-bank-option--new ${bankMode === "new" ? "aigen-bank-option--selected" : ""}`}
+                  onClick={() => {
+                    if (hasQuestions) return;
+                    setBankMode("new");
+                    setSelectedBankId(null);
+                  }}
+                  disabled={hasQuestions}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Create new bank</span>
+                </button>
+              </div>
+            </div>
+
+            {/* New bank fields - only show when creating new */}
+            {bankMode === "new" && (
+              <>
+                <div className="aigen-config-section">
+                  <Input
+                    label="Bank Subject"
+                    value={bankSubject}
+                    onChange={(e) => setBankSubject(e.target.value)}
+                    placeholder="e.g., Go Concurrency Patterns"
+                  />
+                </div>
+
+                <div className="aigen-config-section">
+                  <Input
+                    label="Category Name (optional)"
+                    value={categoryName}
+                    onChange={(e) => setCategoryName(e.target.value)}
+                    placeholder="e.g., Programming"
+                  />
+                </div>
+              </>
+            )}
 
             {bankType === "code" && (
               <div className="aigen-config-section">
@@ -378,31 +492,34 @@ export function AIGenerateView({ onBack }: Props) {
             </div>
 
             <div className="aigen-config-section">
+              <label className="aigen-label">AI Direction (optional)</label>
               <button
                 type="button"
                 className={`aigen-direction-toggle ${showDirection ? "aigen-direction-toggle--open" : ""}`}
                 onClick={() => setShowDirection(!showDirection)}
               >
+                <div className="aigen-direction-toggle-left">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                  <span>{direction ? "Custom direction set" : "Add custom instructions..."}</span>
+                  {direction && <span className="aigen-direction-indicator" />}
+                </div>
                 <svg
+                  className={`aigen-direction-chevron ${showDirection ? "aigen-direction-chevron--open" : ""}`}
                   width="12"
                   height="12"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                >
-                  <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                </svg>
-                AI Direction
-                {direction && <span className="aigen-direction-indicator" />}
-                <svg
-                  className={`aigen-direction-chevron ${showDirection ? "aigen-direction-chevron--open" : ""}`}
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
                 >
                   <polyline points="6 9 12 15 18 9" />
                 </svg>
@@ -527,7 +644,7 @@ export function AIGenerateView({ onBack }: Props) {
               {isGenerating ? "Generating..." : "Generate Questions"}
             </Button>
 
-            {generateError && (
+            {(generateError || saveError) && (
               <div className="aigen-error">
                 <svg
                   width="14"
@@ -541,7 +658,7 @@ export function AIGenerateView({ onBack }: Props) {
                   <line x1="12" y1="8" x2="12" y2="12" />
                   <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
-                {generateError}
+                {generateError || saveError}
               </div>
             )}
           </div>

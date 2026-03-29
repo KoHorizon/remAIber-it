@@ -43,10 +43,122 @@
   color: var(--text-muted);
 }
 
+/* ── Bank selection list ──────────────────────────────────────────────────── */
+
+.aigen-bank-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.aigen-bank-wrapper--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.aigen-bank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+/* Custom scrollbar */
+.aigen-bank-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.aigen-bank-list::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+  border-radius: 3px;
+}
+
+.aigen-bank-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.aigen-bank-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.aigen-bank-list--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.aigen-bank-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+  text-align: left;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.aigen-bank-option:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
+}
+
+.aigen-bank-option--selected {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.aigen-bank-option--selected:hover {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.aigen-bank-option-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aigen-bank-option-count {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.aigen-bank-option--new {
+  justify-content: center;
+  gap: 0.375rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border-style: dashed;
+}
+
+.aigen-bank-option--new:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.aigen-bank-option--new.aigen-bank-option--selected {
+  color: var(--accent);
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--accent-subtle);
+}
+
 /* ── Type switcher ────────────────────────────────────────────────────────── */
 
 .aigen-type-switcher {
   display: flex;
+  width: 100%;
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -55,6 +167,7 @@
 }
 
 .aigen-type-btn {
+  flex: 1;
   padding: 0.375rem 0.875rem;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -160,9 +273,9 @@
 .aigen-content-cards {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
   gap: 0.5rem;
-  min-height: 80px;
+  min-height: 60px;
   align-content: start;
 }
 
@@ -300,11 +413,13 @@
 /* ── AI Direction ──────────────────────────────────────────────────────────── */
 
 .aigen-direction-toggle {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-secondary);
   background: var(--bg-primary);
@@ -312,7 +427,6 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
-  width: fit-content;
 }
 
 .aigen-direction-toggle:hover {
@@ -322,6 +436,13 @@
 
 .aigen-direction-toggle--open {
   background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.aigen-direction-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .aigen-direction-indicator {
@@ -333,7 +454,6 @@
 
 .aigen-direction-chevron {
   transition: transform var(--transition-fast);
-  margin-left: auto;
 }
 
 .aigen-direction-chevron--open {
