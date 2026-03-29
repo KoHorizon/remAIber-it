@@ -164,30 +164,32 @@ export function SimulationView({ onBack }: Props) {
     if (!canSave || isSaving || !selectedBankId) return;
     setIsSaving(true);
     try {
+      // Wait for backend to complete
       await api.addQuestion(
         selectedBankId,
         question.trim(),
         expectedAnswer.trim(),
         gradingPrompt.trim() || null
       );
-      // Trigger closing animation
+      setIsSaving(false);
+
+      // Start close animation (slide down)
       setIsClosingResult(true);
       setTimeout(() => {
         // Reset everything after animation completes
-        setQuestion("");
-        setExpectedAnswer("");
-        setTestAnswer("");
         setGradeResult(null);
         setGradeError(null);
         setResultStale(false);
+        setIsClosingResult(false);
         setShowSaveView(false);
+        setQuestion("");
+        setExpectedAnswer("");
+        setTestAnswer("");
         setShowGrading(false);
         setGradingPrompt(getDefaultRules(bankType));
-        setIsClosingResult(false);
       }, 300);
     } catch (err) {
       console.error("Failed to save question:", err);
-    } finally {
       setIsSaving(false);
     }
   }
