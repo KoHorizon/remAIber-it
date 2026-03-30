@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -63,6 +64,15 @@ func NewOllamaGrader(url, model string) *OllamaGrader {
 
 const maxRetries = 2
 
+// retryBackoff returns the delay before the next retry attempt.
+// Uses exponential backoff with jitter: base * 2^attempt + random jitter.
+func retryBackoff(attempt int) time.Duration {
+	base := 500 * time.Millisecond
+	delay := base * time.Duration(1<<attempt) // 500ms, 1s, 2s, ...
+	jitter := time.Duration(rand.Int63n(int64(250 * time.Millisecond)))
+	return delay + jitter
+}
+
 func (g *OllamaGrader) GradeAnswer(ctx context.Context, question, expectedAnswer, userAnswer string, customPrompt *string, bankType string) (string, error) {
 	customRules := ""
 	hasCustomRules := customPrompt != nil && *customPrompt != ""
@@ -83,6 +93,14 @@ func (g *OllamaGrader) GradeAnswer(ctx context.Context, question, expectedAnswer
 	var lastErr error
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return "", ctx.Err()
+			case <-time.After(retryBackoff(attempt - 1)):
+			}
+		}
+
 		result, err := g.callLLM(ctx, prompt)
 		if err != nil {
 			lastErr = err
@@ -433,6 +451,14 @@ func (g *OllamaGrader) GenerateQuestions(ctx context.Context, req GenerateReques
 
 	var lastErr error
 	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(retryBackoff(attempt - 1)):
+			}
+		}
+
 		result, err := g.callLLM(ctx, prompt)
 		if err != nil {
 			lastErr = err

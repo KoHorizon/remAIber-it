@@ -44,7 +44,7 @@ func newTestServer(t *testing.T) *testServer {
 	t.Cleanup(func() { s.Close() })
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	gs := service.NewGradingService(s, stubGrader{}, logger)
+	gs := service.NewGradingService(s, stubGrader{}, nil, logger)
 	h := api.NewHandler(s, gs, logger)
 
 	mux := http.NewServeMux()
@@ -690,6 +690,98 @@ func TestGetFolderStats(t *testing.T) {
 	stats := decode[map[string]any](t, rr)
 	if stats["folder_id"] != folderID {
 		t.Errorf("expected folder_id %q, got %v", folderID, stats["folder_id"])
+	}
+}
+
+// ── Simulate grading ──────────────────────────────────────────────────────────
+
+func TestSimulateGrade(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]string{
+		"question":        "What is a goroutine?",
+		"expected_answer": "A lightweight thread managed by the Go runtime",
+		"user_answer":     "A goroutine is a concurrent unit of execution",
+		"bank_type":       "theory",
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body)
+	}
+
+	resp := decode[map[string]any](t, rr)
+	if _, ok := resp["score"]; !ok {
+		t.Error("expected score in response")
+	}
+	// Verify arrays are non-null (even if empty)
+	if resp["covered"] == nil {
+		t.Error("expected covered to be array, got nil")
+	}
+	if resp["missed"] == nil {
+		t.Error("expected missed to be array, got nil")
+	}
+}
+
+func TestSimulateGrade_MissingQuestion(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]string{
+		"expected_answer": "answer",
+		"user_answer":     "test",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rr.Code)
+	}
+}
+
+func TestSimulateGrade_MissingExpectedAnswer(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]string{
+		"question":    "What is Go?",
+		"user_answer": "test",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rr.Code)
+	}
+}
+
+func TestSimulateGrade_MissingUserAnswer(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]string{
+		"question":        "What is Go?",
+		"expected_answer": "A programming language",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rr.Code)
+	}
+}
+
+func TestSimulateGrade_InvalidBankType(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/simulate/grade", map[string]string{
+		"question":        "What is Go?",
+		"expected_answer": "A programming language",
+		"user_answer":     "Go is a language",
+		"bank_type":       "invalid_type",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid bank_type, got %d", rr.Code)
+	}
+}
+
+func TestSimulateGrade_DefaultBankType(t *testing.T) {
+	ts := newTestServer(t)
+
+	// Empty bank_type should default to "theory"
+	rr := ts.do("POST", "/simulate/grade", map[string]string{
+		"question":        "What is Go?",
+		"expected_answer": "A programming language",
+		"user_answer":     "Go is a language",
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body)
 	}
 }
 

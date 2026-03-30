@@ -27,7 +27,13 @@ func (r *SimulateGradeRequest) Validate() error {
 	if r.UserAnswer == "" {
 		return errors.New("user_answer is required")
 	}
-	// bank_type defaults to "theory" if empty
+	// Validate bank_type (empty defaults to "theory" in handler)
+	switch r.BankType {
+	case "", "theory", "code", "cli":
+		// valid
+	default:
+		return errors.New("bank_type must be theory, code, or cli")
+	}
 	return nil
 }
 
@@ -78,6 +84,14 @@ func (h *Handler) simulateGrade(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "grading failed: "+err.Error())
 		return
+	}
+
+	// Normalize nil slices to empty arrays for consistent JSON
+	if covered == nil {
+		covered = []string{}
+	}
+	if missed == nil {
+		missed = []string{}
 	}
 
 	respondJSON(w, http.StatusOK, SimulateGradeResponse{

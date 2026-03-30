@@ -4,6 +4,7 @@ import { CodeEditor } from "./CodeEditor";
 import { TerminalEditor } from "./TerminalEditor";
 import { Button, TooltipContent, TooltipHint } from "./ui";
 import { getDefaultRules, getAvailableTemplates, DEFAULT_GRADING_RULES, EXTRA_TEMPLATES } from "../utils/gradingTemplates";
+import "../styles/grading.css";
 import "./AddQuestionView.css";
 
 type Props = {

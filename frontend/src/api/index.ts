@@ -355,7 +355,10 @@ export async function simulateGrade(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
   });
-  if (!res.ok) throw new Error("Failed to simulate grading");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? "Failed to simulate grading");
+  }
   return res.json();
 }
 
@@ -416,6 +419,7 @@ export const api = {
   createQuickSession,
   submitAnswer,
   completeSession,
+  getOverallStats,
   exportAll,
   importAll,
   simulateGrade,

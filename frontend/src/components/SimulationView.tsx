@@ -12,6 +12,7 @@ import {
   EXTRA_TEMPLATES,
 } from "../utils/gradingTemplates";
 import { PROGRAMMING_LANGUAGES } from "../utils/languages";
+import "../styles/grading.css";
 import "./SimulationView.css";
 
 type Props = {
@@ -75,6 +76,7 @@ export function SimulationView({ onBack }: Props) {
   );
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showSaveView, setShowSaveView] = useState(false);
   const [isClosingResult, setIsClosingResult] = useState(false);
 
@@ -82,6 +84,16 @@ export function SimulationView({ onBack }: Props) {
   const answerRef = useRef<HTMLTextAreaElement>(null);
   const testRef = useRef<HTMLTextAreaElement>(null);
   const gradingRef = useRef<HTMLTextAreaElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
 
   // Reset grading prompt and clear results when bank type changes
   useEffect(() => {
@@ -101,12 +113,19 @@ export function SimulationView({ onBack }: Props) {
     }
   }, [showGrading]);
 
-  // Close results when inputs change
+  // Close results when inputs change (not on initial mount)
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     if (gradeResult) {
       setGradeResult(null);
       setShowSaveView(false);
+      setSaveError(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question, expectedAnswer, testAnswer, gradingPrompt]);
 
   // Reset bank selection when category or bank type changes
@@ -151,6 +170,7 @@ export function SimulationView({ onBack }: Props) {
   async function handleSave() {
     if (!canSave || isSaving || !selectedBankId) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       // Wait for backend to complete
       await api.addQuestion(
@@ -163,10 +183,11 @@ export function SimulationView({ onBack }: Props) {
 
       // Start close animation (slide down)
       setIsClosingResult(true);
-      setTimeout(() => {
+      closeTimerRef.current = setTimeout(() => {
         // Reset everything after animation completes
         setGradeResult(null);
         setGradeError(null);
+        setSaveError(null);
         setIsClosingResult(false);
         setShowSaveView(false);
         setQuestion("");
@@ -176,7 +197,7 @@ export function SimulationView({ onBack }: Props) {
         setGradingPrompt(getDefaultRules(bankType));
       }, 300);
     } catch (err) {
-      console.error("Failed to save question:", err);
+      setSaveError(err instanceof Error ? err.message : "Failed to save question");
       setIsSaving(false);
     }
   }
@@ -188,6 +209,30 @@ export function SimulationView({ onBack }: Props) {
     }
     if (e.key === "Escape") onBack();
   }
+
+  function handleTheoryKeyDown(e: React.KeyboardEvent) {
+    handleKeyDown(e);
+    if ((e.metaKey || e.ctrlKey) && e.key === "ArrowDown") {
+      e.preventDefault();
+      if (document.activeElement === questionRef.current) {
+        answerRef.current?.focus();
+      } else if (document.activeElement === answerRef.current) {
+        testRef.current?.focus();
+      }
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === "ArrowUp") {
+      e.preventDefault();
+      if (document.activeElement === testRef.current) {
+        answerRef.current?.focus();
+      } else if (document.activeElement === answerRef.current) {
+        questionRef.current?.focus();
+      }
+    }
+  }
+
+  // Platform detection for keyboard shortcuts
+  const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
+  const modKey = isMac ? "⌘" : "Ctrl";
 
   const extraTemplates = getAvailableTemplates(bankType);
   const defaultRules = getDefaultRules(bankType);
@@ -322,6 +367,40 @@ export function SimulationView({ onBack }: Props) {
       >
         CLI
       </button>
+    </div>
+  );
+
+  // Navigation bar (shared between theory and code/CLI modes)
+  const navBar = (
+    <div className="simulation-nav">
+      <Button variant="ghost" size="sm" onClick={onBack}>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+        Back
+      </Button>
+      <div className="simulation-nav-center" />
+      <div className="simulation-nav-right">
+        {gradingPill}
+        <span className="simulation-hint">
+          {modKey}+Enter to grade
+        </span>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleGrade}
+          disabled={!canGrade || isGrading}
+        >
+          {isGrading ? "Grading..." : "Run Simulation"}
+        </Button>
+      </div>
     </div>
   );
 
@@ -504,6 +583,24 @@ export function SimulationView({ onBack }: Props) {
               )}
             </div>
 
+            {saveError && (
+              <div className="simulation-error" style={{ marginBottom: '0.75rem' }}>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                {saveError}
+              </div>
+            )}
+
             <Button
               variant="primary"
               onClick={handleSave}
@@ -539,63 +636,12 @@ export function SimulationView({ onBack }: Props) {
 
   // ── Theory mode layout ─────────────────────────────────────────────────────
   if (bankType === "theory") {
-    function handleTheoryKeyDown(e: React.KeyboardEvent) {
-      handleKeyDown(e);
-      if ((e.metaKey || e.ctrlKey) && e.key === "ArrowDown") {
-        e.preventDefault();
-        if (document.activeElement === questionRef.current) {
-          answerRef.current?.focus();
-        } else if (document.activeElement === answerRef.current) {
-          testRef.current?.focus();
-        }
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === "ArrowUp") {
-        e.preventDefault();
-        if (document.activeElement === testRef.current) {
-          answerRef.current?.focus();
-        } else if (document.activeElement === answerRef.current) {
-          questionRef.current?.focus();
-        }
-      }
-    }
-
     return (
       <div
         className="simulation-view simulation-view--theory animate-fade-in"
         onKeyDown={handleTheoryKeyDown}
       >
-        {/* Header */}
-        <div className="simulation-nav">
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            Back
-          </Button>
-          <div className="simulation-nav-center" />
-          <div className="simulation-nav-right">
-            {gradingPill}
-            <span className="simulation-hint">
-              {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to grade
-            </span>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleGrade}
-              disabled={!canGrade || isGrading}
-            >
-              {isGrading ? "Grading..." : "Run Simulation"}
-            </Button>
-          </div>
-        </div>
-
+        {navBar}
         {gradingPanel}
 
         {/* Body */}
@@ -675,38 +721,7 @@ export function SimulationView({ onBack }: Props) {
   // ── Code / CLI mode layout ─────────────────────────────────────────────────
   return (
     <div className="simulation-view simulation-view--code animate-fade-in" onKeyDown={handleKeyDown}>
-      {/* Header */}
-      <div className="simulation-nav">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          Back
-        </Button>
-        <div className="simulation-nav-center" />
-        <div className="simulation-nav-right">
-          {gradingPill}
-          <span className="simulation-hint">
-            {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to grade
-          </span>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleGrade}
-            disabled={!canGrade || isGrading}
-          >
-            {isGrading ? "Grading..." : "Run Simulation"}
-          </Button>
-        </div>
-      </div>
-
+      {navBar}
       {gradingPanel}
 
       {/* Split layout */}
