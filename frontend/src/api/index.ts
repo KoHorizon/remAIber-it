@@ -215,6 +215,29 @@ export async function addQuestion(
   return res.json();
 }
 
+export async function updateQuestion(
+  bankId: string,
+  questionId: string,
+  subject: string,
+  expectedAnswer: string,
+  gradingPrompt?: string | null
+): Promise<Question> {
+  const body: { subject: string; expected_answer: string; grading_prompt?: string } = {
+    subject,
+    expected_answer: expectedAnswer,
+  };
+  if (gradingPrompt) {
+    body.grading_prompt = gradingPrompt;
+  }
+  const res = await fetch(`${API_BASE}/banks/${bankId}/questions/${questionId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("Failed to update question");
+  return res.json();
+}
+
 export async function deleteQuestion(
   bankId: string,
   questionId: string
@@ -411,6 +434,7 @@ export const api = {
   updateBankCategory,
   deleteBank,
   addQuestion,
+  updateQuestion,
   deleteQuestion,
   createSession,
   createQuickSession,

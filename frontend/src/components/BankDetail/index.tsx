@@ -18,6 +18,16 @@ type Props = {
     bankType: BankType,
     bankLanguage?: string | null
   ) => void;
+  onEditQuestion: (
+    bankId: string,
+    bankSubject: string,
+    bankType: BankType,
+    bankLanguage: string | null | undefined,
+    questionId: string,
+    questionSubject: string,
+    questionAnswer: string,
+    questionGradingPrompt: string | null | undefined
+  ) => void;
   onStartPractice: (
     session: Session,
     bankId: string,
@@ -27,7 +37,7 @@ type Props = {
   ) => void;
 };
 
-export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: Props) {
+export function BankDetail({ bankId, onBack, onAddQuestion, onEditQuestion, onStartPractice }: Props) {
   const { getCategoryName: getCategory } = useLibraryData();
   const { refreshBank } = useLibraryActions();
 
@@ -185,6 +195,7 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onStartPractice }: P
               bankLanguage={bank.language}
               isExpanded={expandedAnswers.has(q.id)}
               onToggleExpand={() => toggleExpanded(q.id)}
+              onEdit={() => onEditQuestion(bankId, bank.subject, bank.bank_type, bank.language, q.id, q.subject, q.expected_answer ?? "", q.grading_prompt)}
               onDelete={() => setShowDeleteConfirm(q.id)}
             />
           ))}

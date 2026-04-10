@@ -517,6 +517,24 @@ func (s *SQLiteStore) AddQuestion(ctx context.Context, bankID string, question q
 	return err
 }
 
+func (s *SQLiteStore) UpdateQuestion(ctx context.Context, question questionbank.Question) error {
+	result, err := s.db.ExecContext(ctx,
+		"UPDATE questions SET subject = ?, expected_answer = ?, grading_prompt = ? WHERE id = ?",
+		question.Subject, question.ExpectedAnswer, question.GradingPrompt, question.ID,
+	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *SQLiteStore) DeleteQuestion(ctx context.Context, id string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

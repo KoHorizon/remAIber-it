@@ -292,7 +292,14 @@
     letter-spacing: 0.06em;
 }
 
-/* Delete button */
+/* Action buttons */
+.qcard-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.qcard-edit,
 .qcard-delete {
     display: flex;
     align-items: center;
@@ -308,8 +315,14 @@
     transition: all var(--transition-fast);
 }
 
+.qcard:hover .qcard-edit,
 .qcard:hover .qcard-delete {
     opacity: 1;
+}
+
+.qcard-edit:hover {
+    background: var(--surface-secondary);
+    color: var(--text-primary);
 }
 
 .qcard-delete:hover {
@@ -336,6 +349,7 @@
         gap: 0.75rem;
     }
 
+    .qcard-edit,
     .qcard-delete {
         opacity: 1;
         align-self: flex-end;

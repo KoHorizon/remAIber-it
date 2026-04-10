@@ -59,6 +59,7 @@ type Store interface {
 
 	// Questions
 	AddQuestion(ctx context.Context, bankID string, question questionbank.Question) error
+	UpdateQuestion(ctx context.Context, question questionbank.Question) error
 	DeleteQuestion(ctx context.Context, id string) error
 	GetQuestionStatsByBank(ctx context.Context, bankID string) ([]questionbank.QuestionStats, error)
 	GetQuestionsOrderedByMastery(ctx context.Context, bankID string, ascending bool) ([]questionbank.Question, error)

@@ -28,6 +28,18 @@ type View =
       returnTo: MainView;
     }
   | {
+      type: "editQuestion";
+      bankId: string;
+      bankSubject: string;
+      bankType: BankType;
+      bankLanguage?: string | null;
+      questionId: string;
+      questionSubject: string;
+      questionAnswer: string;
+      questionGradingPrompt?: string | null;
+      returnTo: MainView;
+    }
+  | {
       type: "practice";
       session: Session;
       bankId: string;
@@ -78,6 +90,29 @@ function App() {
         bankSubject,
         bankType,
         bankLanguage,
+        returnTo,
+      }),
+    toEditQuestion: (
+      bankId: string,
+      bankSubject: string,
+      bankType: BankType,
+      bankLanguage: string | null | undefined,
+      questionId: string,
+      questionSubject: string,
+      questionAnswer: string,
+      questionGradingPrompt: string | null | undefined,
+      returnTo: MainView = currentMainView
+    ) =>
+      setView({
+        type: "editQuestion",
+        bankId,
+        bankSubject,
+        bankType,
+        bankLanguage,
+        questionId,
+        questionSubject,
+        questionAnswer,
+        questionGradingPrompt,
         returnTo,
       }),
     toPractice: (
@@ -179,8 +214,8 @@ function App() {
     }
   }
 
-  // Check if we're in a full-screen view (practice/results/addQuestion/simulate/generateQuestions)
-  const isFullScreen = view.type === "practice" || view.type === "results" || view.type === "addQuestion" || view.type === "simulate" || view.type === "generateQuestions";
+  // Check if we're in a full-screen view (practice/results/addQuestion/editQuestion/simulate/generateQuestions)
+  const isFullScreen = view.type === "practice" || view.type === "results" || view.type === "addQuestion" || view.type === "editQuestion" || view.type === "simulate" || view.type === "generateQuestions";
 
   return (
     <div className={`app ${isFullScreen ? "app-fullscreen" : "app-with-sidebar"}`}>
@@ -222,6 +257,9 @@ function App() {
             onAddQuestion={(bankId, subject, bankType, language) =>
               navigate.toAddQuestion(bankId, subject, bankType, language, view.returnTo)
             }
+            onEditQuestion={(bankId, subject, bankType, language, questionId, questionSubject, questionAnswer, questionGradingPrompt) =>
+              navigate.toEditQuestion(bankId, subject, bankType, language, questionId, questionSubject, questionAnswer, questionGradingPrompt, view.returnTo)
+            }
             onStartPractice={(session, bankId, subject, bankType, language) =>
               navigate.toPractice(
                 session,
@@ -243,6 +281,25 @@ function App() {
             bankLanguage={view.bankLanguage}
             onSave={async (question, answer, gradingPrompt) => {
               await api.addQuestion(view.bankId, question, answer, gradingPrompt);
+              navigate.toBank(view.bankId, view.returnTo);
+            }}
+            onCancel={() => navigate.toBank(view.bankId, view.returnTo)}
+          />
+        )}
+
+        {/* Edit Question (Full Page) */}
+        {view.type === "editQuestion" && (
+          <AddQuestionView
+            bankSubject={view.bankSubject}
+            bankType={view.bankType}
+            bankLanguage={view.bankLanguage}
+            initialQuestion={{
+              subject: view.questionSubject,
+              expectedAnswer: view.questionAnswer,
+              gradingPrompt: view.questionGradingPrompt,
+            }}
+            onSave={async (question, answer, gradingPrompt) => {
+              await api.updateQuestion(view.bankId, view.questionId, question, answer, gradingPrompt);
               navigate.toBank(view.bankId, view.returnTo);
             }}
             onCancel={() => navigate.toBank(view.bankId, view.returnTo)}

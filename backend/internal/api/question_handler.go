@@ -3,6 +3,8 @@ package api
 import (
 	"errors"
 	"net/http"
+
+	"github.com/remaimber-it/backend/internal/domain/questionbank"
 )
 
 // ── Request / Response types ────────────────────────────────────────────────
@@ -81,6 +83,77 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 		Mastery:        0,
 		TimesAnswered:  0,
 		TimesCorrect:   0,
+	})
+}
+
+// ── Update Question ──────────────────────────────────────────────────────────
+
+type UpdateQuestionRequest struct {
+	Subject        string  `json:"subject"`
+	ExpectedAnswer string  `json:"expected_answer"`
+	GradingPrompt  *string `json:"grading_prompt,omitempty"`
+}
+
+func (r *UpdateQuestionRequest) Validate() error {
+	if r.Subject == "" {
+		return errors.New("subject is required")
+	}
+	if r.ExpectedAnswer == "" {
+		return errors.New("expected_answer is required")
+	}
+	return nil
+}
+
+type UpdateQuestionResponse struct {
+	ID             string  `json:"id"`
+	Subject        string  `json:"subject"`
+	ExpectedAnswer string  `json:"expected_answer"`
+	GradingPrompt  *string `json:"grading_prompt,omitempty"`
+}
+
+// updateQuestion updates an existing question's content.
+// @Summary      Update a question
+// @Description  Update the subject, expected answer, and grading prompt of a question.
+// @Tags         Questions
+// @Accept       json
+// @Produce      json
+// @Param        bankID      path      string                true  "Bank ID"
+// @Param        questionID  path      string                true  "Question ID"
+// @Param        body        body      UpdateQuestionRequest  true  "Updated question data"
+// @Success      200         {object}  UpdateQuestionResponse
+// @Failure      400         {object}  map[string]string
+// @Failure      404         {object}  map[string]string
+// @Failure      500         {object}  map[string]string
+// @Router       /banks/{bankID}/questions/{questionID} [put]
+func (h *Handler) updateQuestion(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	questionID := r.PathValue("questionID")
+
+	var req UpdateQuestionRequest
+	if !decodeAndValidate(w, r, &req) {
+		return
+	}
+
+	updated := questionbank.Question{
+		ID:             questionID,
+		Subject:        req.Subject,
+		ExpectedAnswer: req.ExpectedAnswer,
+		GradingPrompt:  req.GradingPrompt,
+	}
+
+	if err := h.store.UpdateQuestion(ctx, updated); err != nil {
+		if h.handleStoreError(w, err, "question") {
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "failed to update question")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, UpdateQuestionResponse{
+		ID:             updated.ID,
+		Subject:        updated.Subject,
+		ExpectedAnswer: updated.ExpectedAnswer,
+		GradingPrompt:  updated.GradingPrompt,
 	})
 }
 

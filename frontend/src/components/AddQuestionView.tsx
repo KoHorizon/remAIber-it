@@ -6,10 +6,17 @@ import { Button, TooltipContent, TooltipHint } from "./ui";
 import { getDefaultRules, getAvailableTemplates, DEFAULT_GRADING_RULES, EXTRA_TEMPLATES } from "../utils/gradingTemplates";
 import "./AddQuestionView.css";
 
+type InitialQuestion = {
+  subject: string;
+  expectedAnswer: string;
+  gradingPrompt?: string | null;
+};
+
 type Props = {
   bankSubject: string;
   bankType: BankType;
   bankLanguage?: string | null;
+  initialQuestion?: InitialQuestion;
   onSave: (question: string, answer: string, gradingPrompt?: string | null) => Promise<void>;
   onCancel: () => void;
 };
@@ -31,12 +38,16 @@ export function AddQuestionView({
   bankSubject,
   bankType,
   bankLanguage,
+  initialQuestion,
   onSave,
   onCancel,
 }: Props) {
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [gradingPrompt, setGradingPrompt] = useState(() => getDefaultRules(bankType));
+  const isEditMode = !!initialQuestion;
+  const [question, setQuestion] = useState(initialQuestion?.subject ?? "");
+  const [answer, setAnswer] = useState(initialQuestion?.expectedAnswer ?? "");
+  const [gradingPrompt, setGradingPrompt] = useState(
+    initialQuestion?.gradingPrompt ?? getDefaultRules(bankType)
+  );
   const [showGrading, setShowGrading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -181,7 +192,7 @@ export function AddQuestionView({
               onClick={handleSave}
               disabled={!question.trim() || !answer.trim() || isSaving}
             >
-              {isSaving ? "Saving..." : "Save Question"}
+              {isSaving ? "Saving..." : isEditMode ? "Update Question" : "Save Question"}
             </Button>
           </div>
         </div>
@@ -248,7 +259,7 @@ export function AddQuestionView({
             onClick={handleSave}
             disabled={!question.trim() || !answer.trim() || isSaving}
           >
-            {isSaving ? "Saving..." : "Save Question"}
+            {isSaving ? "Saving..." : isEditMode ? "Update Question" : "Save Question"}
           </Button>
         </div>
       </div>

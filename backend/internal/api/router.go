@@ -34,6 +34,7 @@ func RegisterRoutes(mux *http.ServeMux, h *Handler) {
 
 	// Questions
 	mux.HandleFunc("POST /banks/{bankID}/questions", h.addQuestion)
+	mux.HandleFunc("PUT /banks/{bankID}/questions/{questionID}", h.updateQuestion)
 	mux.HandleFunc("DELETE /banks/{bankID}/questions/{questionID}", h.deleteQuestion)
 
 	// Sessions
