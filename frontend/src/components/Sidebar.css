@@ -144,60 +144,58 @@
 [data-theme="dark"] .sidebar {
     background: linear-gradient(
         to bottom,
-        #1c2530 0%,
-        #20262e 20%,
-        #222320 50%,
-        #231f18 75%,
-        #241e13 100%
+        #181818 0%,
+        #191816 50%,
+        #1a1712 100%
     );
-    border-right: 1px solid rgba(80, 60, 30, 0.35);
+    border-right: 1px solid #2e2e2e;
 }
 
 [data-theme="dark"] .sidebar-logo-icon {
-    background: rgba(240, 220, 180, 0.15);
-    color: #e0c87a;
+    background: rgba(224, 168, 80, 0.15);
+    color: #e0a850;
 }
 
 [data-theme="dark"] .sidebar-logo-text {
-    color: #c8bfb0;
+    color: #d0c8c0;
 }
 
 [data-theme="dark"] .sidebar-nav-item {
-    color: #a09080;
+    color: #888078;
 }
 
 [data-theme="dark"] .sidebar-nav-item:hover {
-    background: rgba(255, 255, 255, 0.07);
-    color: #d8ccbc;
+    background: rgba(255, 255, 255, 0.06);
+    color: #d0c8c0;
 }
 
 [data-theme="dark"] .sidebar-nav-item.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: #e0d4c0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    background: rgba(255, 255, 255, 0.09);
+    color: #f0ece8;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="dark"] .sidebar-nav-item.active .nav-icon,
 [data-theme="dark"] .sidebar-nav-item:hover .nav-icon {
-    color: #d8ccbc;
+    color: #d0c8c0;
 }
 
 [data-theme="dark"] .nav-icon {
-    color: #7a7060;
+    color: #686058;
 }
 
 [data-theme="dark"] .sidebar-footer {
-    border-top: 1px solid rgba(80, 60, 30, 0.3);
+    border-top: 1px solid #2e2e2e;
 }
 
 [data-theme="dark"] .sidebar-help {
-    color: #6a6050;
+    color: #585048;
 }
 
 [data-theme="dark"] .help-icon {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(80, 60, 30, 0.4);
-    color: #8a7a68;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #3c3c3c;
+    color: #786860;
 }
 
 /* Mobile: Bottom navigation */
@@ -219,8 +217,8 @@
     }
 
     [data-theme="dark"] .sidebar {
-        background: rgba(26, 22, 16, 0.95);
-        border-top: 1px solid rgba(80, 60, 30, 0.35);
+        background: rgba(20, 20, 20, 0.97);
+        border-top: 1px solid #2e2e2e;
     }
 
     .sidebar-logo,

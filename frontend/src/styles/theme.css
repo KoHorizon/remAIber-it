@@ -79,64 +79,64 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 [data-theme="dark"] {
-    /* Background — warm dark, with clear contrast steps */
-    --bg-primary: #171310;
-    --bg-secondary: #2a221b;
-    --bg-elevated: #352d25;
-    --bg-hover: #3e342b;
-    --bg-active: #473c32;
+    /* Background — neutral dark, clear contrast steps, no warm mud */
+    --bg-primary: #141414;
+    --bg-secondary: #1d1d1d;
+    --bg-elevated: #272727;
+    --bg-hover: #303030;
+    --bg-active: #3a3a3a;
 
-    /* Borders — visible warm undertone */
-    --border: #564840;
-    --border-subtle: #403530;
-    --border-hover: #685850;
+    /* Borders — clearly visible */
+    --border: #3c3c3c;
+    --border-subtle: #2e2e2e;
+    --border-hover: #505050;
 
-    /* Text — warm off-white, not pure white */
-    --text-primary: #ede8e0;
-    --text-secondary: #a89880;
-    --text-muted: #706050;
+    /* Text — very slightly warm so it doesn't feel clinical */
+    --text-primary: #f0ece8;
+    --text-secondary: #a09890;
+    --text-muted: #686058;
 
-    /* Accent */
+    /* Accent — golden pops against neutral dark */
     --accent: #e0a850;
     --accent-hover: #f0b860;
-    --accent-muted: rgba(224, 168, 80, 0.2);
-    --accent-subtle: rgba(224, 168, 80, 0.1);
+    --accent-muted: rgba(224, 168, 80, 0.18);
+    --accent-subtle: rgba(224, 168, 80, 0.09);
 
     /* Status */
     --success: #7ab885;
-    --success-muted: rgba(122, 184, 133, 0.2);
+    --success-muted: rgba(122, 184, 133, 0.18);
     --warning: #e8a94a;
-    --warning-muted: rgba(232, 169, 74, 0.2);
+    --warning-muted: rgba(232, 169, 74, 0.18);
     --error: #e06050;
-    --error-muted: rgba(224, 96, 80, 0.2);
+    --error-muted: rgba(224, 96, 80, 0.18);
     --info: #7a9fc0;
-    --info-muted: rgba(122, 159, 192, 0.2);
+    --info-muted: rgba(122, 159, 192, 0.18);
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
-    --shadow-glow: 0 0 20px rgba(224, 168, 80, 0.3);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.7);
+    --shadow-glow: 0 0 20px rgba(224, 168, 80, 0.25);
 
     /* Mastery colors */
     --mastery-excellent: #7ab885;
-    --mastery-excellent-bg: rgba(122, 184, 133, 0.2);
+    --mastery-excellent-bg: rgba(122, 184, 133, 0.18);
     --mastery-good: #8dc898;
-    --mastery-good-bg: rgba(141, 200, 152, 0.2);
+    --mastery-good-bg: rgba(141, 200, 152, 0.18);
     --mastery-fair: #e8a94a;
-    --mastery-fair-bg: rgba(232, 169, 74, 0.2);
+    --mastery-fair-bg: rgba(232, 169, 74, 0.18);
     --mastery-needs-work: #e06050;
-    --mastery-needs-work-bg: rgba(224, 96, 80, 0.2);
+    --mastery-needs-work-bg: rgba(224, 96, 80, 0.18);
     --mastery-none: var(--text-muted);
     --mastery-none-bg: var(--bg-elevated);
 
     /* Type badge colors */
-    --type-theory: #c09870;
-    --type-theory-bg: rgba(160, 128, 96, 0.32);
-    --type-code: #8ab0cc;
-    --type-code-bg: rgba(122, 159, 192, 0.28);
-    --type-cli: #8ac898;
-    --type-cli-bg: rgba(122, 184, 133, 0.28);
+    --type-theory: #c8a070;
+    --type-theory-bg: rgba(160, 120, 72, 0.3);
+    --type-code: #7aa8c8;
+    --type-code-bg: rgba(90, 140, 180, 0.25);
+    --type-cli: #7ab888;
+    --type-cli-bg: rgba(90, 160, 110, 0.25);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
