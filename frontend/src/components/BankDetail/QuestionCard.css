@@ -221,6 +221,47 @@
     background: var(--bg-primary);
     border-radius: var(--radius-md);
     border-left: 2px solid var(--accent);
+    white-space: pre-wrap;
+}
+
+.qcard-answer-formatted {
+    padding: 0.875rem 1rem;
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+    border-left: 2px solid var(--accent);
+}
+
+.qcard-answer-formatted .fmt-paragraph {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin: 0;
+}
+
+.qcard-answer-formatted .fmt-spacer {
+    height: 0.6rem;
+}
+
+.qcard-answer-formatted .formatted-list {
+    margin: 0.375rem 0;
+    padding-left: 1.25rem;
+}
+
+.qcard-answer-formatted .formatted-list li {
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 0.2rem;
+}
+
+.qcard-answer-formatted .inline-code,
+.qcard-question-text .inline-code {
+    background: var(--bg-elevated);
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-sm);
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 0.82em;
+    color: #e06c75;
 }
 
 /* Code block */

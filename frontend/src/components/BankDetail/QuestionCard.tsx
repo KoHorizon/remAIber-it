@@ -1,6 +1,6 @@
 import type { Question, BankType } from "../../types";
 import { getMasteryColor, getMasteryLabel } from "../../utils/mastery";
-import { renderFormattedText } from "../../utils/formatText";
+import { renderFormattedText, renderInlineCode } from "../../utils/formatText";
 import { CodeEditor } from "../CodeEditor";
 import { TerminalDisplay } from "../TerminalDisplay";
 import { Tooltip, TooltipTitle, TooltipContent } from "../ui";
@@ -80,7 +80,7 @@ export function QuestionCard({
             {renderFormattedText(question.subject)}
           </div>
         ) : (
-          <p className="qcard-question-text">{question.subject}</p>
+          <p className="qcard-question-text">{renderInlineCode(question.subject)}</p>
         )}
       </div>
 
@@ -122,7 +122,9 @@ export function QuestionCard({
               )}
             </div>
           ) : (
-            <p className="qcard-answer-text">{question.expected_answer}</p>
+            <div className="qcard-answer-formatted">
+              {renderFormattedText(question.expected_answer || "")}
+            </div>
           )}
         </div>
       )}
