@@ -289,8 +289,6 @@ Return ONLY valid JSON. Items in "covered" and "missed" must be SHORT labels (th
 }
 
 func buildTheoryPrompt(question, expectedAnswer, userAnswer, customRules string) string {
-	keyPoints := splitKeyPoints(expectedAnswer)
-
 	baseRules := `RULES:
 - Same meaning with different wording = COVERED.
 - Missing or incorrect concept = MISSED.`
@@ -298,6 +296,35 @@ func buildTheoryPrompt(question, expectedAnswer, userAnswer, customRules string)
 	rules := baseRules
 	if customRules != "" {
 		rules = baseRules + "\n\nADDITIONAL RULES (override base rules if conflicting):\n" + customRules
+	}
+
+	keyPoints := splitKeyPoints(expectedAnswer)
+	pointCount := strings.Count(strings.TrimSpace(keyPoints), "\n") + 1
+	if strings.TrimSpace(keyPoints) == "" {
+		pointCount = 0
+	}
+
+	// Prose expected answer (single line, no list structure): let the LLM extract
+	// key concepts itself instead of treating the whole paragraph as one point.
+	if pointCount <= 1 {
+		return fmt.Sprintf(`/no_think
+Grade the answer.
+
+%s
+
+QUESTION:
+%s
+
+EXPECTED ANSWER:
+%s
+
+USER ANSWER:
+%s
+
+First, silently identify the distinct key concepts in the expected answer. Then check which ones the user covered or missed.
+Return ONLY valid JSON. Items in "covered" and "missed" must be SHORT labels (≤5 words). No sentences, no explanations.
+{"score": <0-100>, "covered": ["label", ...], "missed": ["label", ...]}`,
+			rules, question, expectedAnswer, userAnswer)
 	}
 
 	return fmt.Sprintf(`/no_think

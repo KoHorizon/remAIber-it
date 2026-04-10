@@ -420,6 +420,10 @@ func (h *Handler) submitAnswer(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
+		// Fall back to bank-level grading prompt when the question has none
+		if gradingPrompt == nil {
+			gradingPrompt = bank.GradingPrompt
+		}
 	}
 
 	h.grading.SubmitGrading(service.GradeRequest{

@@ -15,12 +15,13 @@ const (
 )
 
 type QuestionBank struct {
-	ID         string
-	Subject    string
-	CategoryID *string  // Optional - can be nil for uncategorized banks
-	BankType   BankType // theory, code, or cli
-	Language   *string  // Optional - programming language for code banks
-	Questions  []Question
+	ID            string
+	Subject       string
+	CategoryID    *string  // Optional - can be nil for uncategorized banks
+	BankType      BankType // theory, code, or cli
+	Language      *string  // Optional - programming language for code banks
+	GradingPrompt *string  // Optional default grading rules for all questions in the bank
+	Questions     []Question
 }
 
 func New(subject string) *QuestionBank {

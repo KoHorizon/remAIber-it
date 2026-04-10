@@ -306,7 +306,7 @@ func (s *SQLiteStore) DeleteCategory(ctx context.Context, id string) error {
 // ============================================================================
 
 func (s *SQLiteStore) SaveBank(ctx context.Context, bank *questionbank.QuestionBank) error {
-	_, err := s.db.ExecContext(ctx, "INSERT INTO banks (id, subject, category_id, bank_type, language) VALUES (?, ?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.BankType, bank.Language)
+	_, err := s.db.ExecContext(ctx, "INSERT INTO banks (id, subject, category_id, bank_type, language, grading_prompt) VALUES (?, ?, ?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.BankType, bank.Language, bank.GradingPrompt)
 	return err
 }
 
@@ -315,8 +315,9 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 	var categoryID sql.NullString
 	var bankType sql.NullString
 	var language sql.NullString
+	var gradingPrompt sql.NullString
 
-	err := s.db.QueryRowContext(ctx, "SELECT id, subject, category_id, bank_type, language FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language)
+	err := s.db.QueryRowContext(ctx, "SELECT id, subject, category_id, bank_type, language, grading_prompt FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language, &gradingPrompt)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -334,6 +335,9 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 	}
 	if language.Valid {
 		bank.Language = &language.String
+	}
+	if gradingPrompt.Valid {
+		bank.GradingPrompt = &gradingPrompt.String
 	}
 
 	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, expected_answer, grading_prompt FROM questions WHERE bank_id = ?", id)

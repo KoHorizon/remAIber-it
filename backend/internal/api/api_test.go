@@ -44,7 +44,7 @@ func newTestServer(t *testing.T) *testServer {
 	t.Cleanup(func() { s.Close() })
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	gs := service.NewGradingService(s, stubGrader{}, logger)
+	gs := service.NewGradingService(s, stubGrader{}, nil, logger)
 	h := api.NewHandler(s, gs, logger)
 
 	mux := http.NewServeMux()
