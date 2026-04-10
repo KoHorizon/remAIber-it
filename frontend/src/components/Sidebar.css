@@ -105,8 +105,15 @@
 
 /* Footer */
 .sidebar-footer {
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 0.75rem 1rem;
     border-top: 1px solid rgba(180, 160, 130, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.sidebar-settings-btn {
+    width: 100%;
 }
 
 .sidebar-help {
@@ -115,6 +122,7 @@
     gap: 0.5rem;
     font-size: 0.75rem;
     color: #6b6358;
+    padding: 0.375rem 1rem;
 }
 
 .help-icon {
@@ -129,6 +137,67 @@
     font-size: 0.6875rem;
     font-weight: 600;
     color: #4a4540;
+}
+
+/* ─── Dark mode overrides ─────────────────────────────────────────────────── */
+
+[data-theme="dark"] .sidebar {
+    background: linear-gradient(
+        to bottom,
+        #1c2530 0%,
+        #20262e 20%,
+        #222320 50%,
+        #231f18 75%,
+        #241e13 100%
+    );
+    border-right: 1px solid rgba(80, 60, 30, 0.35);
+}
+
+[data-theme="dark"] .sidebar-logo-icon {
+    background: rgba(240, 220, 180, 0.15);
+    color: #e0c87a;
+}
+
+[data-theme="dark"] .sidebar-logo-text {
+    color: #c8bfb0;
+}
+
+[data-theme="dark"] .sidebar-nav-item {
+    color: #a09080;
+}
+
+[data-theme="dark"] .sidebar-nav-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #d8ccbc;
+}
+
+[data-theme="dark"] .sidebar-nav-item.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e0d4c0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .sidebar-nav-item.active .nav-icon,
+[data-theme="dark"] .sidebar-nav-item:hover .nav-icon {
+    color: #d8ccbc;
+}
+
+[data-theme="dark"] .nav-icon {
+    color: #7a7060;
+}
+
+[data-theme="dark"] .sidebar-footer {
+    border-top: 1px solid rgba(80, 60, 30, 0.3);
+}
+
+[data-theme="dark"] .sidebar-help {
+    color: #6a6050;
+}
+
+[data-theme="dark"] .help-icon {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(80, 60, 30, 0.4);
+    color: #8a7a68;
 }
 
 /* Mobile: Bottom navigation */
@@ -147,6 +216,11 @@
         background: rgba(250, 247, 242, 0.95);
         backdrop-filter: blur(12px);
         z-index: 100;
+    }
+
+    [data-theme="dark"] .sidebar {
+        background: rgba(26, 22, 16, 0.95);
+        border-top: 1px solid rgba(80, 60, 30, 0.35);
     }
 
     .sidebar-logo,

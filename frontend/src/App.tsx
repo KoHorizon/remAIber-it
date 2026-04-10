@@ -8,12 +8,13 @@ import { PracticeSession } from "./components/PracticeSession";
 import { Results } from "./components/Results";
 import { SimulationView } from "./components/SimulationView";
 import { AIGenerateView } from "./components/AIGenerateView";
+import { SettingsView } from "./components/SettingsView";
 import { useLibraryActions } from "./context";
 import { api } from "./api";
 import type { BankType, Session, SessionQuestion, SessionResult } from "./types";
 import "./App.css";
 
-type MainView = "dashboard" | "library";
+type MainView = "dashboard" | "library" | "settings";
 
 type View =
   | { type: "main"; mainView: MainView }
@@ -190,6 +191,7 @@ function App() {
           onNavigate={(mainView) => navigate.toMain(mainView)}
           onSimulate={() => navigate.toSimulate()}
           onGenerateQuestions={() => navigate.toGenerateQuestions()}
+          onSettings={() => navigate.toMain("settings")}
         />
       )}
 
@@ -205,6 +207,11 @@ function App() {
         {/* Library */}
         {view.type === "main" && view.mainView === "library" && (
           <Library onSelectBank={(bankId) => navigate.toBank(bankId, "library")} />
+        )}
+
+        {/* Settings */}
+        {view.type === "main" && view.mainView === "settings" && (
+          <SettingsView />
         )}
 
         {/* Bank Detail */}
