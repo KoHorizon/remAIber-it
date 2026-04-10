@@ -28,6 +28,11 @@
     background: var(--accent-muted);
 }
 
+.chip.active .chip-label {
+    color: var(--accent);
+    font-weight: 600;
+}
+
 /* Label */
 .chip-label {
     font-size: 0.8125rem;
@@ -43,6 +48,11 @@
     border-radius: var(--radius-sm);
     background: var(--bg-elevated);
     color: var(--text-muted);
+}
+
+.chip.active .chip-badge {
+    background: var(--accent);
+    color: #fff;
 }
 
 /* Mastery badge variants */

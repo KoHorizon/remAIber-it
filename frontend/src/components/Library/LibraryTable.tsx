@@ -122,7 +122,12 @@ export function LibraryTable({
           {banks.map((bank) => (
             <tr key={bank.id} onClick={() => onSelectBank(bank.id)}>
               <td className="col-name">
-                <span className="bank-name">{bank.subject}</span>
+                <span className="bank-name bank-name-arrow">
+                  {bank.subject}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </span>
               </td>
               <td className="col-category">
                 <span className="category-badge">
@@ -149,7 +154,9 @@ export function LibraryTable({
                   </div>
                 ) : null}
               </td>
-              <td className="col-questions">{bank.question_count ?? 0}</td>
+              <td className="col-questions">
+                <span className="questions-count">{bank.question_count ?? 0}</span>
+              </td>
               <td className="col-actions">
                 <button
                   className="row-action-btn danger"
