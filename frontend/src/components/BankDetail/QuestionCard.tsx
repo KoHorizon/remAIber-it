@@ -69,6 +69,8 @@ export function QuestionCard({
         </div>
       </div>
 
+      <div className="qcard-divider" />
+
       {/* Question text */}
       <div className="qcard-question">
         {isCodeMode ? (
