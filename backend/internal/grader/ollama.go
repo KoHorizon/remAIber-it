@@ -101,12 +101,15 @@ func (g *OllamaGrader) GradeAnswer(ctx context.Context, question, expectedAnswer
 			continue
 		}
 
+		gradeResult.Covered = filterEmpty(gradeResult.Covered)
+		gradeResult.Missed = filterEmpty(gradeResult.Missed)
+
 		if len(gradeResult.Covered) == 0 && len(gradeResult.Missed) == 0 {
-			gradeResult.Missed = []string{"Unable to evaluate"}
+			gradeResult.Missed = []string{"unable to evaluate"}
 		}
 
-		// If custom rules were provided, trust the LLM's score field directly.
-		// Otherwise, calculate score from covered/missed counts.
+		// When custom rules are active, the LLM applies them to the score field directly.
+		// Without custom rules, calculate deterministically from covered/missed counts.
 		var score int
 		if hasCustomRules && gradeResult.Score >= 0 && gradeResult.Score <= 100 {
 			score = gradeResult.Score
@@ -283,6 +286,7 @@ EXPECTED CODE:
 USER CODE:
 %s
 
+The score field must reflect the GRADING RULES — if they specify a fixed score or override, honor it.
 Return ONLY valid JSON. Items in "covered" and "missed" must be SHORT labels (the key point itself, ≤5 words). No sentences, no explanations.
 {"score": <0-100>, "covered": ["label", ...], "missed": ["label", ...]}`,
 		rules, question, expected, user)
@@ -304,25 +308,28 @@ func buildTheoryPrompt(question, expectedAnswer, userAnswer, customRules string)
 		pointCount = 0
 	}
 
-	// Prose expected answer (single line, no list structure): let the LLM extract
-	// key concepts itself instead of treating the whole paragraph as one point.
+	// Prose expected answer (single line, no list structure).
 	if pointCount <= 1 {
 		return fmt.Sprintf(`/no_think
-Grade the answer.
+Grade the answer. The GRADING RULES below define HOW to compare the user's answer against the expected answer — they do not independently judge the user's answer in isolation.
 
 %s
 
-QUESTION:
+QUESTION (context only — do NOT extract concepts or scoring criteria from this):
 %s
 
-EXPECTED ANSWER:
+EXPECTED ANSWER (the ONLY ground truth):
 %s
 
 USER ANSWER:
 %s
 
-First, silently identify the distinct key concepts in the expected answer. Then check which ones the user covered or missed.
-Return ONLY valid JSON. Items in "covered" and "missed" must be SHORT labels (≤5 words). No sentences, no explanations.
+Step 1: Check whether the user's answer matches or covers what the expected answer says. If the expected answer is a single statement, it is one point.
+Step 2: Apply the grading rules to decide how strict the match needs to be (e.g. synonyms ok, exact wording required, etc.).
+Step 3: If a grading rule specifies a fixed score override (e.g. "always give 0"), apply it to the score field.
+Important: the rules describe comparison strictness, NOT independent quality of the user's answer. An answer that matches the expected answer is COVERED, even if the expected answer itself is vague.
+Items in "covered" and "missed" must be SHORT labels (≤5 words) derived from the expected answer.
+Return ONLY valid JSON:
 {"score": <0-100>, "covered": ["label", ...], "missed": ["label", ...]}`,
 			rules, question, expectedAnswer, userAnswer)
 	}
@@ -341,6 +348,7 @@ KEY POINTS:
 USER ANSWER:
 %s
 
+The grading rules define comparison strictness, not independent quality. If a rule specifies a fixed score override, apply it.
 Return ONLY valid JSON. Items in "covered" and "missed" must be SHORT labels (the key point itself, ≤5 words). No sentences, no explanations.
 {"score": <0-100>, "covered": ["label", ...], "missed": ["label", ...]}`,
 		rules, question, keyPoints, userAnswer)
@@ -374,6 +382,7 @@ EXPECTED COMMAND:
 USER COMMAND:
 %s
 
+The score field must reflect the GRADING RULES — if they specify a fixed score or override, honor it.
 Return ONLY valid JSON. Each item in "covered"/"missed" is a brief requirement phrase (e.g. "correct tool", "container name arg", "missing -d flag") — not a token, not a sentence.
 {"score": <0-100>, "covered": ["requirement phrase", ...], "missed": ["requirement phrase", ...]}`,
 		rules, question, expectedAnswer, userAnswer)
@@ -382,6 +391,16 @@ Return ONLY valid JSON. Each item in "covered"/"missed" is a brief requirement p
 // -----------------------------------------------------------------------------
 // Helpers (unchanged)
 // -----------------------------------------------------------------------------
+
+func filterEmpty(items []string) []string {
+	out := items[:0]
+	for _, s := range items {
+		if strings.TrimSpace(s) != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
 
 func splitKeyPoints(text string) string {
 	lines := strings.Split(strings.TrimSpace(text), "\n")
