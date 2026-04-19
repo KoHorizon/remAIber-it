@@ -249,6 +249,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
+    box-shadow: var(--shadow-md);
 }
 
 .library-table-content {
@@ -257,18 +258,18 @@
 }
 
 .library-table-content thead {
-    background: var(--bg-primary);
-    border-bottom: 1px solid var(--border);
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border);
 }
 
 .library-table-content th {
-    padding: 0.625rem 1rem;
+    padding: 0.75rem 1rem;
     text-align: left;
     font-size: 0.6875rem;
     font-weight: 700;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
     cursor: pointer;
     user-select: none;
     white-space: nowrap;
@@ -293,7 +294,7 @@
 }
 
 .library-table-content tbody tr {
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border);
     cursor: pointer;
     transition: background var(--transition-fast);
     position: relative;
@@ -304,7 +305,7 @@
 }
 
 .library-table-content tbody tr:hover {
-    background: var(--bg-elevated);
+    background: var(--bg-hover);
 }
 
 /* Left accent flash on row hover */
@@ -325,11 +326,11 @@
 }
 
 .library-table-content tbody tr:hover td:first-child::before {
-    opacity: 0.6;
+    opacity: 1;
 }
 
 .library-table-content td {
-    padding: 1rem 1rem;
+    padding: 1rem;
     font-size: 0.875rem;
     color: var(--text-primary);
 }
@@ -353,8 +354,9 @@
 
 /* Cell styles */
 .bank-name {
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-primary);
+    font-size: 0.9rem;
 }
 
 .bank-name-arrow {
@@ -377,8 +379,8 @@
 
 .category-badge {
     display: inline-block;
-    padding: 0.2rem 0.5rem;
-    background: transparent;
+    padding: 0.25rem 0.6rem;
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: 0.75rem;
@@ -405,19 +407,25 @@
 .type-badge.type-theory {
     background: var(--type-theory-bg);
     color: var(--type-theory);
-    border-color: rgba(139, 115, 85, 0.2);
+    border-color: var(--type-theory);
+    border-opacity: 0.35;
+    box-shadow: 0 0 0 1px transparent;
+    outline: 1px solid color-mix(in srgb, var(--type-theory) 30%, transparent);
+    border: none;
 }
 
 .type-badge.type-code {
     background: var(--type-code-bg);
     color: var(--type-code);
-    border-color: rgba(90, 122, 154, 0.2);
+    border: none;
+    outline: 1px solid color-mix(in srgb, var(--type-code) 30%, transparent);
 }
 
 .type-badge.type-cli {
     background: var(--type-cli-bg);
     color: var(--type-cli);
-    border-color: rgba(90, 138, 102, 0.2);
+    border: none;
+    outline: 1px solid color-mix(in srgb, var(--type-cli) 30%, transparent);
 }
 
 /* Mastery cell */
@@ -429,7 +437,7 @@
 
 .mastery-bar {
     flex: 1;
-    height: 5px;
+    height: 7px;
     background: var(--bg-active);
     border-radius: 999px;
     overflow: hidden;
@@ -440,6 +448,7 @@
     height: 100%;
     border-radius: 999px;
     transition: width 0.4s ease;
+    box-shadow: 0 0 6px -1px currentColor;
 }
 
 .mastery-fill.excellent { background: var(--mastery-excellent); }
@@ -450,7 +459,7 @@
 
 .mastery-value {
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
     min-width: 32px;
 }
 

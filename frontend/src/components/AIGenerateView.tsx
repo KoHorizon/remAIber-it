@@ -630,6 +630,7 @@ export function AIGenerateView({ onBack }: Props) {
               variant="primary"
               onClick={handleGenerate}
               disabled={!canGenerate || isGenerating}
+
             >
               <svg
                 width="14"
