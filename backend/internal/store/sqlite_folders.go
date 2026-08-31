@@ -83,6 +83,9 @@ func (s *SQLiteStore) ListFolders(ctx context.Context) ([]*folder.Folder, error)
 		}
 		folders = append(folders, &f)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return folders, nil
 }
 
@@ -283,6 +286,9 @@ func (s *SQLiteStore) GetFolderMasteryBatch(ctx context.Context, folderIDs []str
 		}
 		result[id] = mastery
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -309,6 +315,9 @@ func (s *SQLiteStore) ListCategoriesByFolder(ctx context.Context, folderID strin
 			cat.FolderID = &fID.String
 		}
 		categories = append(categories, &cat)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return categories, nil
 }

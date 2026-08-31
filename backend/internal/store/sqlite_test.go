@@ -200,7 +200,7 @@ func TestAddAndDeleteQuestion(t *testing.T) {
 		t.Errorf("expected 1 question, got %d", len(got.Questions))
 	}
 
-	if err := s.DeleteQuestion(ctx, q.ID); err != nil {
+	if err := s.DeleteQuestion(ctx, bank.ID, q.ID); err != nil {
 		t.Fatalf("DeleteQuestion: %v", err)
 	}
 
@@ -214,9 +214,110 @@ func TestDeleteQuestion_NotFound(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
 
-	err := s.DeleteQuestion(ctx, "ghost")
+	err := s.DeleteQuestion(ctx, "any-bank", "ghost")
 	if err != store.ErrNotFound {
 		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+// twoBanks creates two banks, each with one question, and returns them.
+func twoBanks(t *testing.T, s *store.SQLiteStore) (*questionbank.QuestionBank, *questionbank.QuestionBank) {
+	t.Helper()
+	ctx := context.Background()
+
+	mk := func(name, q, a string) *questionbank.QuestionBank {
+		bank := questionbank.New(name)
+		if err := s.SaveBank(ctx, bank); err != nil {
+			t.Fatalf("SaveBank(%s): %v", name, err)
+		}
+		bank.AddQuestion(q, a)
+		if err := s.AddQuestion(ctx, bank.ID, bank.Questions[0]); err != nil {
+			t.Fatalf("AddQuestion(%s): %v", name, err)
+		}
+		return bank
+	}
+
+	return mk("Bank A", "QA", "AA"), mk("Bank B", "QB", "AB")
+}
+
+// The bankID in PUT /banks/{bankID}/questions/{questionID} has to mean
+// something: a question may only be updated through the bank that owns it.
+// Without this the route lies, and a stale or wrong bankID silently mutates
+// another bank's question.
+func TestUpdateQuestion_WrongBankIsRejected(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	bankA, bankB := twoBanks(t, s)
+
+	victim := bankA.Questions[0]
+	err := s.UpdateQuestion(ctx, bankB.ID, questionbank.Question{
+		ID:             victim.ID,
+		Subject:        "hijacked",
+		ExpectedAnswer: "hijacked",
+	})
+	if err != store.ErrNotFound {
+		t.Errorf("expected ErrNotFound updating bank A's question via bank B, got %v", err)
+	}
+
+	got, err := s.GetBank(ctx, bankA.ID)
+	if err != nil {
+		t.Fatalf("GetBank: %v", err)
+	}
+	if got.Questions[0].Subject != "QA" {
+		t.Errorf("bank A's question was mutated through bank B: subject = %q, want %q", got.Questions[0].Subject, "QA")
+	}
+}
+
+func TestUpdateQuestion_OwningBankSucceeds(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	bankA, _ := twoBanks(t, s)
+
+	if err := s.UpdateQuestion(ctx, bankA.ID, questionbank.Question{
+		ID:             bankA.Questions[0].ID,
+		Subject:        "QA revised",
+		ExpectedAnswer: "AA revised",
+	}); err != nil {
+		t.Fatalf("UpdateQuestion via owning bank: %v", err)
+	}
+
+	got, _ := s.GetBank(ctx, bankA.ID)
+	if got.Questions[0].Subject != "QA revised" {
+		t.Errorf("subject = %q, want %q", got.Questions[0].Subject, "QA revised")
+	}
+}
+
+func TestDeleteQuestion_WrongBankIsRejected(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	bankA, bankB := twoBanks(t, s)
+
+	err := s.DeleteQuestion(ctx, bankB.ID, bankA.Questions[0].ID)
+	if err != store.ErrNotFound {
+		t.Errorf("expected ErrNotFound deleting bank A's question via bank B, got %v", err)
+	}
+
+	got, err := s.GetBank(ctx, bankA.ID)
+	if err != nil {
+		t.Fatalf("GetBank: %v", err)
+	}
+	if len(got.Questions) != 1 {
+		t.Errorf("bank A's question was deleted through bank B: %d questions remain, want 1", len(got.Questions))
+	}
+}
+
+func TestDeleteQuestion_OwningBankSucceeds(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	bankA, _ := twoBanks(t, s)
+
+	if err := s.DeleteQuestion(ctx, bankA.ID, bankA.Questions[0].ID); err != nil {
+		t.Fatalf("DeleteQuestion via owning bank: %v", err)
+	}
+
+	got, _ := s.GetBank(ctx, bankA.ID)
+	if len(got.Questions) != 0 {
+		t.Errorf("expected 0 questions after delete, got %d", len(got.Questions))
 	}
 }
 

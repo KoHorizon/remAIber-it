@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -125,7 +124,7 @@ func (gs *GradingService) GenerateQuestions(ctx context.Context, req grader.Gene
 // GradeOnce performs a synchronous, one-shot grading without persisting results.
 // This is used for simulation/testing grading prompts before adding questions.
 func (gs *GradingService) GradeOnce(ctx context.Context, req GradeRequest) (score int, covered []string, missed []string, err error) {
-	response, err := gs.grader.GradeAnswer(
+	result, err := gs.grader.GradeAnswer(
 		ctx,
 		req.Question,
 		req.ExpectedAnswer,
@@ -137,15 +136,6 @@ func (gs *GradingService) GradeOnce(ctx context.Context, req GradeRequest) (scor
 		return 0, nil, nil, fmt.Errorf("grading error: %w", err)
 	}
 
-	var result struct {
-		Score   int      `json:"score"`
-		Covered []string `json:"covered"`
-		Missed  []string `json:"missed"`
-	}
-	if err := json.Unmarshal([]byte(response), &result); err != nil {
-		return 0, nil, nil, fmt.Errorf("failed to parse grading response: %w", err)
-	}
-
 	return result.Score, result.Covered, result.Missed, nil
 }
 
@@ -155,7 +145,7 @@ func (gs *GradingService) GradeOnce(ctx context.Context, req GradeRequest) (scor
 func (gs *GradingService) grade(req GradeRequest) {
 	ctx := context.Background()
 
-	response, err := gs.grader.GradeAnswer(
+	result, err := gs.grader.GradeAnswer(
 		ctx,
 		req.Question,
 		req.ExpectedAnswer,
@@ -174,25 +164,8 @@ func (gs *GradingService) grade(req GradeRequest) {
 		return
 	}
 
-	var result struct {
-		Score   int      `json:"score"`
-		Covered []string `json:"covered"`
-		Missed  []string `json:"missed"`
-	}
-	if err := json.Unmarshal([]byte(response), &result); err != nil {
-		gs.logger.Error("parse error",
-			"question_id", req.QuestionID,
-			"error", err,
-			"response", response,
-		)
-		if saveErr := gs.store.SaveGradeFailure(
-			ctx, req.SessionID, req.QuestionID, req.UserAnswer,
-			fmt.Sprintf("failed to parse grading response: %v", err),
-		); saveErr != nil {
-			gs.logger.Error("failed to save grade failure", "error", saveErr)
-		}
-		return
-	}
+	// No parse step here: GradeAnswer returns grader.GradeResult directly.
+	// Malformed LLM output is the grader's problem and surfaces as an error above.
 
 	if err := gs.store.SaveGrade(
 		ctx, req.SessionID, req.QuestionID,
@@ -203,5 +176,13 @@ func (gs *GradingService) grade(req GradeRequest) {
 			"question_id", req.QuestionID,
 			"error", err,
 		)
+		// Record the failure so the question shows as "grading failed"
+		// rather than silently reading as unanswered with a score of 0.
+		if saveErr := gs.store.SaveGradeFailure(
+			ctx, req.SessionID, req.QuestionID, req.UserAnswer,
+			fmt.Sprintf("failed to save grade: %v", err),
+		); saveErr != nil {
+			gs.logger.Error("failed to save grade failure", "error", saveErr)
+		}
 	}
 }

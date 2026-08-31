@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/remaimber-it/backend/internal/api"
@@ -22,8 +23,12 @@ import (
 
 type stubGrader struct{}
 
-func (stubGrader) GradeAnswer(_ context.Context, _, _, _ string, _ *string, _ string) (string, error) {
-	return `{"score":80,"covered":["concept A"],"missed":["concept B"]}`, nil
+func (stubGrader) GradeAnswer(_ context.Context, _, _, _ string, _ *string, _ string) (grader.GradeResult, error) {
+	return grader.GradeResult{
+		Score:   80,
+		Covered: []string{"concept A"},
+		Missed:  []string{"concept B"},
+	}, nil
 }
 
 var _ grader.Grader = stubGrader{}
@@ -349,6 +354,38 @@ func TestDeleteQuestion(t *testing.T) {
 	}
 }
 
+// The bankID segment of the route is enforced, not decorative: a question that
+// belongs to another bank is a 404 through this path, and stays untouched.
+func TestUpdateQuestion_WrongBankIs404(t *testing.T) {
+	ts := newTestServer(t)
+	bankA, questionA := createBankWithQuestion(t, ts)
+	bankB, _ := createBankWithQuestion(t, ts)
+
+	rr := ts.do("PUT", fmt.Sprintf("/banks/%s/questions/%s", bankB, questionA), map[string]any{
+		"subject":         "hijacked",
+		"expected_answer": "hijacked",
+	})
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected 404 updating bank A's question via bank B, got %d: %s", rr.Code, rr.Body)
+	}
+
+	rr = ts.do("GET", "/banks/"+bankA, nil)
+	if got := rr.Body.String(); strings.Contains(got, "hijacked") {
+		t.Errorf("bank A's question was mutated through bank B: %s", got)
+	}
+}
+
+func TestDeleteQuestion_WrongBankIs404(t *testing.T) {
+	ts := newTestServer(t)
+	_, questionA := createBankWithQuestion(t, ts)
+	bankB, _ := createBankWithQuestion(t, ts)
+
+	rr := ts.do("DELETE", fmt.Sprintf("/banks/%s/questions/%s", bankB, questionA), nil)
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected 404 deleting bank A's question via bank B, got %d: %s", rr.Code, rr.Body)
+	}
+}
+
 // ── Sessions ──────────────────────────────────────────────────────────────────
 
 func createSession(t *testing.T, ts *testServer) (sessionID, questionID string) {
@@ -618,6 +655,117 @@ func TestImportAll_InvalidBankType_DefaultsToTheory(t *testing.T) {
 	}
 }
 
+// An empty or contentless payload used to return 201 with all-zero counts,
+// which reads to the user as "import succeeded, your file was empty".
+func TestImportAll_EmptyPayloadIsRejected(t *testing.T) {
+	cases := map[string]map[string]any{
+		"entirely empty object":  {},
+		"version but no content": {"version": "1.1", "exported_at": "2025-01-01T00:00:00Z"},
+		"empty collections":      {"version": "1.1", "folders": []any{}, "categories": []any{}},
+	}
+
+	for name, payload := range cases {
+		t.Run(name, func(t *testing.T) {
+			ts := newTestServer(t)
+			rr := ts.do("POST", "/import", payload)
+			if rr.Code != http.StatusBadRequest {
+				t.Errorf("expected 400, got %d: %s", rr.Code, rr.Body)
+			}
+		})
+	}
+}
+
+// A folder or category carrying no banks is still a legitimate import — the
+// rejection above is about a payload with nothing in it at all, not about
+// empty branches inside one.
+func TestImportAll_EmptyCategoryIsAccepted(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/import", map[string]any{
+		"version":    "1.1",
+		"categories": []any{map[string]any{"name": "Empty", "banks": []any{}}},
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rr.Code, rr.Body)
+	}
+	resp := decode[map[string]any](t, rr)
+	if resp["categories_created"] != float64(1) {
+		t.Errorf("expected 1 category created, got %v", resp["categories_created"])
+	}
+}
+
+// Failures inside an import were logged server-side and dropped from the
+// response, so the user saw "Import Complete" and a count that silently
+// excluded whatever failed.
+func TestImportAll_PartialFailureIsReported(t *testing.T) {
+	ts := newTestServer(t)
+
+	payload := map[string]any{
+		"version": "1.1",
+		"categories": []any{
+			map[string]any{
+				"name": "Partly broken",
+				"banks": []any{
+					map[string]any{
+						"subject":   "Bank",
+						"bank_type": "theory",
+						"questions": []any{
+							map[string]string{"subject": "Good question", "expected_answer": "yes"},
+							map[string]string{"subject": "", "expected_answer": "no subject"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	rr := ts.do("POST", "/import", payload)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rr.Code, rr.Body)
+	}
+
+	resp := decode[map[string]any](t, rr)
+	if resp["questions_created"] != float64(1) {
+		t.Errorf("expected 1 question created, got %v", resp["questions_created"])
+	}
+
+	errs, ok := resp["errors"].([]any)
+	if !ok || len(errs) == 0 {
+		t.Fatalf("expected the skipped question to be reported in errors, got %v", resp["errors"])
+	}
+	if !strings.Contains(fmt.Sprint(errs...), "subject") {
+		t.Errorf("expected the error to mention the empty subject, got %v", errs)
+	}
+}
+
+// A clean import must not carry an errors field at all, so the frontend can
+// treat its presence as "something went wrong".
+func TestImportAll_CleanImportReportsNoErrors(t *testing.T) {
+	ts := newTestServer(t)
+
+	rr := ts.do("POST", "/import", map[string]any{
+		"version": "1.1",
+		"categories": []any{
+			map[string]any{
+				"name": "Fine",
+				"banks": []any{
+					map[string]any{
+						"subject":   "Bank",
+						"bank_type": "theory",
+						"questions": []any{map[string]string{"subject": "Q", "expected_answer": "A"}},
+					},
+				},
+			},
+		},
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rr.Code, rr.Body)
+	}
+	if _, present := decode[map[string]any](t, rr)["errors"]; present {
+		t.Errorf("clean import should omit errors, got %s", rr.Body)
+	}
+}
+
 // ── Request validation ────────────────────────────────────────────────────────
 
 func TestDecodeJSON_InvalidBody(t *testing.T) {
@@ -708,6 +856,9 @@ func TestCORSMiddleware_Preflight(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("expected 200 for OPTIONS preflight, got %d", rr.Code)
 	}
+	// The wildcard is deliberate, not incidental — see the rationale on
+	// api.CORS, and the conditions under which it has to be narrowed. If this
+	// assertion is what's failing, read that comment before relaxing it.
 	if rr.Header().Get("Access-Control-Allow-Origin") != "*" {
 		t.Error("expected CORS allow-origin header")
 	}

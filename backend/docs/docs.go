@@ -2355,6 +2355,13 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 2
                 },
+                "errors": {
+                    "description": "Errors lists everything that was skipped. Omitted entirely when the import\nwas clean, so its presence alone means \"not everything came through\".\nThe import is not transactional — see importAll — so a partial result is a\nreal outcome the user has to be told about rather than a failure to hide.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "folders_created": {
                     "type": "integer",
                     "example": 3

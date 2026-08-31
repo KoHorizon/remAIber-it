@@ -127,6 +127,7 @@ type UpdateQuestionResponse struct {
 // @Router       /banks/{bankID}/questions/{questionID} [put]
 func (h *Handler) updateQuestion(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	bankID := r.PathValue("bankID")
 	questionID := r.PathValue("questionID")
 
 	var req UpdateQuestionRequest
@@ -141,11 +142,9 @@ func (h *Handler) updateQuestion(w http.ResponseWriter, r *http.Request) {
 		GradingPrompt:  req.GradingPrompt,
 	}
 
-	if err := h.store.UpdateQuestion(ctx, updated); err != nil {
-		if h.handleStoreError(w, err, "question") {
-			return
-		}
-		respondError(w, http.StatusInternalServerError, "failed to update question")
+	// bankID is enforced by the store: a question owned by another bank reads as
+	// not found here, so the path can't be used to reach across banks.
+	if h.handleStoreError(w, h.store.UpdateQuestion(ctx, bankID, updated), "question") {
 		return
 	}
 
@@ -169,9 +168,10 @@ func (h *Handler) updateQuestion(w http.ResponseWriter, r *http.Request) {
 // @Router       /banks/{bankID}/questions/{questionID} [delete]
 func (h *Handler) deleteQuestion(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	bankID := r.PathValue("bankID")
 	questionID := r.PathValue("questionID")
 
-	if h.handleStoreError(w, h.store.DeleteQuestion(ctx, questionID), "question") {
+	if h.handleStoreError(w, h.store.DeleteQuestion(ctx, bankID, questionID), "question") {
 		return
 	}
 

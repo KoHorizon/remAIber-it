@@ -63,7 +63,7 @@ func NewOllamaGrader(url, model string) *OllamaGrader {
 
 const maxRetries = 2
 
-func (g *OllamaGrader) GradeAnswer(ctx context.Context, question, expectedAnswer, userAnswer string, customPrompt *string, bankType string) (string, error) {
+func (g *OllamaGrader) GradeAnswer(ctx context.Context, question, expectedAnswer, userAnswer string, customPrompt *string, bankType string) (GradeResult, error) {
 	customRules := ""
 	hasCustomRules := customPrompt != nil && *customPrompt != ""
 	if hasCustomRules {
@@ -110,27 +110,18 @@ func (g *OllamaGrader) GradeAnswer(ctx context.Context, question, expectedAnswer
 
 		// When custom rules are active, the LLM applies them to the score field directly.
 		// Without custom rules, calculate deterministically from covered/missed counts.
-		var score int
-		if hasCustomRules && gradeResult.Score >= 0 && gradeResult.Score <= 100 {
-			score = gradeResult.Score
-		} else {
+		if !hasCustomRules || gradeResult.Score < 0 || gradeResult.Score > 100 {
+			gradeResult.Score = 0
 			total := len(gradeResult.Covered) + len(gradeResult.Missed)
 			if total > 0 {
-				score = (len(gradeResult.Covered) * 100) / total
+				gradeResult.Score = (len(gradeResult.Covered) * 100) / total
 			}
 		}
 
-		finalResult := map[string]interface{}{
-			"score":   score,
-			"covered": gradeResult.Covered,
-			"missed":  gradeResult.Missed,
-		}
-
-		resultJSON, _ := json.Marshal(finalResult)
-		return string(resultJSON), nil
+		return gradeResult, nil
 	}
 
-	return "", &GradeError{
+	return GradeResult{}, &GradeError{
 		Reason:  fmt.Sprintf("failed after %d attempts", maxRetries),
 		Wrapped: lastErr,
 	}

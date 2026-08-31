@@ -313,12 +313,6 @@ func TestBuildCLIPrompt(t *testing.T) {
 // GradeAnswer: score computation
 // -----------------------------------------------------------------------------
 
-type decodedGradeResult struct {
-	Score   int      `json:"score"`
-	Covered []string `json:"covered"`
-	Missed  []string `json:"missed"`
-}
-
 func TestGradeAnswer_ScoreComputation(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -400,14 +394,9 @@ func TestGradeAnswer_ScoreComputation(t *testing.T) {
 			defer server.Close()
 
 			g := NewOllamaGrader(server.URL, "test-model")
-			resultJSON, err := g.GradeAnswer(context.Background(), "question", "expected", "user answer", tc.customPrompt, "theory")
+			got, err := g.GradeAnswer(context.Background(), "question", "expected", "user answer", tc.customPrompt, "theory")
 			if err != nil {
 				t.Fatalf("GradeAnswer returned error: %v", err)
-			}
-
-			var got decodedGradeResult
-			if err := json.Unmarshal([]byte(resultJSON), &got); err != nil {
-				t.Fatalf("failed to decode result JSON %q: %v", resultJSON, err)
 			}
 
 			if got.Score != tc.wantScore {
@@ -435,14 +424,9 @@ func TestGradeAnswer_MissingScoreFieldWithCustomRules(t *testing.T) {
 	defer server.Close()
 
 	g := NewOllamaGrader(server.URL, "test-model")
-	resultJSON, err := g.GradeAnswer(context.Background(), "q", "expected", "user", strPtr("custom rule"), "theory")
+	got, err := g.GradeAnswer(context.Background(), "q", "expected", "user", strPtr("custom rule"), "theory")
 	if err != nil {
 		t.Fatalf("GradeAnswer returned error: %v", err)
-	}
-
-	var got decodedGradeResult
-	if err := json.Unmarshal([]byte(resultJSON), &got); err != nil {
-		t.Fatalf("failed to decode result JSON %q: %v", resultJSON, err)
 	}
 
 	// Current behaviour: absent score defaults to 0, which is in-range and
@@ -476,7 +460,7 @@ func TestGradeAnswer_RetrySucceedsOnSecondAttempt(t *testing.T) {
 	defer server.Close()
 
 	g := NewOllamaGrader(server.URL, "test-model")
-	resultJSON, err := g.GradeAnswer(context.Background(), "q", "expected", "user", nil, "theory")
+	got, err := g.GradeAnswer(context.Background(), "q", "expected", "user", nil, "theory")
 	if err != nil {
 		t.Fatalf("expected success on retry, got error: %v", err)
 	}
@@ -484,10 +468,6 @@ func TestGradeAnswer_RetrySucceedsOnSecondAttempt(t *testing.T) {
 		t.Errorf("expected exactly 2 HTTP calls (1 failure + 1 success), got %d", got)
 	}
 
-	var got decodedGradeResult
-	if err := json.Unmarshal([]byte(resultJSON), &got); err != nil {
-		t.Fatalf("failed to decode result JSON %q: %v", resultJSON, err)
-	}
 	if got.Score != 100 { // no custom rules: 1 covered, 0 missed -> 1*100/1
 		t.Errorf("score = %d, want 100", got.Score)
 	}

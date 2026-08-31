@@ -93,8 +93,28 @@ type SQLiteStore struct {
 // Compile-time check: *SQLiteStore must satisfy the Store interface.
 var _ Store = (*SQLiteStore)(nil)
 
+// connParams keep concurrent writes from being dropped. Grading runs in
+// background goroutines, so several writes can land at once:
+//
+//   - busy_timeout — wait for the write lock instead of failing instantly.
+//   - journal_mode(WAL) — readers don't block the writer.
+//   - _txlock=immediate — take the write lock when the transaction opens.
+//     Required: updateQuestionStats reads then writes, and a deferred
+//     transaction cannot upgrade its read lock to a write lock — SQLite
+//     returns SQLITE_BUSY straight away, ignoring busy_timeout.
+const connParams = "_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_txlock=immediate"
+
+// withConnParams appends connParams, preserving any params dbPath already carries.
+func withConnParams(dbPath string) string {
+	sep := "?"
+	if strings.Contains(dbPath, "?") {
+		sep = "&"
+	}
+	return dbPath + sep + connParams
+}
+
 func NewSQLite(dbPath string) (*SQLiteStore, error) {
-	db, err := sql.Open("sqlite", dbPath)
+	db, err := sql.Open("sqlite", withConnParams(dbPath))
 	if err != nil {
 		return nil, err
 	}
@@ -216,6 +236,9 @@ func (s *SQLiteStore) ListCategories(ctx context.Context) ([]*category.Category,
 			cat.FolderID = &folderID.String
 		}
 		categories = append(categories, &cat)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return categories, nil
 }
@@ -358,6 +381,9 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 		}
 		bank.Questions = append(bank.Questions, q)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return &bank, nil
 }
@@ -390,6 +416,9 @@ func (s *SQLiteStore) ListBanks(ctx context.Context) ([]*questionbank.QuestionBa
 			bank.Language = &language.String
 		}
 		banks = append(banks, &bank)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return banks, nil
 }
@@ -427,6 +456,9 @@ func (s *SQLiteStore) ListBanksWithCounts(ctx context.Context) ([]*BankWithCount
 		}
 		banks = append(banks, &bank)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return banks, nil
 }
 
@@ -458,6 +490,9 @@ func (s *SQLiteStore) ListBanksByCategory(ctx context.Context, categoryID string
 			bank.Language = &language.String
 		}
 		banks = append(banks, &bank)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return banks, nil
 }
@@ -522,10 +557,13 @@ func (s *SQLiteStore) AddQuestion(ctx context.Context, bankID string, question q
 	return err
 }
 
-func (s *SQLiteStore) UpdateQuestion(ctx context.Context, question questionbank.Question) error {
+// UpdateQuestion updates a question owned by bankID. A question that exists but
+// belongs to a different bank yields ErrNotFound: the caller reached it through a
+// bank that does not own it, so as far as that bank is concerned it isn't there.
+func (s *SQLiteStore) UpdateQuestion(ctx context.Context, bankID string, question questionbank.Question) error {
 	result, err := s.db.ExecContext(ctx,
-		"UPDATE questions SET subject = ?, expected_answer = ?, grading_prompt = ? WHERE id = ?",
-		question.Subject, question.ExpectedAnswer, question.GradingPrompt, question.ID,
+		"UPDATE questions SET subject = ?, expected_answer = ?, grading_prompt = ? WHERE id = ? AND bank_id = ?",
+		question.Subject, question.ExpectedAnswer, question.GradingPrompt, question.ID, bankID,
 	)
 	if err != nil {
 		return err
@@ -540,20 +578,27 @@ func (s *SQLiteStore) UpdateQuestion(ctx context.Context, question questionbank.
 	return nil
 }
 
-func (s *SQLiteStore) DeleteQuestion(ctx context.Context, id string) error {
+// DeleteQuestion deletes a question owned by bankID, along with its stats.
+// Like UpdateQuestion, a question belonging to another bank yields ErrNotFound.
+func (s *SQLiteStore) DeleteQuestion(ctx context.Context, bankID, id string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	// Delete question stats first
-	_, err = tx.ExecContext(ctx, "DELETE FROM question_stats WHERE question_id = ?", id)
+	// Delete question stats first. Scoped through the question's own bank so a
+	// wrong-bank call cannot strip stats off another bank's question — the
+	// rollback below would undo it, but only if nothing else touches the tx.
+	_, err = tx.ExecContext(ctx,
+		"DELETE FROM question_stats WHERE question_id IN (SELECT id FROM questions WHERE id = ? AND bank_id = ?)",
+		id, bankID,
+	)
 	if err != nil {
 		return err
 	}
 
-	result, err := tx.ExecContext(ctx, "DELETE FROM questions WHERE id = ?", id)
+	result, err := tx.ExecContext(ctx, "DELETE FROM questions WHERE id = ? AND bank_id = ?", id, bankID)
 	if err != nil {
 		return err
 	}
@@ -639,6 +684,9 @@ func (s *SQLiteStore) GetSession(ctx context.Context, id string) (*practicesessi
 			return nil, err
 		}
 		session.Questions = append(session.Questions, q)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return &session, nil
@@ -749,6 +797,9 @@ func (s *SQLiteStore) GetGrades(ctx context.Context, sessionID string) ([]Stored
 		g.Status = GradeStatus(status)
 		grades = append(grades, g)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return grades, nil
 }
 
@@ -834,6 +885,9 @@ func (s *SQLiteStore) GetQuestionStatsByBank(ctx context.Context, bankID string)
 		}
 		stats = append(stats, s)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return stats, nil
 }
 
@@ -887,6 +941,9 @@ func (s *SQLiteStore) GetBankMasteryBatch(ctx context.Context, bankIDs []string)
 			return nil, err
 		}
 		result[id] = mastery
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return result, nil
 }
@@ -960,6 +1017,9 @@ func (s *SQLiteStore) GetCategoryMasteryBatch(ctx context.Context, categoryIDs [
 		}
 		result[id] = mastery
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -1005,6 +1065,9 @@ func (s *SQLiteStore) GetWeakQuestionsAcrossBanks(ctx context.Context, bankIDs [
 			return nil, err
 		}
 		results = append(results, q)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return results, nil
 }
@@ -1054,6 +1117,9 @@ func (s *SQLiteStore) GetQuestionsOrderedByMastery(ctx context.Context, bankID s
 			return nil, err
 		}
 		questions = append(questions, q)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return questions, nil
 }

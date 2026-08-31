@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -43,11 +45,37 @@ type ExportData struct {
 	Categories []ExportCategory `json:"categories"` // Categories without a folder
 }
 
+// Validate rejects a payload with nothing to import. Without this a `{}` body
+// returned 201 and all-zero counts, which the UI presented as a successful
+// import of an empty file — indistinguishable from a genuinely empty export.
+//
+// Version and ExportedAt are deliberately not required: v1.0 exports predate
+// some of these fields, and refusing an otherwise-valid file over a missing
+// timestamp would break restoring old backups.
+func (d *ExportData) Validate() error {
+	if len(d.Folders) == 0 && len(d.Categories) == 0 {
+		return errors.New("nothing to import: no folders or categories in payload")
+	}
+	return nil
+}
+
 type ImportResult struct {
 	FoldersCreated    int `json:"folders_created" example:"3"`
 	CategoriesCreated int `json:"categories_created" example:"2"`
 	BanksCreated      int `json:"banks_created" example:"5"`
 	QuestionsCreated  int `json:"questions_created" example:"42"`
+
+	// Errors lists everything that was skipped. Omitted entirely when the import
+	// was clean, so its presence alone means "not everything came through".
+	// The import is not transactional — see importAll — so a partial result is a
+	// real outcome the user has to be told about rather than a failure to hide.
+	Errors []string `json:"errors,omitempty"`
+}
+
+// fail records a skipped item on the result and logs it.
+func (h *Handler) importFail(result *ImportResult, err error, msg string, args ...any) {
+	h.logger.Error(msg, append(args, "error", err)...)
+	result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", msg, err))
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -184,10 +212,16 @@ func (h *Handler) buildExportCategory(ctx context.Context, cat *category.Categor
 // @Failure      400   {object}  map[string]string
 // @Failure      500   {object}  map[string]string
 // @Router       /import [post]
+// Note on atomicity: this is deliberately not transactional. Making it so would
+// need the Store interface to expose a transaction (every method reimplemented
+// against *sql.Tx) or an ImportAll store method, which would pull domain
+// construction into the persistence layer. Instead each skipped item is recorded
+// in result.Errors so a partial import reports itself as partial rather than as
+// a success with quietly missing rows.
 func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var importData ExportData
-	if !decodeJSON(w, r, &importData) {
+	if !decodeAndValidate(w, r, &importData) {
 		return
 	}
 
@@ -197,7 +231,7 @@ func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 	for _, f := range importData.Folders {
 		newFolder := folder.New(f.Name)
 		if err := h.store.SaveFolder(ctx, newFolder); err != nil {
-			h.logger.Error("failed to create folder", "name", f.Name, "error", err)
+			h.importFail(&result, err, "failed to create folder", "name", f.Name)
 			continue
 		}
 		result.FoldersCreated++
@@ -205,7 +239,7 @@ func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 		for _, cat := range f.Categories {
 			newCat := category.NewWithFolder(cat.Name, newFolder.ID)
 			if err := h.store.SaveCategory(ctx, newCat); err != nil {
-				h.logger.Error("failed to create category", "name", cat.Name, "error", err)
+				h.importFail(&result, err, "failed to create category", "name", cat.Name)
 				continue
 			}
 			result.CategoriesCreated++
@@ -218,7 +252,7 @@ func (h *Handler) importAll(w http.ResponseWriter, r *http.Request) {
 	for _, cat := range importData.Categories {
 		newCat := category.New(cat.Name)
 		if err := h.store.SaveCategory(ctx, newCat); err != nil {
-			h.logger.Error("failed to create category", "name", cat.Name, "error", err)
+			h.importFail(&result, err, "failed to create category", "name", cat.Name)
 			continue
 		}
 		result.CategoriesCreated++
@@ -245,19 +279,19 @@ func (h *Handler) importBanks(ctx context.Context, banks []ExportBank, categoryI
 		newBank := questionbank.NewWithOptions(bank.Subject, &categoryID, bankType, bank.Language)
 
 		if err := h.store.SaveBank(ctx, newBank); err != nil {
-			h.logger.Error("failed to create bank", "subject", bank.Subject, "error", err)
+			h.importFail(result, err, "failed to create bank", "subject", bank.Subject)
 			continue
 		}
 		result.BanksCreated++
 
 		for _, q := range bank.Questions {
 			if err := newBank.AddQuestionWithGradingPrompt(q.Subject, q.ExpectedAnswer, q.GradingPrompt); err != nil {
-				h.logger.Error("failed to add question", "error", err)
+				h.importFail(result, err, "failed to add question", "bank", bank.Subject)
 				continue
 			}
 			newQuestion := newBank.Questions[len(newBank.Questions)-1]
 			if err := h.store.AddQuestion(ctx, newBank.ID, newQuestion); err != nil {
-				h.logger.Error("failed to save question", "error", err)
+				h.importFail(result, err, "failed to save question", "bank", bank.Subject)
 				continue
 			}
 			result.QuestionsCreated++

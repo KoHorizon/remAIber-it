@@ -28,11 +28,17 @@ import (
 // @BasePath  /
 
 func main() {
-	cfg := config.Load()
+	// Logger first: a bad config is the earliest thing we might have to report.
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Error("failed to load configuration", "error", err)
+		os.Exit(1)
+	}
+
 	// ── Dependencies ────────────────────────────────────────────────
-	db, err := store.NewSQLite("remaimber.db")
+	db, err := store.NewSQLite(cfg.DatabasePath)
 	if err != nil {
 		logger.Error("failed to open database", "error", err)
 		os.Exit(1)

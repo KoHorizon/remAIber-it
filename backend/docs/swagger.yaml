@@ -437,6 +437,15 @@ definitions:
       categories_created:
         example: 2
         type: integer
+      errors:
+        description: |-
+          Errors lists everything that was skipped. Omitted entirely when the import
+          was clean, so its presence alone means "not everything came through".
+          The import is not transactional — see importAll — so a partial result is a
+          real outcome the user has to be told about rather than a failure to hide.
+        items:
+          type: string
+        type: array
       folders_created:
         example: 3
         type: integer
