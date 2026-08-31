@@ -29,7 +29,7 @@ type Store interface {
 
 	// System "Deleted" folder
 	GetOrCreateDeletedFolder(ctx context.Context) (*folder.Folder, error)
-	EmptyDeletedFolder(ctx context.Context) error // Cascade-delete all content inside the Deleted folder
+	EmptyDeletedFolder(ctx context.Context) error // Unfiles its categories, then drops the folder row
 
 	// Categories
 	SaveCategory(ctx context.Context, cat *category.Category) error

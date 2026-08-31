@@ -113,9 +113,10 @@ func (s *SQLiteStore) UpdateFolder(ctx context.Context, f *folder.Folder) error 
 	return nil
 }
 
-// DeleteFolder handles folder deletion:
-//   - System "Deleted" folder: cascade-delete all its content (categories, banks, questions, stats)
-//   - Regular folder: move its categories to the "Deleted" folder, then remove the folder
+// DeleteFolder handles folder deletion. Only the folder row is ever removed —
+// categories, banks, questions and stats are reassigned, never destroyed:
+//   - System "Deleted" folder: move its categories back to "All" (folder_id = NULL)
+//   - Regular folder: move its categories to the "Deleted" folder
 func (s *SQLiteStore) DeleteFolder(ctx context.Context, id string) error {
 	f, err := s.GetFolder(ctx, id)
 	if err != nil {

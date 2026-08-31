@@ -5,6 +5,9 @@ definitions:
       expected_answer:
         example: A goroutine is a lightweight thread managed by the Go runtime.
         type: string
+      grading_prompt:
+        example: Be strict about mentioning the Go scheduler.
+        type: string
       subject:
         example: What is a goroutine?
         type: string
@@ -13,6 +16,9 @@ definitions:
     properties:
       expected_answer:
         example: A goroutine is a lightweight thread managed by the Go runtime.
+        type: string
+      grading_prompt:
+        example: Be strict about mentioning the Go scheduler.
         type: string
       id:
         example: q1w2e3r4t5y6u7i8
@@ -37,8 +43,6 @@ definitions:
         type: string
       category_id:
         example: a1b2c3d4e5f6g7h8
-        type: string
-      grading_prompt:
         type: string
       id:
         example: x9y8z7w6v5u4t3s2
@@ -83,6 +87,9 @@ definitions:
       name:
         example: Golang
         type: string
+      sort_order:
+        example: 0
+        type: integer
     type: object
   api.CategoryStatsResponse:
     properties:
@@ -141,6 +148,9 @@ definitions:
       mastery:
         example: 0
         type: integer
+      question_count:
+        example: 5
+        type: integer
       subject:
         example: Go concurrency patterns
         type: string
@@ -159,6 +169,19 @@ definitions:
       name:
         example: Programming
         type: string
+    type: object
+  api.CreateQuickSessionRequest:
+    properties:
+      bank_ids:
+        items:
+          type: string
+        type: array
+      max_duration_min:
+        example: 15
+        type: integer
+      max_per_bank:
+        example: 5
+        type: integer
     type: object
   api.CreateSessionRequest:
     properties:
@@ -198,12 +221,16 @@ definitions:
         example: active
         type: string
     type: object
+  api.ErrorResponse:
+    properties:
+      error:
+        example: entity not found
+        type: string
+    type: object
   api.ExportBank:
     properties:
       bank_type:
         example: theory
-        type: string
-      grading_prompt:
         type: string
       language:
         example: go
@@ -259,6 +286,8 @@ definitions:
       expected_answer:
         example: A goroutine is a lightweight thread managed by the Go runtime.
         type: string
+      grading_prompt:
+        type: string
       subject:
         example: What is a goroutine?
         type: string
@@ -287,6 +316,31 @@ definitions:
         example: 42
         type: integer
     type: object
+  api.GenerateQuestionsRequest:
+    properties:
+      bank_type:
+        example: theory
+        type: string
+      content:
+        example: Go is a statically typed language...
+        type: string
+      count:
+        example: 10
+        type: integer
+      direction:
+        example: Focus on practical scenarios
+        type: string
+      language:
+        example: go
+        type: string
+    type: object
+  api.GenerateQuestionsResponse:
+    properties:
+      questions:
+        items:
+          $ref: '#/definitions/grader.GeneratedQuestion'
+        type: array
+    type: object
   api.GetBankResponse:
     properties:
       bank_type:
@@ -294,8 +348,6 @@ definitions:
         type: string
       category_id:
         example: a1b2c3d4e5f6g7h8
-        type: string
-      grading_prompt:
         type: string
       id:
         example: x9y8z7w6v5u4t3s2
@@ -392,10 +444,19 @@ definitions:
         example: 42
         type: integer
     type: object
+  api.OverallStatsResponse:
+    properties:
+      mastery:
+        example: 64
+        type: integer
+    type: object
   api.QuestionResponse:
     properties:
       expected_answer:
         example: A goroutine is a lightweight thread managed by the Go runtime.
+        type: string
+      grading_prompt:
+        example: Be strict about mentioning the Go scheduler.
         type: string
       id:
         example: q1w2e3r4t5y6u7i8
@@ -428,10 +489,19 @@ definitions:
         example: 2
         type: integer
     type: object
+  api.ReorderCategoriesRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
   api.SessionQuestion:
     properties:
       expected_answer:
         example: A goroutine is a lightweight thread managed by the Go runtime.
+        type: string
+      grading_prompt:
         type: string
       id:
         example: q1w2e3r4t5y6u7i8
@@ -439,6 +509,43 @@ definitions:
       subject:
         example: What is a goroutine?
         type: string
+    type: object
+  api.SimulateGradeRequest:
+    properties:
+      bank_type:
+        example: theory
+        type: string
+      expected_answer:
+        example: A goroutine is a lightweight thread managed by the Go runtime.
+        type: string
+      grading_prompt:
+        example: Be strict about mentioning the Go scheduler.
+        type: string
+      question:
+        example: What is a goroutine?
+        type: string
+      user_answer:
+        example: A goroutine is a concurrent unit of execution.
+        type: string
+    type: object
+  api.SimulateGradeResponse:
+    properties:
+      covered:
+        example:
+        - lightweight thread
+        - concurrent execution
+        items:
+          type: string
+        type: array
+      missed:
+        example:
+        - managed by Go runtime
+        items:
+          type: string
+        type: array
+      score:
+        example: 80
+        type: integer
     type: object
   api.SubmitAnswerRequest:
     properties:
@@ -479,10 +586,33 @@ definitions:
         example: DevOps
         type: string
     type: object
-  api.UpdateGradingPromptRequest:
+  api.UpdateQuestionRequest:
     properties:
+      expected_answer:
+        type: string
       grading_prompt:
-        example: Be strict about exact terminology.
+        type: string
+      subject:
+        type: string
+    type: object
+  api.UpdateQuestionResponse:
+    properties:
+      expected_answer:
+        type: string
+      grading_prompt:
+        type: string
+      id:
+        type: string
+      subject:
+        type: string
+    type: object
+  grader.GeneratedQuestion:
+    properties:
+      expected_answer:
+        type: string
+      grading_prompt:
+        type: string
+      subject:
         type: string
     type: object
 host: localhost:8080
@@ -649,45 +779,6 @@ paths:
       summary: Update bank category
       tags:
       - Banks
-  /banks/{bankID}/grading-prompt:
-    put:
-      consumes:
-      - application/json
-      description: Set or clear a custom grading prompt for a question bank.
-      parameters:
-      - description: Bank ID
-        in: path
-        name: bankID
-        required: true
-        type: string
-      - description: Grading prompt
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/api.UpdateGradingPromptRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.GetBankResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Update grading prompt
-      tags:
-      - Banks
   /banks/{bankID}/questions:
     post:
       consumes:
@@ -763,6 +854,55 @@ paths:
               type: string
             type: object
       summary: Delete a question
+      tags:
+      - Questions
+    put:
+      consumes:
+      - application/json
+      description: Update the subject, expected answer, and grading prompt of a question.
+      parameters:
+      - description: Bank ID
+        in: path
+        name: bankID
+        required: true
+        type: string
+      - description: Question ID
+        in: path
+        name: questionID
+        required: true
+        type: string
+      - description: Updated question data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateQuestionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.UpdateQuestionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a question
       tags:
       - Questions
   /banks/{bankID}/stats:
@@ -1055,6 +1195,37 @@ paths:
       summary: Get category stats
       tags:
       - Categories
+  /categories/reorder:
+    patch:
+      consumes:
+      - application/json
+      description: Rewrites sort_order for the given categories to match the order
+        of the ids array.
+      parameters:
+      - description: Category IDs in the desired order
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ReorderCategoriesRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reorder categories
+      tags:
+      - Categories
   /export:
     get:
       description: Export all folders, categories, banks, and questions as a downloadable
@@ -1133,8 +1304,10 @@ paths:
   /folders/{folderID}:
     delete:
       description: 'For regular folders: moves categories to the system "Deleted"
-        folder, then removes the folder. For the "Deleted" folder: cascade-deletes
-        all categories, banks, questions, and stats inside it (empties the trash).'
+        folder, then removes the folder. For the "Deleted" folder: moves its categories
+        back to "All" (unfiled), then removes the folder. Nothing is ever destroyed
+        — categories, banks, questions, and stats all survive, so this reassigns rather
+        than deletes content.'
       parameters:
       - description: Folder ID
         in: path
@@ -1298,6 +1471,36 @@ paths:
       summary: Get folder stats
       tags:
       - Folders
+  /generate/questions:
+    post:
+      consumes:
+      - application/json
+      description: Generate flashcard questions from study material using the AI model.
+      parameters:
+      - description: Generation request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.GenerateQuestionsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.GenerateQuestionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Generate questions
+      tags:
+      - Generate
   /import:
     post:
       consumes:
@@ -1484,4 +1687,90 @@ paths:
       summary: Complete a session
       tags:
       - Sessions
+  /sessions/quick:
+    post:
+      consumes:
+      - application/json
+      description: Create a practice session from multiple banks, focusing on weak
+        questions.
+      parameters:
+      - description: Quick session configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateQuickSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a quick practice session
+      tags:
+      - Sessions
+  /simulate/grade:
+    post:
+      consumes:
+      - application/json
+      description: Grade a question/answer pair without persisting anything. Useful
+        for testing grading prompts.
+      parameters:
+      - description: Grading simulation request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.SimulateGradeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SimulateGradeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Simulate grading
+      tags:
+      - Simulate
+  /stats:
+    get:
+      description: Returns the aggregate mastery score across all questions in the
+        library. Unanswered questions count as zero.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.OverallStatsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get overall stats
+      tags:
+      - Stats
 swagger: "2.0"

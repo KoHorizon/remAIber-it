@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -755,43 +756,45 @@ func (s *SQLiteStore) GetGrades(ctx context.Context, sessionID string) ([]Stored
 // Question Statistics
 // ============================================================================
 
+// updateQuestionStats records a newly graded score against a question.
+//
+// The mastery arithmetic deliberately lives in questionbank.QuestionStats and is
+// NOT reimplemented in SQL: the two used to drift, with the SQL averaging the
+// latest score into the "historical" average and so double-counting it.
+// Read-modify-write runs in a transaction to stay atomic.
 func (s *SQLiteStore) updateQuestionStats(ctx context.Context, questionID string, score int) error {
-	// Check if stats exist
-	var exists bool
-	err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM question_stats WHERE question_id = ?)", questionID).Scan(&exists)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 
-	isCorrect := 0
-	if score >= 70 {
-		isCorrect = 1
+	// A missing row simply means this is the first recorded attempt.
+	stats := questionbank.QuestionStats{QuestionID: questionID}
+	err = tx.QueryRowContext(ctx, `
+		SELECT times_answered, times_correct, total_score
+		FROM question_stats WHERE question_id = ?
+	`, questionID).Scan(&stats.TimesAnswered, &stats.TimesCorrect, &stats.TotalScore)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
 	}
 
-	if exists {
-		// Compute mastery using the new total_score and times_answered AFTER incrementing.
-		// new_avg = (total_score + score) / (times_answered + 1)
-		// mastery  = latest_score * 0.6 + new_avg * 0.4
-		_, err = s.db.ExecContext(ctx, `
-			UPDATE question_stats
-			SET times_answered = times_answered + 1,
-			    times_correct  = times_correct + ?,
-			    total_score    = total_score + ?,
-			    latest_score   = ?,
-			    mastery        = CAST(
-			        ? * 0.6 +
-			        (CAST(total_score + ? AS REAL) / (times_answered + 1)) * 0.4
-			    AS INTEGER)
-			WHERE question_id = ?
-		`, isCorrect, score, score, score, score, questionID)
-	} else {
-		_, err = s.db.ExecContext(ctx, `
-			INSERT INTO question_stats (question_id, times_answered, times_correct, total_score, latest_score, mastery)
-			VALUES (?, 1, ?, ?, ?, ?)
-		`, questionID, isCorrect, score, score, score)
+	stats.RecordScore(score)
+
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO question_stats (question_id, times_answered, times_correct, total_score, latest_score, mastery)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(question_id) DO UPDATE SET
+			times_answered = excluded.times_answered,
+			times_correct  = excluded.times_correct,
+			total_score    = excluded.total_score,
+			latest_score   = excluded.latest_score,
+			mastery        = excluded.mastery
+	`, questionID, stats.TimesAnswered, stats.TimesCorrect, stats.TotalScore, stats.LatestScore, stats.Mastery); err != nil {
+		return err
 	}
 
-	return err
+	return tx.Commit()
 }
 
 func (s *SQLiteStore) GetQuestionStats(ctx context.Context, questionID string) (*questionbank.QuestionStats, error) {

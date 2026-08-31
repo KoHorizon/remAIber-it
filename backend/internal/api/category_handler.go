@@ -297,6 +297,15 @@ func (h *Handler) updateCategoryFolder(w http.ResponseWriter, r *http.Request) {
 }
 
 // reorderCategories updates the sort_order of categories.
+// @Summary      Reorder categories
+// @Description  Rewrites sort_order for the given categories to match the order of the ids array.
+// @Tags         Categories
+// @Accept       json
+// @Param        request  body  ReorderCategoriesRequest  true  "Category IDs in the desired order"
+// @Success      204
+// @Failure      400  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /categories/reorder [patch]
 func (h *Handler) reorderCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req ReorderCategoriesRequest

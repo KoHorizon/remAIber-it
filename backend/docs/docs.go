@@ -251,65 +251,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/banks/{bankID}/grading-prompt": {
-            "put": {
-                "description": "Set or clear a custom grading prompt for a question bank.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Banks"
-                ],
-                "summary": "Update grading prompt",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bank ID",
-                        "name": "bankID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Grading prompt",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.UpdateGradingPromptRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.GetBankResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/banks/{bankID}/questions": {
             "post": {
                 "description": "Add a new question with an expected answer to a question bank.",
@@ -379,6 +320,79 @@ const docTemplate = `{
             }
         },
         "/banks/{bankID}/questions/{questionID}": {
+            "put": {
+                "description": "Update the subject, expected answer, and grading prompt of a question.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Questions"
+                ],
+                "summary": "Update a question",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bank ID",
+                        "name": "bankID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Question ID",
+                        "name": "questionID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated question data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateQuestionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateQuestionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "description": "Delete a question and its statistics.",
                 "tags": [
@@ -545,6 +559,52 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "folder not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/categories/reorder": {
+            "patch": {
+                "description": "Rewrites sort_order for the given categories to match the order of the ids array.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Reorder categories",
+                "parameters": [
+                    {
+                        "description": "Category IDs in the desired order",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ReorderCategoriesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1087,7 +1147,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "For regular folders: moves categories to the system \"Deleted\" folder, then removes the folder. For the \"Deleted\" folder: cascade-deletes all categories, banks, questions, and stats inside it (empties the trash).",
+                "description": "For regular folders: moves categories to the system \"Deleted\" folder, then removes the folder. For the \"Deleted\" folder: moves its categories back to \"All\" (unfiled), then removes the folder. Nothing is ever destroyed — categories, banks, questions, and stats all survive, so this reassigns rather than deletes content.",
                 "tags": [
                     "Folders"
                 ],
@@ -1223,6 +1283,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/generate/questions": {
+            "post": {
+                "description": "Generate flashcard questions from study material using the AI model.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Generate"
+                ],
+                "summary": "Generate questions",
+                "parameters": [
+                    {
+                        "description": "Generation request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.GenerateQuestionsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.GenerateQuestionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/import": {
             "post": {
                 "description": "Import folders, categories, banks, and questions from a JSON export. New IDs are generated for all entities.",
@@ -1317,6 +1423,58 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "bank not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sessions/quick": {
+            "post": {
+                "description": "Create a practice session from multiple banks, focusing on weak questions.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Create a quick practice session",
+                "parameters": [
+                    {
+                        "description": "Quick session configuration",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateQuickSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1497,6 +1655,81 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/simulate/grade": {
+            "post": {
+                "description": "Grade a question/answer pair without persisting anything. Useful for testing grading prompts.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Simulate"
+                ],
+                "summary": "Simulate grading",
+                "parameters": [
+                    {
+                        "description": "Grading simulation request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SimulateGradeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SimulateGradeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats": {
+            "get": {
+                "description": "Returns the aggregate mastery score across all questions in the library. Unanswered questions count as zero.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Stats"
+                ],
+                "summary": "Get overall stats",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.OverallStatsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1506,6 +1739,10 @@ const docTemplate = `{
                 "expected_answer": {
                     "type": "string",
                     "example": "A goroutine is a lightweight thread managed by the Go runtime."
+                },
+                "grading_prompt": {
+                    "type": "string",
+                    "example": "Be strict about mentioning the Go scheduler."
                 },
                 "subject": {
                     "type": "string",
@@ -1519,6 +1756,10 @@ const docTemplate = `{
                 "expected_answer": {
                     "type": "string",
                     "example": "A goroutine is a lightweight thread managed by the Go runtime."
+                },
+                "grading_prompt": {
+                    "type": "string",
+                    "example": "Be strict about mentioning the Go scheduler."
                 },
                 "id": {
                     "type": "string",
@@ -1552,9 +1793,6 @@ const docTemplate = `{
                 "category_id": {
                     "type": "string",
                     "example": "a1b2c3d4e5f6g7h8"
-                },
-                "grading_prompt": {
-                    "type": "string"
                 },
                 "id": {
                     "type": "string",
@@ -1615,6 +1853,10 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Golang"
+                },
+                "sort_order": {
+                    "type": "integer",
+                    "example": 0
                 }
             }
         },
@@ -1698,6 +1940,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 0
                 },
+                "question_count": {
+                    "type": "integer",
+                    "example": 5
+                },
                 "subject": {
                     "type": "string",
                     "example": "Go concurrency patterns"
@@ -1723,6 +1969,25 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Programming"
+                }
+            }
+        },
+        "api.CreateQuickSessionRequest": {
+            "type": "object",
+            "properties": {
+                "bank_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "max_duration_min": {
+                    "type": "integer",
+                    "example": 15
+                },
+                "max_per_bank": {
+                    "type": "integer",
+                    "example": 5
                 }
             }
         },
@@ -1780,15 +2045,21 @@ const docTemplate = `{
                 }
             }
         },
+        "api.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "entity not found"
+                }
+            }
+        },
         "api.ExportBank": {
             "type": "object",
             "properties": {
                 "bank_type": {
                     "type": "string",
                     "example": "theory"
-                },
-                "grading_prompt": {
-                    "type": "string"
                 },
                 "language": {
                     "type": "string",
@@ -1869,6 +2140,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "A goroutine is a lightweight thread managed by the Go runtime."
                 },
+                "grading_prompt": {
+                    "type": "string"
+                },
                 "subject": {
                     "type": "string",
                     "example": "What is a goroutine?"
@@ -1909,6 +2183,42 @@ const docTemplate = `{
                 }
             }
         },
+        "api.GenerateQuestionsRequest": {
+            "type": "object",
+            "properties": {
+                "bank_type": {
+                    "type": "string",
+                    "example": "theory"
+                },
+                "content": {
+                    "type": "string",
+                    "example": "Go is a statically typed language..."
+                },
+                "count": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "direction": {
+                    "type": "string",
+                    "example": "Focus on practical scenarios"
+                },
+                "language": {
+                    "type": "string",
+                    "example": "go"
+                }
+            }
+        },
+        "api.GenerateQuestionsResponse": {
+            "type": "object",
+            "properties": {
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/grader.GeneratedQuestion"
+                    }
+                }
+            }
+        },
         "api.GetBankResponse": {
             "type": "object",
             "properties": {
@@ -1919,9 +2229,6 @@ const docTemplate = `{
                 "category_id": {
                     "type": "string",
                     "example": "a1b2c3d4e5f6g7h8"
-                },
-                "grading_prompt": {
-                    "type": "string"
                 },
                 "id": {
                     "type": "string",
@@ -2058,12 +2365,25 @@ const docTemplate = `{
                 }
             }
         },
+        "api.OverallStatsResponse": {
+            "type": "object",
+            "properties": {
+                "mastery": {
+                    "type": "integer",
+                    "example": 64
+                }
+            }
+        },
         "api.QuestionResponse": {
             "type": "object",
             "properties": {
                 "expected_answer": {
                     "type": "string",
                     "example": "A goroutine is a lightweight thread managed by the Go runtime."
+                },
+                "grading_prompt": {
+                    "type": "string",
+                    "example": "Be strict about mentioning the Go scheduler."
                 },
                 "id": {
                     "type": "string",
@@ -2108,12 +2428,26 @@ const docTemplate = `{
                 }
             }
         },
+        "api.ReorderCategoriesRequest": {
+            "type": "object",
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "api.SessionQuestion": {
             "type": "object",
             "properties": {
                 "expected_answer": {
                     "type": "string",
                     "example": "A goroutine is a lightweight thread managed by the Go runtime."
+                },
+                "grading_prompt": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string",
@@ -2122,6 +2456,59 @@ const docTemplate = `{
                 "subject": {
                     "type": "string",
                     "example": "What is a goroutine?"
+                }
+            }
+        },
+        "api.SimulateGradeRequest": {
+            "type": "object",
+            "properties": {
+                "bank_type": {
+                    "type": "string",
+                    "example": "theory"
+                },
+                "expected_answer": {
+                    "type": "string",
+                    "example": "A goroutine is a lightweight thread managed by the Go runtime."
+                },
+                "grading_prompt": {
+                    "type": "string",
+                    "example": "Be strict about mentioning the Go scheduler."
+                },
+                "question": {
+                    "type": "string",
+                    "example": "What is a goroutine?"
+                },
+                "user_answer": {
+                    "type": "string",
+                    "example": "A goroutine is a concurrent unit of execution."
+                }
+            }
+        },
+        "api.SimulateGradeResponse": {
+            "type": "object",
+            "properties": {
+                "covered": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "lightweight thread",
+                        "concurrent execution"
+                    ]
+                },
+                "missed": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "managed by Go runtime"
+                    ]
+                },
+                "score": {
+                    "type": "integer",
+                    "example": 80
                 }
             }
         },
@@ -2183,12 +2570,48 @@ const docTemplate = `{
                 }
             }
         },
-        "api.UpdateGradingPromptRequest": {
+        "api.UpdateQuestionRequest": {
             "type": "object",
             "properties": {
+                "expected_answer": {
+                    "type": "string"
+                },
                 "grading_prompt": {
-                    "type": "string",
-                    "example": "Be strict about exact terminology."
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.UpdateQuestionResponse": {
+            "type": "object",
+            "properties": {
+                "expected_answer": {
+                    "type": "string"
+                },
+                "grading_prompt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "grader.GeneratedQuestion": {
+            "type": "object",
+            "properties": {
+                "expected_answer": {
+                    "type": "string"
+                },
+                "grading_prompt": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
                 }
             }
         }

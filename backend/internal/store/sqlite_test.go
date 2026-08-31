@@ -295,6 +295,76 @@ func TestDeleteFolder_MovesCategoriesToDeleted(t *testing.T) {
 	}
 }
 
+// TestDeleteFolder_EmptyingTrashPreservesContent covers the second branch of
+// DeleteFolder, on the system "Deleted" folder. It reads like emptying a trash
+// can, and the docs used to claim it cascade-deleted everything inside, but it
+// only unfiles the categories — no bank, question or stat row is removed.
+func TestDeleteFolder_EmptyingTrashPreservesContent(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	f := folder.New("Work")
+	if err := s.SaveFolder(ctx, f); err != nil {
+		t.Fatalf("SaveFolder: %v", err)
+	}
+
+	cat := category.New("Go")
+	cat.FolderID = &f.ID
+	if err := s.SaveCategory(ctx, cat); err != nil {
+		t.Fatalf("SaveCategory: %v", err)
+	}
+
+	bank := questionbank.NewWithCategory("Concurrency", cat.ID)
+	if err := bank.AddQuestion("What is a goroutine?", "A lightweight thread"); err != nil {
+		t.Fatalf("AddQuestion: %v", err)
+	}
+	if err := s.SaveBank(ctx, bank); err != nil {
+		t.Fatalf("SaveBank: %v", err)
+	}
+	questionID := bank.Questions[0].ID
+	if err := s.AddQuestion(ctx, bank.ID, bank.Questions[0]); err != nil {
+		t.Fatalf("store AddQuestion: %v", err)
+	}
+
+	// First delete sends the category to the "Deleted" folder.
+	if err := s.DeleteFolder(ctx, f.ID); err != nil {
+		t.Fatalf("DeleteFolder(regular): %v", err)
+	}
+	deleted, err := s.GetOrCreateDeletedFolder(ctx)
+	if err != nil {
+		t.Fatalf("GetOrCreateDeletedFolder: %v", err)
+	}
+
+	// Second delete "empties the trash".
+	if err := s.DeleteFolder(ctx, deleted.ID); err != nil {
+		t.Fatalf("DeleteFolder(deleted): %v", err)
+	}
+
+	gotCat, err := s.GetCategory(ctx, cat.ID)
+	if err != nil {
+		t.Fatalf("category should survive emptying the trash: %v", err)
+	}
+	if gotCat.FolderID != nil {
+		t.Errorf("expected category unfiled (nil FolderID), got %q", *gotCat.FolderID)
+	}
+
+	gotBank, err := s.GetBank(ctx, bank.ID)
+	if err != nil {
+		t.Fatalf("bank should survive emptying the trash: %v", err)
+	}
+	if len(gotBank.Questions) != 1 {
+		t.Errorf("expected the question to survive, got %d questions", len(gotBank.Questions))
+	}
+	if _, err := s.GetQuestionStats(ctx, questionID); err != nil {
+		t.Errorf("question stats should survive emptying the trash: %v", err)
+	}
+
+	// The folder row itself is gone, and is recreated lazily on the next delete.
+	if _, err := s.GetFolder(ctx, deleted.ID); err != store.ErrNotFound {
+		t.Errorf("expected the Deleted folder row to be gone, got %v", err)
+	}
+}
+
 func TestListCategoriesByFolder(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
@@ -610,4 +680,141 @@ func TestValidIdentifier_Panics(t *testing.T) {
 	}()
 	// Passing an identifier with a semicolon should panic before touching the DB
 	store.ExposedAddColumnIfNotExists(nil, "bad;table", "col", "TEXT")
+}
+
+// ============================================================================
+// Question stats / mastery persistence
+// ============================================================================
+
+// seedGradableQuestion returns a session and the question inside it, ready for
+// SaveGrade calls.
+func seedGradableQuestion(t *testing.T, s *store.SQLiteStore, ctx context.Context) (string, string) {
+	t.Helper()
+
+	bank := questionbank.New("Test")
+	if err := bank.AddQuestion("Q1", "A1"); err != nil {
+		t.Fatalf("AddQuestion: %v", err)
+	}
+	if err := s.SaveBank(ctx, bank); err != nil {
+		t.Fatalf("SaveBank: %v", err)
+	}
+	if err := s.AddQuestion(ctx, bank.ID, bank.Questions[0]); err != nil {
+		t.Fatalf("store AddQuestion: %v", err)
+	}
+
+	full, err := s.GetBank(ctx, bank.ID)
+	if err != nil {
+		t.Fatalf("GetBank: %v", err)
+	}
+	session := practicesession.New(full)
+	if err := s.SaveSession(ctx, session); err != nil {
+		t.Fatalf("SaveSession: %v", err)
+	}
+
+	return session.ID, session.Questions[0].ID
+}
+
+// TestSaveGrade_MasteryMatchesDomain is the regression guard for the store
+// reimplementing the mastery formula in SQL. The persisted value must equal what
+// questionbank.QuestionStats computes for the same sequence of scores.
+func TestSaveGrade_MasteryMatchesDomain(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	sessionID, questionID := seedGradableQuestion(t, s, ctx)
+
+	var expected questionbank.QuestionStats
+	for _, score := range []int{60, 90, 40, 100} {
+		if err := s.SaveGrade(ctx, sessionID, questionID, score, nil, nil, "answer"); err != nil {
+			t.Fatalf("SaveGrade(%d): %v", score, err)
+		}
+		expected.RecordScore(score)
+
+		got, err := s.GetQuestionStats(ctx, questionID)
+		if err != nil {
+			t.Fatalf("GetQuestionStats: %v", err)
+		}
+
+		if got.TimesAnswered != expected.TimesAnswered {
+			t.Errorf("after %d: TimesAnswered = %d, want %d", score, got.TimesAnswered, expected.TimesAnswered)
+		}
+		if got.TimesCorrect != expected.TimesCorrect {
+			t.Errorf("after %d: TimesCorrect = %d, want %d", score, got.TimesCorrect, expected.TimesCorrect)
+		}
+		if got.TotalScore != expected.TotalScore {
+			t.Errorf("after %d: TotalScore = %d, want %d", score, got.TotalScore, expected.TotalScore)
+		}
+		if got.LatestScore != expected.LatestScore {
+			t.Errorf("after %d: LatestScore = %d, want %d", score, got.LatestScore, expected.LatestScore)
+		}
+		if got.Mastery != expected.Mastery {
+			t.Errorf("after %d: persisted Mastery = %d, domain says %d", score, got.Mastery, expected.Mastery)
+		}
+	}
+}
+
+// TestSaveGrade_MasteryDoesNotDoubleCountLatest pins the exact value the old SQL
+// got wrong: scoring 60 then 90 must yield 78, not 84.
+func TestSaveGrade_MasteryDoesNotDoubleCountLatest(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	sessionID, questionID := seedGradableQuestion(t, s, ctx)
+
+	if err := s.SaveGrade(ctx, sessionID, questionID, 60, nil, nil, "first"); err != nil {
+		t.Fatalf("SaveGrade: %v", err)
+	}
+	if err := s.SaveGrade(ctx, sessionID, questionID, 90, nil, nil, "second"); err != nil {
+		t.Fatalf("SaveGrade: %v", err)
+	}
+
+	got, err := s.GetQuestionStats(ctx, questionID)
+	if err != nil {
+		t.Fatalf("GetQuestionStats: %v", err)
+	}
+
+	if got.Mastery == 84 {
+		t.Fatalf("mastery 84 means the latest score was averaged into history")
+	}
+	if got.Mastery != 78 {
+		t.Errorf("Mastery = %d, want 78 (90*0.6 + 60*0.4)", got.Mastery)
+	}
+}
+
+func TestSaveGrade_FirstAttemptMasteryEqualsScore(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	sessionID, questionID := seedGradableQuestion(t, s, ctx)
+
+	if err := s.SaveGrade(ctx, sessionID, questionID, 73, nil, nil, "answer"); err != nil {
+		t.Fatalf("SaveGrade: %v", err)
+	}
+
+	got, err := s.GetQuestionStats(ctx, questionID)
+	if err != nil {
+		t.Fatalf("GetQuestionStats: %v", err)
+	}
+	if got.Mastery != 73 {
+		t.Errorf("first-attempt Mastery = %d, want 73", got.Mastery)
+	}
+	if got.TimesAnswered != 1 || got.TimesCorrect != 1 {
+		t.Errorf("expected 1 answered / 1 correct, got %d / %d", got.TimesAnswered, got.TimesCorrect)
+	}
+}
+
+// TestGetQuestionStats_Unanswered documents that a question with no stats row
+// reads back as a zero-valued stats struct rather than an error.
+func TestGetQuestionStats_Unanswered(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	_, questionID := seedGradableQuestion(t, s, ctx)
+
+	got, err := s.GetQuestionStats(ctx, questionID)
+	if err != nil {
+		t.Fatalf("GetQuestionStats: %v", err)
+	}
+	if got.TimesAnswered != 0 || got.Mastery != 0 {
+		t.Errorf("expected zero stats, got %+v", got)
+	}
+	if got.QuestionID != questionID {
+		t.Errorf("QuestionID = %q, want %q", got.QuestionID, questionID)
+	}
 }

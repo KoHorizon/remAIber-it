@@ -220,7 +220,7 @@ func (h *Handler) updateFolder(w http.ResponseWriter, r *http.Request) {
 
 // deleteFolder deletes a folder.
 // @Summary      Delete a folder
-// @Description  For regular folders: moves categories to the system "Deleted" folder, then removes the folder. For the "Deleted" folder: cascade-deletes all categories, banks, questions, and stats inside it (empties the trash).
+// @Description  For regular folders: moves categories to the system "Deleted" folder, then removes the folder. For the "Deleted" folder: moves its categories back to "All" (unfiled), then removes the folder. Nothing is ever destroyed — categories, banks, questions, and stats all survive, so this reassigns rather than deletes content.
 // @Tags         Folders
 // @Param        folderID  path  string  true  "Folder ID"
 // @Success      204
