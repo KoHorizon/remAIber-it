@@ -75,6 +75,30 @@ The following custom control classes are intentionally outside the `Button` vari
 - `toggle-switch` — toggle controls in session config
 - `stepper-btn` — +/- steppers in session config
 
+`SimulationView/` (segmented controls and pills, each with its own complete CSS):
+
+- `simulation-type-btn` — the Theory/Code/CLI segmented control
+- `simulation-save-chip` — category and bank pickers in the save panel
+- `grading-pill` — the collapsed grading-rules handle, with its own chevron rotation
+- `simulation-save-btn` / `simulation-back-btn` — the two slide-transition triggers on the result card
+
+`AIGenerateView/` (same reasoning):
+
+- `aigen-type-btn` — the bank-type segmented control
+- `aigen-preset-btn` — preset chips; functionally the same control as `template-btn`
+- `aigen-bank-option` — the destination bank list, a two-line row with a count
+- `aigen-direction-toggle` — a two-position segmented toggle
+- `aigen-grading-toggle` — disclosure row for the per-question grading prompt
+- `aigen-add-content-btn` / `aigen-add-question` — dashed-outline "add" affordances
+- `aigen-action-btn` / `aigen-content-card-delete` — 28×28 icon buttons with their own
+  border and hover rules. Deliberately **not** `IconButton`: that injects
+  `btn btn-ghost btn-icon`, and since those rules have the same specificity as the
+  `aigen-*` ones, which border wins depends on CSS source order.
+
+None of the above is "a `<Button variant>` written by hand" — each is a bespoke control whose
+CSS defines its full appearance, so routing it through `Button` would mean fighting the base
+styles rather than reusing them. Icon-only ones carry `title` and `aria-label`.
+
 All other buttons must use `<Button variant="...">`.
 
 ### Adding New UI Components
@@ -281,6 +305,69 @@ export function MyComponent({ prop1, prop2 }: Props) {
   return ( );
 }
 ```
+
+### Linting
+
+`npm run lint` (frontend). `eslint.config.js` enforces the mechanically
+checkable parts of this document — nothing more:
+
+| Rule | Convention it enforces |
+|------|------------------------|
+| `react/no-array-index-key` | "Don't use `index` as React key when items can reorder" |
+| `no-console` (allows `console.error`) | "Remove `console.log` calls" |
+| `react-hooks/exhaustive-deps`, `rules-of-hooks` | correct hook usage |
+| `@typescript-eslint/no-unused-vars` | leading `_` for deliberately unused |
+
+Two things are deliberately **off**, so don't re-enable them casually:
+
+- **React Compiler rules** (`react-hooks/refs`, `set-state-in-effect`,
+  `immutability`) — they flag ~17 existing places. Worth adopting, but as its
+  own refactor, not as 17 suppressions.
+- **`react-refresh/only-export-components`** — it wants one component per file,
+  which contradicts colocating each context's provider with its hooks.
+
+Everything else here (CSS variables over hex, `ui/` components over raw
+`<button>`, the context-hook split, feature folder layout) a linter can't see
+and still depends on review.
+
+When suppressing `react/no-array-index-key`, say why the list can't reorder —
+that comment is the documentation the convention was otherwise missing.
+
+---
+
+## Frontend tests
+
+Vitest. `npm test` runs once, `npm run test:watch` watches. Tests sit beside what they cover
+(`useSimulation.ts` → `useSimulation.test.ts`).
+
+**The default environment is `node`.** Anything needing a DOM opts in per file with a docblock on
+line 1, so pure util tests aren't paying for jsdom:
+
+```ts
+// @vitest-environment jsdom
+```
+
+There is **no `@testing-library/jest-dom`**, so its matchers do not exist — `toBeInTheDocument`,
+`toHaveTextContent` and friends will fail as "not a function". Assert on the DOM directly instead:
+
+```ts
+expect(screen.getByRole("dialog").textContent).toMatch(/discard the 1 question/);
+expect(screen.queryByRole("dialog")).toBeNull();
+```
+
+There is also no global setup file, so a jsdom test must `afterEach(cleanup)` itself.
+
+Two things worth copying from the existing tests:
+
+- **Mock the heavy editors** in any render test that mounts a code or CLI view. Monaco and the
+  terminal emulator are slow to boot and irrelevant to almost everything:
+  ```ts
+  vi.mock("../CodeEditor", () => ({ CodeEditor: () => null }));
+  vi.mock("../TerminalEditor", () => ({ TerminalEditor: () => null }));
+  ```
+- **When writing a test before the module exists**, create the module as a stub returning the right
+  shape with no-op mutators first. A test that fails with "failed to resolve import" hasn't shown
+  you anything about your assertions; one that fails on the assertion has.
 
 ---
 

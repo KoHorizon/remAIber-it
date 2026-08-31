@@ -39,6 +39,27 @@ export type Question = {
   times_correct: number;
 };
 
+/**
+ * The subset of a bank that views need to identify and render it. These four
+ * fields travel together through every bank-scoped view, so they move as one
+ * value: passed positionally they were four arguments, three of them strings,
+ * and a transposition typechecked cleanly.
+ */
+export type BankRef = {
+  id: string;
+  subject: string;
+  type: BankType;
+  language?: string | null;
+};
+
+/** A question's editable fields, as the editor wants them prefilled. */
+export type QuestionDraft = {
+  id: string;
+  subject: string;
+  answer: string;
+  gradingPrompt?: string | null;
+};
+
 export type SessionQuestion = {
   id: string;
   subject: string;
@@ -116,4 +137,7 @@ export type ImportResult = {
   categories_created: number;
   banks_created: number;
   questions_created: number;
+  /** Present only when items were skipped. Import is not transactional, so a
+   *  partial result is a real outcome the user has to see. */
+  errors?: string[];
 };

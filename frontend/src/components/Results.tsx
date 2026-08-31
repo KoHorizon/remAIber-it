@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { SessionResult, BankType } from "../types";
 import { renderFormattedText } from "../utils/formatText";
+import { getScoreClass, getScoreLabel } from "../utils/scoreBuckets";
 import { CodeEditor } from "./CodeEditor";
 import { TerminalDisplay } from "./TerminalDisplay";
 import { Button, Tooltip, TooltipTitle, TooltipContent, TooltipHint } from "./ui";
@@ -51,21 +52,10 @@ export function Results({
     setAnswerOverrides((prev) => new Map(prev).set(index, !currentlyShown));
   };
 
-  const getScoreClass = (pct = percentage) => {
-    if (!hasAnswers) return "score-poor";
-    if (pct >= 90) return "score-excellent";
-    if (pct >= 70) return "score-good";
-    if (pct >= 50) return "score-needs-work";
-    return "score-poor";
-  };
-
-  const getScoreLabel = () => {
-    if (!hasAnswers) return "No answers";
-    if (percentage >= 90) return "Excellent";
-    if (percentage >= 70) return "Good job";
-    if (percentage >= 50) return "Keep going";
-    return "Needs work";
-  };
+  // Buckets and labels come from utils/scoreBuckets.ts so they can't drift from
+  // SimulationView's. Only the "no answers at all" case is Results-specific.
+  const heroScoreClass = hasAnswers ? getScoreClass(percentage) : "score-poor";
+  const heroScoreLabel = hasAnswers ? getScoreLabel(percentage) : "No answers";
 
   const getMessage = () => {
     if (!hasAnswers) return "Time ran out before you could answer any questions.";
@@ -95,10 +85,10 @@ export function Results({
           </div>
 
           {/* Score hero */}
-          <div className={`results-score-hero ${getScoreClass()}`}>
+          <div className={`results-score-hero ${heroScoreClass}`}>
             <div className="results-score-ring">
               <span className="results-score-pct">{percentage}%</span>
-              <span className="results-score-sublabel">{getScoreLabel()}</span>
+              <span className="results-score-sublabel">{heroScoreLabel}</span>
             </div>
             <p className="results-score-message">{getMessage()}</p>
           </div>
@@ -261,6 +251,7 @@ export function Results({
                             </span>
                             <div className="bcard-chips">
                               {result.covered.map((item, j) => (
+                                // eslint-disable-next-line react/no-array-index-key -- grading output: read-only, never reordered, and the strings aren't unique
                                 <span key={j} className="bcard-chip bcard-chip--covered">{item}</span>
                               ))}
                             </div>
@@ -274,6 +265,7 @@ export function Results({
                             </span>
                             <div className="bcard-chips">
                               {result.missed.map((item, j) => (
+                                // eslint-disable-next-line react/no-array-index-key -- see the covered chips above
                                 <span key={j} className="bcard-chip bcard-chip--missed">{item}</span>
                               ))}
                             </div>
@@ -318,6 +310,7 @@ export function Results({
                           </span>
                           <div className="bcard-chips">
                             {result.covered.map((item, j) => (
+                              // eslint-disable-next-line react/no-array-index-key -- see the code-card chips above
                               <span key={j} className="bcard-chip bcard-chip--covered">{item}</span>
                             ))}
                           </div>
@@ -331,6 +324,7 @@ export function Results({
                           </span>
                           <div className="bcard-chips">
                             {missedItems.map((item, j) => (
+                              // eslint-disable-next-line react/no-array-index-key -- see the code-card chips above
                               <span key={j} className="bcard-chip bcard-chip--missed">{item}</span>
                             ))}
                           </div>

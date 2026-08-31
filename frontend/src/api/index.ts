@@ -10,285 +10,137 @@ import type {
   ExportData,
   ImportResult,
 } from "../types";
+import { get, post, put, patch, del } from "./request";
 
-const API_BASE = "http://localhost:8080";
+export { ApiError, API_BASE } from "./request";
 
 // Folders
 
-export async function getFolders(): Promise<Folder[]> {
-  try {
-    const res = await fetch(`${API_BASE}/folders`);
-    if (res.status === 404) return [];
-    if (!res.ok) throw new Error("Failed to fetch folders");
-    return res.json();
-  } catch {
-    return [];
-  }
-}
+export const getFolders = () => get<Folder[]>("/folders");
 
-export async function getFolder(
-  id: string
-): Promise<Folder & { categories: Category[] }> {
-  const res = await fetch(`${API_BASE}/folders/${id}`);
-  if (!res.ok) throw new Error("Folder not found");
-  return res.json();
-}
+export const getFolder = (id: string) =>
+  get<Folder & { categories: Category[] }>(`/folders/${id}`);
 
-export async function createFolder(name: string): Promise<Folder> {
-  const res = await fetch(`${API_BASE}/folders`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
-  if (!res.ok) throw new Error("Failed to create folder");
-  return res.json();
-}
+export const createFolder = (name: string) => post<Folder>("/folders", { name });
 
-export async function updateFolder(id: string, name: string): Promise<Folder> {
-  const res = await fetch(`${API_BASE}/folders/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
-  if (!res.ok) throw new Error("Failed to rename folder");
-  return res.json();
-}
+export const updateFolder = (id: string, name: string) =>
+  put<Folder>(`/folders/${id}`, { name });
 
-export async function deleteFolder(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/folders/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Failed to delete folder");
-}
+export const deleteFolder = (id: string) => del(`/folders/${id}`);
 
 // Categories
 
-export async function getCategories(): Promise<Category[]> {
-  const res = await fetch(`${API_BASE}/categories`);
-  if (!res.ok) throw new Error("Failed to fetch categories");
-  return res.json();
-}
+export const getCategories = () => get<Category[]>("/categories");
 
-export async function getCategory(id: string): Promise<Category> {
-  const res = await fetch(`${API_BASE}/categories/${id}`);
-  if (!res.ok) throw new Error("Category not found");
-  return res.json();
-}
+export const getCategory = (id: string) => get<Category>(`/categories/${id}`);
 
-type CreateCategoryBody = {
-  name: string;
-  folder_id?: string;
-};
+export const createCategory = (name: string, folderId?: string) =>
+  post<Category>("/categories", folderId ? { name, folder_id: folderId } : { name });
 
-export async function createCategory(
-  name: string,
-  folderId?: string
-): Promise<Category> {
-  const body: CreateCategoryBody = { name };
-  if (folderId) body.folder_id = folderId;
-  const res = await fetch(`${API_BASE}/categories`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error("Failed to create category");
-  return res.json();
-}
+export const updateCategory = (id: string, name: string) =>
+  put<Category>(`/categories/${id}`, { name });
 
-export async function updateCategory(
-  id: string,
-  name: string
-): Promise<Category> {
-  const res = await fetch(`${API_BASE}/categories/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
-  if (!res.ok) throw new Error("Failed to update category");
-  return res.json();
-}
-
-export async function updateCategoryFolder(
+export const updateCategoryFolder = (
   categoryId: string,
   folderId: string | null
-): Promise<Category> {
-  const res = await fetch(`${API_BASE}/categories/${categoryId}/folder`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ folder_id: folderId }),
-  });
-  if (!res.ok) throw new Error("Failed to update category folder");
-  return res.json();
-}
+) => patch<Category>(`/categories/${categoryId}/folder`, { folder_id: folderId });
 
-export async function deleteCategory(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/categories/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Failed to delete category");
-}
+export const deleteCategory = (id: string) => del(`/categories/${id}`);
 
-export async function reorderCategories(ids: string[]): Promise<void> {
-  const res = await fetch(`${API_BASE}/categories/reorder`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids }),
-  });
-  if (!res.ok) throw new Error("Failed to reorder categories");
-}
+export const reorderCategories = (ids: string[]) =>
+  patch<void>("/categories/reorder", { ids });
 
 // Banks
 
-export async function getBanks(): Promise<Bank[]> {
-  const res = await fetch(`${API_BASE}/banks`);
-  if (!res.ok) throw new Error("Failed to fetch banks");
-  return res.json();
-}
+export const getBanks = () => get<Bank[]>("/banks");
 
-export async function getBank(id: string): Promise<Bank> {
-  const res = await fetch(`${API_BASE}/banks/${id}`);
-  if (!res.ok) throw new Error("Bank not found");
-  return res.json();
-}
+export const getBank = (id: string) => get<Bank>(`/banks/${id}`);
 
-export async function createBank(
+export const createBank = (
   subject: string,
   categoryId?: string,
   bankType?: BankType,
   language?: string
-): Promise<Bank> {
-  const res = await fetch(`${API_BASE}/banks`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      subject,
-      category_id: categoryId || null,
-      bank_type: bankType || "theory",
-      language: language || null,
-    }),
+) =>
+  post<Bank>("/banks", {
+    subject,
+    category_id: categoryId || null,
+    bank_type: bankType || "theory",
+    language: language || null,
   });
-  if (!res.ok) throw new Error("Failed to create bank");
-  return res.json();
-}
 
-export async function updateBankCategory(
-  bankId: string,
-  categoryId: string | null
-): Promise<Bank> {
-  const res = await fetch(`${API_BASE}/banks/${bankId}/category`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ category_id: categoryId }),
-  });
-  if (!res.ok) throw new Error("Failed to update bank category");
-  return res.json();
-}
+export const updateBankCategory = (bankId: string, categoryId: string | null) =>
+  patch<Bank>(`/banks/${bankId}/category`, { category_id: categoryId });
 
-export async function deleteBank(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/banks/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Failed to delete bank");
-}
+export const deleteBank = (id: string) => del(`/banks/${id}`);
 
 // Questions
 
-export async function addQuestion(
+type QuestionBody = {
+  subject: string;
+  expected_answer: string;
+  grading_prompt?: string;
+};
+
+function questionBody(
+  subject: string,
+  expectedAnswer: string,
+  gradingPrompt?: string | null
+): QuestionBody {
+  const body: QuestionBody = { subject, expected_answer: expectedAnswer };
+  if (gradingPrompt) body.grading_prompt = gradingPrompt;
+  return body;
+}
+
+export const addQuestion = (
   bankId: string,
   subject: string,
   expectedAnswer: string,
   gradingPrompt?: string | null
-): Promise<Question> {
-  const body: { subject: string; expected_answer: string; grading_prompt?: string } = {
-    subject,
-    expected_answer: expectedAnswer,
-  };
-  if (gradingPrompt) {
-    body.grading_prompt = gradingPrompt;
-  }
-  const res = await fetch(`${API_BASE}/banks/${bankId}/questions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error("Failed to add question");
-  return res.json();
-}
+) =>
+  post<Question>(
+    `/banks/${bankId}/questions`,
+    questionBody(subject, expectedAnswer, gradingPrompt)
+  );
 
-export async function updateQuestion(
+export const updateQuestion = (
   bankId: string,
   questionId: string,
   subject: string,
   expectedAnswer: string,
   gradingPrompt?: string | null
-): Promise<Question> {
-  const body: { subject: string; expected_answer: string; grading_prompt?: string } = {
-    subject,
-    expected_answer: expectedAnswer,
-  };
-  if (gradingPrompt) {
-    body.grading_prompt = gradingPrompt;
-  }
-  const res = await fetch(`${API_BASE}/banks/${bankId}/questions/${questionId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error("Failed to update question");
-  return res.json();
-}
+) =>
+  put<Question>(
+    `/banks/${bankId}/questions/${questionId}`,
+    questionBody(subject, expectedAnswer, gradingPrompt)
+  );
 
-export async function deleteQuestion(
-  bankId: string,
-  questionId: string
-): Promise<void> {
-  const res = await fetch(`${API_BASE}/banks/${bankId}/questions/${questionId}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Failed to delete question");
-}
+export const deleteQuestion = (bankId: string, questionId: string) =>
+  del(`/banks/${bankId}/questions/${questionId}`);
 
 // Sessions
 
-export async function createSession(
-  bankId: string,
-  config?: SessionConfig
-): Promise<Session> {
-  const res = await fetch(`${API_BASE}/sessions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      bank_id: bankId,
-      max_questions: config?.max_questions,
-      max_duration_min: config?.max_duration_min,
-      focus_on_weak: config?.focus_on_weak || false,
-      question_ids: config?.question_ids,
-    }),
+export const createSession = (bankId: string, config?: SessionConfig) =>
+  post<Session>("/sessions", {
+    bank_id: bankId,
+    max_questions: config?.max_questions,
+    max_duration_min: config?.max_duration_min,
+    focus_on_weak: config?.focus_on_weak || false,
+    question_ids: config?.question_ids,
   });
-  if (!res.ok) throw new Error("Failed to create session");
-  return res.json();
-}
 
-export async function submitAnswer(
+export const submitAnswer = (
   sessionId: string,
   questionId: string,
   answer: string
-): Promise<void> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/answers`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question_id: questionId, answer }),
+) =>
+  post<void>(`/sessions/${sessionId}/answers`, {
+    question_id: questionId,
+    answer,
   });
-  if (!res.ok) throw new Error("Failed to submit answer");
-}
 
-export async function completeSession(sessionId: string): Promise<SessionResult> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/complete`, {
-    method: "POST",
-  });
-  if (!res.ok) throw new Error("Failed to complete session");
-  return res.json();
-}
+export const completeSession = (sessionId: string) =>
+  post<SessionResult>(`/sessions/${sessionId}/complete`);
 
 // Quick Practice (multi-bank session)
 
@@ -316,43 +168,19 @@ export type QuickSession = {
   max_duration_min?: number;
 };
 
-export async function createQuickSession(
-  config: QuickSessionConfig
-): Promise<QuickSession> {
-  const res = await fetch(`${API_BASE}/sessions/quick`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(config),
-  });
-  if (!res.ok) throw new Error("Failed to create quick session");
-  return res.json();
-}
+export const createQuickSession = (config: QuickSessionConfig) =>
+  post<QuickSession>("/sessions/quick", config);
 
 // Stats
 
-export async function getOverallStats(): Promise<{ mastery: number }> {
-  const res = await fetch(`${API_BASE}/stats`);
-  if (!res.ok) throw new Error("Failed to fetch stats");
-  return res.json();
-}
+export const getOverallStats = () => get<{ mastery: number }>("/stats");
 
 // Export/Import
 
-export async function exportAll(): Promise<ExportData> {
-  const res = await fetch(`${API_BASE}/export`);
-  if (!res.ok) throw new Error("Failed to export data");
-  return res.json();
-}
+export const exportAll = () => get<ExportData>("/export");
 
-export async function importAll(data: ExportData): Promise<ImportResult> {
-  const res = await fetch(`${API_BASE}/import`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to import data");
-  return res.json();
-}
+export const importAll = (data: ExportData) =>
+  post<ImportResult>("/import", data);
 
 // Simulate Grading
 
@@ -370,17 +198,8 @@ export type SimulateGradeResult = {
   missed: string[];
 };
 
-export async function simulateGrade(
-  req: SimulateGradeRequest
-): Promise<SimulateGradeResult> {
-  const res = await fetch(`${API_BASE}/simulate/grade`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-  });
-  if (!res.ok) throw new Error("Failed to simulate grading");
-  return res.json();
-}
+export const simulateGrade = (req: SimulateGradeRequest) =>
+  post<SimulateGradeResult>("/simulate/grade", req);
 
 // Generate Questions
 
@@ -402,19 +221,10 @@ export type GenerateQuestionsResponse = {
   questions: GeneratedQuestion[];
 };
 
-export async function generateQuestions(
-  req: GenerateQuestionsRequest
-): Promise<GenerateQuestionsResponse> {
-  const res = await fetch(`${API_BASE}/generate/questions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-  });
-  if (!res.ok) throw new Error("Failed to generate questions");
-  return res.json();
-}
+export const generateQuestions = (req: GenerateQuestionsRequest) =>
+  post<GenerateQuestionsResponse>("/generate/questions", req);
 
-// Convenience object for backward compatibility
+// Barrel object — the primary interface used across the app.
 export const api = {
   getFolders,
   getFolder,
@@ -440,6 +250,7 @@ export const api = {
   createQuickSession,
   submitAnswer,
   completeSession,
+  getOverallStats,
   exportAll,
   importAll,
   simulateGrade,

@@ -1,5 +1,6 @@
 import { useLibraryData } from "../context";
 import { getMasteryLevel } from "../utils/mastery";
+import { ErrorState } from "./ui";
 import "./Dashboard.css";
 
 type Props = {
@@ -8,7 +9,7 @@ type Props = {
 };
 
 export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
-  const { categories, banks, overallMastery, isLoading, getCategoryName } = useLibraryData();
+  const { categories, banks, overallMastery, isLoading, error, refreshAll, getCategoryName } = useLibraryData();
 
   // Calculate stats
   const totalQuestions = banks.reduce(
@@ -48,6 +49,16 @@ export function Dashboard({ onSelectBank, onQuickPractice }: Props) {
       <div className="dashboard-loading">
         <div className="spinner" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        title="Couldn't load your dashboard"
+        message={error}
+        onRetry={refreshAll}
+      />
     );
   }
 

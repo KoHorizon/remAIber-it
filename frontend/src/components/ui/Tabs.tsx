@@ -75,9 +75,11 @@ export function Tabs({
                 {tab.label}
               </button>
               <span className="tab-actions">
-                {tab.actions.map((action, i) => (
+                {/* Keyed by label, as in Chip: these arrays are built
+                    conditionally, so entries can come and go. */}
+                {tab.actions.map((action) => (
                   <span
-                    key={i}
+                    key={action.label}
                     role="button"
                     tabIndex={0}
                     title={action.label}

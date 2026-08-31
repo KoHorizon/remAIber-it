@@ -397,6 +397,12 @@
   text-align: right;
 }
 
+/* Body copy of the confirm dialogs (replace, clear all). Was an inline style. */
+.aigen-modal-message {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
 .aigen-char-count {
   font-size: 0.6875rem;
   color: var(--text-muted);

@@ -127,28 +127,31 @@
     font-weight: 500;
 }
 
+/* Border tints are derived from the mastery colour so they follow the theme.
+   Do not inline the rgba() equivalents — they only match the light theme. */
+
 .qcard-mastery.mastery-excellent {
     background: var(--mastery-excellent-bg);
     color: var(--mastery-excellent);
-    border-color: rgba(107, 159, 120, 0.25);
+    border-color: color-mix(in srgb, var(--mastery-excellent) 25%, transparent);
 }
 
 .qcard-mastery.mastery-good {
     background: var(--mastery-good-bg);
     color: var(--mastery-good);
-    border-color: rgba(140, 184, 150, 0.25);
+    border-color: color-mix(in srgb, var(--mastery-good) 25%, transparent);
 }
 
 .qcard-mastery.mastery-fair {
     background: var(--mastery-fair-bg);
     color: var(--mastery-fair);
-    border-color: rgba(212, 160, 86, 0.25);
+    border-color: color-mix(in srgb, var(--mastery-fair) 25%, transparent);
 }
 
 .qcard-mastery.mastery-needs-work {
     background: var(--mastery-needs-work-bg);
     color: var(--mastery-needs-work);
-    border-color: rgba(196, 92, 74, 0.25);
+    border-color: color-mix(in srgb, var(--mastery-needs-work) 25%, transparent);
 }
 
 .qcard-mastery.mastery-none {

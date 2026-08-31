@@ -8,6 +8,7 @@ import {
 } from "../modals";
 import type { DeleteModalData } from "../modals";
 import type { Category, Folder, Bank, ImportResult } from "../../types";
+import { ErrorState } from "../ui";
 
 import { useLibraryFilters } from "./useLibraryFilters";
 import { LibraryHeader } from "./LibraryHeader";
@@ -23,7 +24,7 @@ type Props = {
 };
 
 export function Library({ onSelectBank }: Props) {
-  const { folders, categories, banks, isLoading, hasFolders, getCategoryName } = useLibraryData();
+  const { folders, categories, banks, isLoading, error, refreshAll, hasFolders, getCategoryName } = useLibraryData();
   const { selectedFolderId, selectedCategoryId, visibleCategories, selectFolder, selectCategory } = useLibrarySelection();
   const {
     createFolder,
@@ -180,6 +181,16 @@ export function Library({ onSelectBank }: Props) {
       <div className="loading">
         <div className="spinner" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        title="Couldn't load your library"
+        message={error}
+        onRetry={refreshAll}
+      />
     );
   }
 

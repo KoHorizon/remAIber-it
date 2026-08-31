@@ -4,6 +4,7 @@ import { CodeEditor } from "./CodeEditor";
 import { TerminalEditor } from "./TerminalEditor";
 import { Button, TooltipContent, TooltipHint } from "./ui";
 import { getDefaultRules, getAvailableTemplates, DEFAULT_GRADING_RULES, EXTRA_TEMPLATES } from "../utils/gradingTemplates";
+import { useViewShortcuts } from "../hooks/useViewShortcuts";
 import "./AddQuestionView.css";
 
 type InitialQuestion = {
@@ -70,13 +71,7 @@ export function AddQuestionView({
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      handleSave();
-    }
-    if (e.key === "Escape") onCancel();
-  }
+  useViewShortcuts({ onSubmit: handleSave, onEscape: onCancel });
 
   // Shared grading panel content (used in both layouts)
   const gradingPanel = showGrading ? (
@@ -157,8 +152,9 @@ export function AddQuestionView({
 
   // ── Theory mode ────────────────────────────────────────────────────────────
   if (bankType === "theory") {
-    function handleTheoryKeyDown(e: React.KeyboardEvent) {
-      handleKeyDown(e);
+    // Field-to-field navigation only. Submit and Escape are registered on the
+    // document by useViewShortcuts; handling them here too would fire twice.
+    function handleFieldNavKeyDown(e: React.KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "ArrowDown") {
         e.preventDefault();
         answerRef.current?.focus();
@@ -170,7 +166,7 @@ export function AddQuestionView({
     }
 
     return (
-      <div className="theory-doc animate-fade-in" onKeyDown={handleTheoryKeyDown}>
+      <div className="theory-doc animate-fade-in" onKeyDown={handleFieldNavKeyDown}>
 
         {/* Top nav bar */}
         <div className="theory-doc-nav">
@@ -237,7 +233,7 @@ export function AddQuestionView({
 
   // ── Code / CLI mode ────────────────────────────────────────────────────────
   return (
-    <div className="add-question-view" onKeyDown={handleKeyDown}>
+    <div className="add-question-view">
       {/* Header */}
       <div className="add-question-view-header">
         <div className="add-question-view-header-left">

@@ -1,3 +1,10 @@
+/* eslint-disable react/no-array-index-key --
+ * Index keys are correct throughout this file. Every element here is a
+ * positional fragment of one parsed string: there is no identity to preserve,
+ * nothing is inserted, deleted or reordered, and when the text changes the
+ * whole output is rebuilt anyway. The convention in DEVELOPMENT.md is about
+ * lists that *can* reorder; these can't.
+ */
 import type { ReactNode } from "react";
 
 // Renders inline segments: bold, backtick code and <placeholder> angle-bracket tokens

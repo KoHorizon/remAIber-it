@@ -7,9 +7,15 @@ type Props = {
 };
 
 export function ImportResultModal({ result, onClose }: Props) {
+  // The backend omits `errors` entirely on a clean import, so its presence is
+  // the signal that something was skipped. Import is not transactional — what
+  // did get through is already saved, hence "Partially Imported" rather than
+  // an outright failure.
+  const skipped = result.errors ?? [];
+
   return (
     <Modal
-      title="Import Complete"
+      title={skipped.length > 0 ? "Partially Imported" : "Import Complete"}
       onClose={onClose}
       showCloseButton={false}
       actions={<Button onClick={onClose}>Done</Button>}
@@ -34,6 +40,23 @@ export function ImportResultModal({ result, onClose }: Props) {
           <span className="label">Questions</span>
         </div>
       </div>
+
+      {skipped.length > 0 && (
+        <div className="modal-import-errors">
+          <span className="modal-import-errors-title">
+            {skipped.length} item{skipped.length === 1 ? "" : "s"} skipped
+          </span>
+          <ul className="modal-import-errors-list">
+            {skipped.map((message, i) => (
+              /* Messages are not unique — the same failure repeats per item —
+                 and the list is never reordered or filtered, so the index is
+                 the only stable key available here. */
+              // eslint-disable-next-line react/no-array-index-key
+              <li key={i}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </Modal>
   );
 }

@@ -86,7 +86,10 @@ export function LibrarySelectionProvider({
 
       setSelectedCategoryId(newVisibleCategories[0].id);
     }
-  }, []); // stable — all reads go through refs
+    // The setters are useState setters from the parent, so React guarantees
+    // they're stable and listing them doesn't cost a re-creation. Every *value*
+    // read goes through a ref, which is what actually keeps this callback stable.
+  }, [setCategoryPerFolder, setSelectedCategoryId, setSelectedFolderId]);
 
   const selectCategory = useCallback((categoryId: string | null) => {
     setSelectedCategoryId(categoryId);
@@ -94,7 +97,7 @@ export function LibrarySelectionProvider({
       const folderKey = selectedFolderIdRef.current || "__all__";
       setCategoryPerFolder((prev) => ({ ...prev, [folderKey]: categoryId }));
     }
-  }, []); // stable — selectedFolderId read via ref
+  }, [setCategoryPerFolder, setSelectedCategoryId]); // selectedFolderId read via ref
 
   const visibleCategories = useMemo(
     () =>

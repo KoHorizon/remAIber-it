@@ -42,24 +42,29 @@ export function usePracticeSession({
 
   const isCodeMode = currentBankType === "code" || currentBankType === "cli";
 
-  // Timer effect
+  // Timer effect. The updater only counts down — it used to call handleTimeUp
+  // from inside itself, but state updaters have to stay pure, and React invokes
+  // them twice in development, so the completion ran twice.
   useEffect(() => {
     if (timeRemaining === null || timeRemaining <= 0) return;
 
     const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(interval);
-          if (!completingRef.current) {
-            handleTimeUp();
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeRemaining((prev) => (prev === null || prev <= 1 ? 0 : prev - 1));
     }, 1000);
 
     return () => clearInterval(interval);
+  }, [timeRemaining]);
+
+  // Completion is a separate effect so it runs as an effect rather than during
+  // an update. handleTimeUp is read through a ref because it closes over the
+  // current answer — listing it as a dependency would re-run this on every
+  // keystroke, and it is re-created on every render.
+  const handleTimeUpRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    if (timeRemaining === 0 && !completingRef.current) {
+      handleTimeUpRef.current();
+    }
   }, [timeRemaining]);
 
   async function handleTimeUp() {
@@ -78,6 +83,8 @@ export function usePracticeSession({
       completingRef.current = false;
     }
   }
+
+  handleTimeUpRef.current = handleTimeUp;
 
   async function handleSubmit() {
     if (!answer.trim() || isSubmitting || completingRef.current) return;

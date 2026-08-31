@@ -72,6 +72,23 @@
     --type-code-bg: var(--info-muted);
     --type-cli: #5a8a66;
     --type-cli-bg: var(--success-muted);
+
+    /* Sidebar — the signature "sunset sky" gradient */
+    --sidebar-bg: linear-gradient(
+        to bottom,
+        #a8c4d9 0%,
+        #c9d9e8 20%,
+        #e8dfd0 50%,
+        #f0e4c8 75%,
+        #f5e6bc 100%
+    );
+    --sidebar-bg-mobile: rgba(250, 247, 242, 0.95);
+    --sidebar-border: rgba(180, 160, 130, 0.3);
+    --sidebar-border-subtle: rgba(180, 160, 130, 0.25);
+    --sidebar-overlay-hover: rgba(255, 255, 255, 0.4);
+    --sidebar-overlay-active: rgba(255, 255, 255, 0.5);
+    --sidebar-logo-bg: rgba(45, 42, 38, 0.85);
+    --sidebar-logo-fg: #f5e6bc;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -137,6 +154,21 @@
     --type-code-bg: rgba(90, 140, 180, 0.25);
     --type-cli: #7ab888;
     --type-cli-bg: rgba(90, 160, 110, 0.25);
+
+    /* Sidebar — near-black with a faint warm lift toward the footer */
+    --sidebar-bg: linear-gradient(
+        to bottom,
+        #181818 0%,
+        #191816 50%,
+        #1a1712 100%
+    );
+    --sidebar-bg-mobile: rgba(20, 20, 20, 0.97);
+    --sidebar-border: var(--border-subtle);
+    --sidebar-border-subtle: var(--border-subtle);
+    --sidebar-overlay-hover: rgba(255, 255, 255, 0.06);
+    --sidebar-overlay-active: rgba(255, 255, 255, 0.09);
+    --sidebar-logo-bg: var(--accent-muted);
+    --sidebar-logo-fg: var(--accent);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -194,6 +226,21 @@
     --type-code-bg: rgba(86, 211, 100, 0.2);
     --type-cli: #e3b341;
     --type-cli-bg: rgba(227, 179, 65, 0.2);
+
+    /* Sidebar — navy deepening downward */
+    --sidebar-bg: linear-gradient(
+        to bottom,
+        #0d1117 0%,
+        #10161d 50%,
+        #131b24 100%
+    );
+    --sidebar-bg-mobile: rgba(13, 17, 23, 0.97);
+    --sidebar-border: var(--border-subtle);
+    --sidebar-border-subtle: var(--border-subtle);
+    --sidebar-overlay-hover: rgba(255, 255, 255, 0.06);
+    --sidebar-overlay-active: rgba(255, 255, 255, 0.09);
+    --sidebar-logo-bg: var(--accent-muted);
+    --sidebar-logo-fg: var(--accent);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -251,6 +298,21 @@
     --type-code-bg: rgba(91, 159, 204, 0.2);
     --type-cli: #4caf78;
     --type-cli-bg: rgba(76, 175, 120, 0.2);
+
+    /* Sidebar — deep forest floor */
+    --sidebar-bg: linear-gradient(
+        to bottom,
+        #0d1410 0%,
+        #101a14 50%,
+        #14201a 100%
+    );
+    --sidebar-bg-mobile: rgba(13, 20, 16, 0.97);
+    --sidebar-border: var(--border-subtle);
+    --sidebar-border-subtle: var(--border-subtle);
+    --sidebar-overlay-hover: rgba(255, 255, 255, 0.06);
+    --sidebar-overlay-active: rgba(255, 255, 255, 0.09);
+    --sidebar-logo-bg: var(--accent-muted);
+    --sidebar-logo-fg: var(--accent);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -308,6 +370,21 @@
     --type-code-bg: rgba(129, 161, 193, 0.2);
     --type-cli: #a3be8c;
     --type-cli-bg: rgba(163, 190, 140, 0.2);
+
+    /* Sidebar — arctic slate, lighter than the app background */
+    --sidebar-bg: linear-gradient(
+        to bottom,
+        #3b4252 0%,
+        #373e4c 50%,
+        #333a47 100%
+    );
+    --sidebar-bg-mobile: rgba(59, 66, 82, 0.97);
+    --sidebar-border: var(--border);
+    --sidebar-border-subtle: var(--border-subtle);
+    --sidebar-overlay-hover: rgba(255, 255, 255, 0.06);
+    --sidebar-overlay-active: rgba(255, 255, 255, 0.1);
+    --sidebar-logo-bg: var(--accent-muted);
+    --sidebar-logo-fg: var(--accent);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

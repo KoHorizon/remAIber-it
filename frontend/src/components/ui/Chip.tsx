@@ -65,15 +65,21 @@ export function Chip({
     >
       <span className="chip-label">{label}</span>
       {badges?.map((badge, i) => (
+        /* A badge is just a ReactNode plus a class; there's no identity on it
+           to key by, and these are stateless spans, so a shifted index costs
+           nothing. */
+        // eslint-disable-next-line react/no-array-index-key
         <span key={i} className={`chip-badge ${badge.className || ""}`}>
           {badge.content}
         </span>
       ))}
       {actions && actions.length > 0 && (
         <span className="chip-actions">
-          {actions.map((action, i) => (
+          {/* Keyed by label rather than index: callers build this array
+              conditionally, so an action can appear or disappear mid-list. */}
+          {actions.map((action) => (
             <span
-              key={i}
+              key={action.label}
               role="button"
               tabIndex={0}
               className={action.variant === "danger" ? "danger" : ""}

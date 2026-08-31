@@ -25,6 +25,7 @@ export function TerminalDisplay({
       </div>
       <div className="terminal-body">
         {displayedLines.map((line, index) => (
+          // eslint-disable-next-line react/no-array-index-key -- lines of one split string: position *is* the identity, and nothing reorders
           <div key={index} className="terminal-line">
             <span className="terminal-prompt">$</span>
             <span className="terminal-command">{line}</span>

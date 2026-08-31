@@ -11,61 +11,41 @@ import { AIGenerateView } from "./components/AIGenerateView";
 import { SettingsView } from "./components/SettingsView";
 import { useLibraryActions } from "./context";
 import { api } from "./api";
-import type { BankType, Session, SessionQuestion, SessionResult } from "./types";
+import type {
+  BankRef,
+  QuestionDraft,
+  Session,
+  SessionQuestion,
+  SessionResult,
+} from "./types";
 import "./App.css";
 
 type MainView = "dashboard" | "library" | "settings";
 
+// Five of these variants need the same four bank fields, so they carry one
+// `bank: BankRef` instead of repeating id/subject/type/language each time.
+// That's also what keeps the navigate functions below down to two or three
+// arguments — toEditQuestion used to take nine, six of them adjacent strings.
 type View =
   | { type: "main"; mainView: MainView }
   | { type: "bank"; bankId: string; returnTo: MainView }
-  | {
-      type: "addQuestion";
-      bankId: string;
-      bankSubject: string;
-      bankType: BankType;
-      bankLanguage?: string | null;
-      returnTo: MainView;
-    }
+  | { type: "addQuestion"; bank: BankRef; returnTo: MainView }
   | {
       type: "editQuestion";
-      bankId: string;
-      bankSubject: string;
-      bankType: BankType;
-      bankLanguage?: string | null;
-      questionId: string;
-      questionSubject: string;
-      questionAnswer: string;
-      questionGradingPrompt?: string | null;
+      bank: BankRef;
+      question: QuestionDraft;
       returnTo: MainView;
     }
-  | {
-      type: "practice";
-      session: Session;
-      bankId: string;
-      bankSubject: string;
-      bankType: BankType;
-      bankLanguage?: string | null;
-      returnTo: MainView;
-    }
+  | { type: "practice"; session: Session; bank: BankRef; returnTo: MainView }
   | {
       type: "results";
       results: SessionResult;
       questions: SessionQuestion[];
-      bankId: string;
-      bankSubject: string;
-      bankType: BankType;
-      bankLanguage?: string | null;
+      bank: BankRef;
       returnTo: MainView;
     }
-  | {
-      type: "simulate";
-      returnTo: MainView;
-    }
-  | {
-      type: "generateQuestions";
-      returnTo: MainView;
-    };
+  | { type: "simulate"; returnTo: MainView }
+  | { type: "generateQuestions"; returnTo: MainView };
 
 function App() {
   const { refreshAll } = useLibraryActions();
@@ -77,80 +57,24 @@ function App() {
     toMain: (mainView: MainView) => setView({ type: "main", mainView }),
     toBank: (bankId: string, returnTo: MainView = currentMainView) =>
       setView({ type: "bank", bankId, returnTo }),
-    toAddQuestion: (
-      bankId: string,
-      bankSubject: string,
-      bankType: BankType,
-      bankLanguage?: string | null,
-      returnTo: MainView = currentMainView
-    ) =>
-      setView({
-        type: "addQuestion",
-        bankId,
-        bankSubject,
-        bankType,
-        bankLanguage,
-        returnTo,
-      }),
+    toAddQuestion: (bank: BankRef, returnTo: MainView = currentMainView) =>
+      setView({ type: "addQuestion", bank, returnTo }),
     toEditQuestion: (
-      bankId: string,
-      bankSubject: string,
-      bankType: BankType,
-      bankLanguage: string | null | undefined,
-      questionId: string,
-      questionSubject: string,
-      questionAnswer: string,
-      questionGradingPrompt: string | null | undefined,
+      bank: BankRef,
+      question: QuestionDraft,
       returnTo: MainView = currentMainView
-    ) =>
-      setView({
-        type: "editQuestion",
-        bankId,
-        bankSubject,
-        bankType,
-        bankLanguage,
-        questionId,
-        questionSubject,
-        questionAnswer,
-        questionGradingPrompt,
-        returnTo,
-      }),
+    ) => setView({ type: "editQuestion", bank, question, returnTo }),
     toPractice: (
       session: Session,
-      bankId: string,
-      bankSubject: string,
-      bankType: BankType,
-      bankLanguage?: string | null,
+      bank: BankRef,
       returnTo: MainView = currentMainView
-    ) =>
-      setView({
-        type: "practice",
-        session,
-        bankId,
-        bankSubject,
-        bankType,
-        bankLanguage,
-        returnTo,
-      }),
+    ) => setView({ type: "practice", session, bank, returnTo }),
     toResults: (
       results: SessionResult,
       questions: SessionQuestion[],
-      bankId: string,
-      bankSubject: string,
-      bankType: BankType,
-      bankLanguage?: string | null,
+      bank: BankRef,
       returnTo: MainView = currentMainView
-    ) =>
-      setView({
-        type: "results",
-        results,
-        questions,
-        bankId,
-        bankSubject,
-        bankType,
-        bankLanguage,
-        returnTo,
-      }),
+    ) => setView({ type: "results", results, questions, bank, returnTo }),
     toSimulate: (returnTo: MainView = currentMainView) =>
       setView({ type: "simulate", returnTo }),
     toGenerateQuestions: (returnTo: MainView = currentMainView) =>
@@ -158,18 +82,15 @@ function App() {
   };
 
   async function handleRetry(
-    bankId: string,
+    bank: BankRef,
     questionIds: string[],
-    bankSubject: string,
-    bankType: BankType,
-    bankLanguage?: string | null,
     returnTo: MainView = currentMainView
   ) {
     try {
-      const session = await api.createSession(bankId, {
+      const session = await api.createSession(bank.id, {
         question_ids: questionIds,
       });
-      navigate.toPractice(session, bankId, bankSubject, bankType, bankLanguage, returnTo);
+      navigate.toPractice(session, bank, returnTo);
     } catch (err: unknown) {
       console.error("Failed to create retry session:", err);
     }
@@ -203,10 +124,12 @@ function App() {
 
       navigate.toPractice(
         session,
-        "multi", // Special marker for multi-bank sessions
-        "Quick Practice",
-        "theory", // Default, individual questions have their own type
-        null,
+        {
+          id: "multi", // Special marker for multi-bank sessions
+          subject: "Quick Practice",
+          type: "theory", // Default; individual questions carry their own type
+          language: null,
+        },
         "dashboard"
       );
     } catch (err: unknown) {
@@ -254,21 +177,12 @@ function App() {
           <BankDetail
             bankId={view.bankId}
             onBack={() => navigate.toMain(view.returnTo)}
-            onAddQuestion={(bankId, subject, bankType, language) =>
-              navigate.toAddQuestion(bankId, subject, bankType, language, view.returnTo)
+            onAddQuestion={(bank) => navigate.toAddQuestion(bank, view.returnTo)}
+            onEditQuestion={(bank, question) =>
+              navigate.toEditQuestion(bank, question, view.returnTo)
             }
-            onEditQuestion={(bankId, subject, bankType, language, questionId, questionSubject, questionAnswer, questionGradingPrompt) =>
-              navigate.toEditQuestion(bankId, subject, bankType, language, questionId, questionSubject, questionAnswer, questionGradingPrompt, view.returnTo)
-            }
-            onStartPractice={(session, bankId, subject, bankType, language) =>
-              navigate.toPractice(
-                session,
-                bankId,
-                subject,
-                bankType,
-                language,
-                view.returnTo
-              )
+            onStartPractice={(session, bank) =>
+              navigate.toPractice(session, bank, view.returnTo)
             }
           />
         )}
@@ -276,33 +190,39 @@ function App() {
         {/* Add Question (Full Page) */}
         {view.type === "addQuestion" && (
           <AddQuestionView
-            bankSubject={view.bankSubject}
-            bankType={view.bankType}
-            bankLanguage={view.bankLanguage}
+            bankSubject={view.bank.subject}
+            bankType={view.bank.type}
+            bankLanguage={view.bank.language}
             onSave={async (question, answer, gradingPrompt) => {
-              await api.addQuestion(view.bankId, question, answer, gradingPrompt);
-              navigate.toBank(view.bankId, view.returnTo);
+              await api.addQuestion(view.bank.id, question, answer, gradingPrompt);
+              navigate.toBank(view.bank.id, view.returnTo);
             }}
-            onCancel={() => navigate.toBank(view.bankId, view.returnTo)}
+            onCancel={() => navigate.toBank(view.bank.id, view.returnTo)}
           />
         )}
 
         {/* Edit Question (Full Page) */}
         {view.type === "editQuestion" && (
           <AddQuestionView
-            bankSubject={view.bankSubject}
-            bankType={view.bankType}
-            bankLanguage={view.bankLanguage}
+            bankSubject={view.bank.subject}
+            bankType={view.bank.type}
+            bankLanguage={view.bank.language}
             initialQuestion={{
-              subject: view.questionSubject,
-              expectedAnswer: view.questionAnswer,
-              gradingPrompt: view.questionGradingPrompt,
+              subject: view.question.subject,
+              expectedAnswer: view.question.answer,
+              gradingPrompt: view.question.gradingPrompt,
             }}
             onSave={async (question, answer, gradingPrompt) => {
-              await api.updateQuestion(view.bankId, view.questionId, question, answer, gradingPrompt);
-              navigate.toBank(view.bankId, view.returnTo);
+              await api.updateQuestion(
+                view.bank.id,
+                view.question.id,
+                question,
+                answer,
+                gradingPrompt
+              );
+              navigate.toBank(view.bank.id, view.returnTo);
             }}
-            onCancel={() => navigate.toBank(view.bankId, view.returnTo)}
+            onCancel={() => navigate.toBank(view.bank.id, view.returnTo)}
           />
         )}
 
@@ -310,17 +230,14 @@ function App() {
         {view.type === "practice" && (
           <PracticeSession
             session={view.session}
-            bankSubject={view.bankSubject}
-            bankType={view.bankType}
-            bankLanguage={view.bankLanguage}
+            bankSubject={view.bank.subject}
+            bankType={view.bank.type}
+            bankLanguage={view.bank.language}
             onComplete={(results) =>
               navigate.toResults(
                 results,
                 view.session.questions,
-                view.bankId,
-                view.bankSubject,
-                view.bankType,
-                view.bankLanguage,
+                view.bank,
                 view.returnTo
               )
             }
@@ -333,20 +250,17 @@ function App() {
           <Results
             results={view.results}
             questions={view.questions}
-            bankSubject={view.bankSubject}
-            bankType={view.bankType}
-            bankLanguage={view.bankLanguage}
+            bankSubject={view.bank.subject}
+            bankType={view.bank.type}
+            bankLanguage={view.bank.language}
             onBack={async () => {
               await refreshAll();
               navigate.toMain(view.returnTo);
             }}
             onRetry={() =>
               handleRetry(
-                view.bankId,
+                view.bank,
                 view.questions.map((q) => q.id),
-                view.bankSubject,
-                view.bankType,
-                view.bankLanguage,
                 view.returnTo
               )
             }

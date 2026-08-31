@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../../api";
 import { useLibraryData, useLibraryActions } from "../../context";
-import type { Bank, Session, BankType } from "../../types";
+import type { Bank, BankRef, QuestionDraft, Session } from "../../types";
 import { Button } from "../ui";
 import { SessionConfigModal } from "../modals";
 import { BankHeader } from "./BankHeader";
@@ -12,30 +12,20 @@ import "../BankDetail.css";
 type Props = {
   bankId: string;
   onBack: () => void;
-  onAddQuestion: (
-    bankId: string,
-    bankSubject: string,
-    bankType: BankType,
-    bankLanguage?: string | null
-  ) => void;
-  onEditQuestion: (
-    bankId: string,
-    bankSubject: string,
-    bankType: BankType,
-    bankLanguage: string | null | undefined,
-    questionId: string,
-    questionSubject: string,
-    questionAnswer: string,
-    questionGradingPrompt: string | null | undefined
-  ) => void;
-  onStartPractice: (
-    session: Session,
-    bankId: string,
-    bankSubject: string,
-    bankType: BankType,
-    bankLanguage?: string | null
-  ) => void;
+  onAddQuestion: (bank: BankRef) => void;
+  onEditQuestion: (bank: BankRef, question: QuestionDraft) => void;
+  onStartPractice: (session: Session, bank: BankRef) => void;
 };
+
+/** Narrows the loaded bank to what the callbacks above carry. */
+function toBankRef(bank: Bank): BankRef {
+  return {
+    id: bank.id,
+    subject: bank.subject,
+    type: bank.bank_type,
+    language: bank.language,
+  };
+}
 
 export function BankDetail({ bankId, onBack, onAddQuestion, onEditQuestion, onStartPractice }: Props) {
   const { getCategoryName: getCategory } = useLibraryData();
@@ -49,21 +39,23 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onEditQuestion, onSt
   const [isDeleting, setIsDeleting] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
 
+  // Inlined rather than a hoisted helper: it had one caller, and as a plain
+  // function declaration it was re-created every render, so listing it as a
+  // dependency would have reloaded the bank on every render.
   useEffect(() => {
+    async function loadBank() {
+      setIsLoading(true);
+      try {
+        const bankData = await api.getBank(bankId);
+        setBank(bankData);
+      } catch (err: unknown) {
+        console.error("Failed to load bank:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
     loadBank();
   }, [bankId]);
-
-  async function loadBank() {
-    setIsLoading(true);
-    try {
-      const bankData = await api.getBank(bankId);
-      setBank(bankData);
-    } catch (err: unknown) {
-      console.error("Failed to load bank:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   async function handleDeleteQuestion(questionId: string) {
     if (isDeleting) return;
@@ -97,7 +89,7 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onEditQuestion, onSt
         max_duration_min: config.maxDurationMin,
         focus_on_weak: config.focusOnWeak,
       });
-      onStartPractice(session, bankId, bank.subject, bank.bank_type, bank.language);
+      onStartPractice(session, toBankRef(bank));
     } catch (err: unknown) {
       console.error("Failed to start session:", err);
     } finally {
@@ -153,9 +145,7 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onEditQuestion, onSt
         questionCount={questions.length}
         isStartingSession={isStartingSession}
         onBack={onBack}
-        onAddQuestion={() =>
-          onAddQuestion(bankId, bank.subject, bank.bank_type, bank.language)
-        }
+        onAddQuestion={() => onAddQuestion(toBankRef(bank))}
         onOpenSessionConfig={() => setShowSessionConfig(true)}
       />
 
@@ -195,7 +185,14 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onEditQuestion, onSt
               bankLanguage={bank.language}
               isExpanded={expandedAnswers.has(q.id)}
               onToggleExpand={() => toggleExpanded(q.id)}
-              onEdit={() => onEditQuestion(bankId, bank.subject, bank.bank_type, bank.language, q.id, q.subject, q.expected_answer ?? "", q.grading_prompt)}
+              onEdit={() =>
+                onEditQuestion(toBankRef(bank), {
+                  id: q.id,
+                  subject: q.subject,
+                  answer: q.expected_answer ?? "",
+                  gradingPrompt: q.grading_prompt,
+                })
+              }
               onDelete={() => setShowDeleteConfirm(q.id)}
             />
           ))}
