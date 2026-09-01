@@ -1,13 +1,9 @@
 .tabs {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
     border-bottom: 1px solid var(--border);
-    overflow-x: auto;
-    scrollbar-width: none;
-}
-
-.tabs::-webkit-scrollbar {
-    display: none;
 }
 
 /* Individual tab button */
