@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import type { Session } from "../../types";
 import { Button } from "../ui";
+import { renderFormattedText } from "../../utils/formatText";
 
 type AnsweredQuestion = {
   index: number;
@@ -9,7 +11,7 @@ type AnsweredQuestion = {
 
 type Props = {
   session: Session;
-  currentQuestion: { id: string; subject: string };
+  currentQuestion: { id: string; subject: string; hint?: string | null };
   currentIndex: number;
   totalQuestions: number;
   progress: number;
@@ -48,6 +50,9 @@ export function TheoryModeSession({
 }: Props) {
   const answered = answeredQuestions.filter((q) => !q.skipped).length;
   const skipped = answeredQuestions.filter((q) => q.skipped).length;
+
+  const [showHint, setShowHint] = useState(false);
+  useEffect(() => setShowHint(false), [currentQuestion.id]);
 
   return (
     <div className="ts-layout animate-fade-in">
@@ -93,6 +98,15 @@ export function TheoryModeSession({
         <div className="ts-hero">
           <span className="ts-question-eyebrow">Question {currentIndex + 1} of {totalQuestions}</span>
           <p className="ts-question-text">{currentQuestion.subject}</p>
+          {currentQuestion.hint && (
+            showHint ? (
+              <div className="ts-hint-revealed">{renderFormattedText(currentQuestion.hint)}</div>
+            ) : (
+              <button type="button" className="ts-hint-toggle" onClick={() => setShowHint(true)}>
+                Show hint
+              </button>
+            )
+          )}
         </div>
 
         {/* Answer area */}

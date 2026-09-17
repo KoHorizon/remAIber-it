@@ -34,6 +34,7 @@ export type Question = {
   subject: string;
   expected_answer?: string;
   grading_prompt?: string | null;
+  hint?: string | null;
   mastery: number;
   times_answered: number;
   times_correct: number;
@@ -58,6 +59,7 @@ export type QuestionDraft = {
   subject: string;
   answer: string;
   gradingPrompt?: string | null;
+  hint?: string | null;
 };
 
 export type SessionQuestion = {
@@ -65,6 +67,7 @@ export type SessionQuestion = {
   subject: string;
   expected_answer?: string;
   grading_prompt?: string | null;
+  hint?: string | null;
   // For multi-bank sessions
   bank_id?: string;
   bank_subject?: string;
@@ -106,6 +109,7 @@ export type ExportQuestion = {
   subject: string;
   expected_answer: string;
   grading_prompt?: string | null;
+  hint?: string | null;
 };
 
 export type ExportBank = {

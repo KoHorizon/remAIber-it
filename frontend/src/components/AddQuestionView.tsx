@@ -11,6 +11,7 @@ type InitialQuestion = {
   subject: string;
   expectedAnswer: string;
   gradingPrompt?: string | null;
+  hint?: string | null;
 };
 
 type Props = {
@@ -18,7 +19,12 @@ type Props = {
   bankType: BankType;
   bankLanguage?: string | null;
   initialQuestion?: InitialQuestion;
-  onSave: (question: string, answer: string, gradingPrompt?: string | null) => Promise<void>;
+  onSave: (
+    question: string,
+    answer: string,
+    gradingPrompt?: string | null,
+    hint?: string | null
+  ) => Promise<void>;
   onCancel: () => void;
 };
 
@@ -50,6 +56,8 @@ export function AddQuestionView({
     initialQuestion?.gradingPrompt ?? getDefaultRules(bankType)
   );
   const [showGrading, setShowGrading] = useState(false);
+  const [hint, setHint] = useState(initialQuestion?.hint ?? "");
+  const [showHint, setShowHint] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const extraTemplates = getAvailableTemplates(bankType);
@@ -64,7 +72,8 @@ export function AddQuestionView({
     setIsSaving(true);
     try {
       const prompt = gradingPrompt.trim() || null;
-      await onSave(question.trim(), answer.trim(), prompt);
+      const hintValue = hint.trim() || null;
+      await onSave(question.trim(), answer.trim(), prompt, hintValue);
     } catch (err: unknown) {
       console.error("Failed to save question:", err);
       setIsSaving(false);
@@ -112,6 +121,38 @@ export function AddQuestionView({
       </div>
     </div>
   ) : null;
+
+  // Optional hint shown to the user during practice — never sent to the grader
+  const hintPanel = showHint ? (
+    <div className="grading-prompt-section">
+      <textarea
+        className="grading-prompt-textarea"
+        placeholder="Optional nudge shown to the user if they get stuck. Never used for grading."
+        value={hint}
+        onChange={(e) => setHint(e.target.value)}
+        rows={Math.max(1, hint.split("\n").length)}
+      />
+    </div>
+  ) : null;
+
+  const hintPill = (
+    <button
+      type="button"
+      className={`grading-pill ${showHint ? "grading-pill--open" : ""}`}
+      onClick={() => setShowHint((v) => !v)}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.75V17h8v-2.25A7 7 0 0 0 12 2z" />
+      </svg>
+      Hint
+      <svg
+        className={`grading-pill-chevron ${showHint ? "grading-pill-chevron--open" : ""}`}
+        width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+      >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </button>
+  );
 
   // Pill button — click only to toggle grading section open/close
   const gradingPill = (
@@ -177,6 +218,7 @@ export function AddQuestionView({
             Back to {bankSubject}
           </Button>
           <div className="theory-doc-nav-right">
+            {hintPill}
             {gradingPill}
             <span className="theory-doc-hint">
               {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to save
@@ -193,6 +235,7 @@ export function AddQuestionView({
           </div>
         </div>
 
+        {hintPanel}
         {gradingPanel}
 
         {/* Cards */}
@@ -245,6 +288,7 @@ export function AddQuestionView({
           </Button>
         </div>
         <div className="add-question-view-header-right">
+          {hintPill}
           {gradingPill}
           <span className="add-question-view-hint">
             {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to save
@@ -260,7 +304,8 @@ export function AddQuestionView({
         </div>
       </div>
 
-      {/* Grading panel — collapsed by default, toggled by pill */}
+      {/* Hint and grading panels — collapsed by default, toggled by pill */}
+      {hintPanel}
       {gradingPanel}
 
       {/* Main Content - Split View */}

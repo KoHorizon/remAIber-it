@@ -1744,6 +1744,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Be strict about mentioning the Go scheduler."
                 },
+                "hint": {
+                    "type": "string",
+                    "example": "Think about what the Go runtime schedules onto OS threads."
+                },
                 "subject": {
                     "type": "string",
                     "example": "What is a goroutine?"
@@ -1760,6 +1764,10 @@ const docTemplate = `{
                 "grading_prompt": {
                     "type": "string",
                     "example": "Be strict about mentioning the Go scheduler."
+                },
+                "hint": {
+                    "type": "string",
+                    "example": "Think about what the Go runtime schedules onto OS threads."
                 },
                 "id": {
                     "type": "string",
@@ -2143,6 +2151,9 @@ const docTemplate = `{
                 "grading_prompt": {
                     "type": "string"
                 },
+                "hint": {
+                    "type": "string"
+                },
                 "subject": {
                     "type": "string",
                     "example": "What is a goroutine?"
@@ -2456,6 +2467,9 @@ const docTemplate = `{
                 "grading_prompt": {
                     "type": "string"
                 },
+                "hint": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string",
                     "example": "q1w2e3r4t5y6u7i8"
@@ -2586,6 +2600,9 @@ const docTemplate = `{
                 "grading_prompt": {
                     "type": "string"
                 },
+                "hint": {
+                    "type": "string"
+                },
                 "subject": {
                     "type": "string"
                 }
@@ -2598,6 +2615,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "grading_prompt": {
+                    "type": "string"
+                },
+                "hint": {
                     "type": "string"
                 },
                 "id": {

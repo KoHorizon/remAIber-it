@@ -48,6 +48,22 @@ export function QuestionCard({
       <div className="qcard-header">
         <div className="qcard-header-left">
           <span className="qcard-number">Q{index + 1}</span>
+          {question.hint && (
+            <Tooltip
+              trigger={
+                <span className="qcard-grading-badge qcard-grading-badge--bank">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.75V17h8v-2.25A7 7 0 0 0 12 2z" />
+                  </svg>
+                  Hint
+                </span>
+              }
+              width="400px"
+            >
+              <TooltipTitle>Hint</TooltipTitle>
+              <TooltipContent>{question.hint}</TooltipContent>
+            </Tooltip>
+          )}
           {question.grading_prompt && (
             <Tooltip
               trigger={

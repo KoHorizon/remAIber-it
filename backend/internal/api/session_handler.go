@@ -42,12 +42,13 @@ func (r *CreateQuickSessionRequest) Validate() error {
 }
 
 type QuickSessionQuestion struct {
-	ID             string `json:"id"`
-	Subject        string `json:"subject"`
-	ExpectedAnswer string `json:"expected_answer"`
-	BankID         string `json:"bank_id"`
-	BankSubject    string `json:"bank_subject"`
-	BankType       string `json:"bank_type"`
+	ID             string  `json:"id"`
+	Subject        string  `json:"subject"`
+	ExpectedAnswer string  `json:"expected_answer"`
+	Hint           *string `json:"hint,omitempty"`
+	BankID         string  `json:"bank_id"`
+	BankSubject    string  `json:"bank_subject"`
+	BankType       string  `json:"bank_type"`
 }
 
 type SessionQuestion struct {
@@ -55,6 +56,7 @@ type SessionQuestion struct {
 	Subject        string  `json:"subject" example:"What is a goroutine?"`
 	ExpectedAnswer string  `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
 	GradingPrompt  *string `json:"grading_prompt,omitempty"`
+	Hint           *string `json:"hint,omitempty"`
 }
 
 type CreateSessionResponse struct {
@@ -176,10 +178,12 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 
 	h.grading.TrackSession(session.ID)
 
-	// Build a lookup for per-question grading prompts
+	// Build a lookup for per-question grading prompts and hints
 	questionGradingPrompts := make(map[string]*string)
+	questionHints := make(map[string]*string)
 	for _, bq := range bank.Questions {
 		questionGradingPrompts[bq.ID] = bq.GradingPrompt
+		questionHints[bq.ID] = bq.Hint
 	}
 
 	questions := make([]SessionQuestion, len(session.Questions))
@@ -189,6 +193,7 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request) {
 			Subject:        q.Subject,
 			ExpectedAnswer: q.ExpectedAnswer,
 			GradingPrompt:  questionGradingPrompts[q.ID],
+			Hint:           questionHints[q.ID],
 		}
 	}
 
@@ -284,14 +289,22 @@ func (h *Handler) createQuickSession(w http.ResponseWriter, r *http.Request) {
 		bankID := session.QuestionBankMap[q.ID]
 		bankSubject := ""
 		bankType := "theory"
+		var hint *string
 		if bank, ok := bankCache[bankID]; ok {
 			bankSubject = bank.Subject
 			bankType = string(bank.BankType)
+			for _, bq := range bank.Questions {
+				if bq.ID == q.ID {
+					hint = bq.Hint
+					break
+				}
+			}
 		}
 		questions[i] = QuickSessionQuestion{
 			ID:             q.ID,
 			Subject:        q.Subject,
 			ExpectedAnswer: q.ExpectedAnswer,
+			Hint:           hint,
 			BankID:         bankID,
 			BankSubject:    bankSubject,
 			BankType:       bankType,
@@ -333,9 +346,11 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 
 	bank, _ := h.store.GetBank(ctx, session.QuestionBankId)
 	questionGradingPrompts := make(map[string]*string)
+	questionHints := make(map[string]*string)
 	if bank != nil {
 		for _, bq := range bank.Questions {
 			questionGradingPrompts[bq.ID] = bq.GradingPrompt
+			questionHints[bq.ID] = bq.Hint
 		}
 	}
 
@@ -346,6 +361,7 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 			Subject:        q.Subject,
 			ExpectedAnswer: q.ExpectedAnswer,
 			GradingPrompt:  questionGradingPrompts[q.ID],
+			Hint:           questionHints[q.ID],
 		}
 	}
 

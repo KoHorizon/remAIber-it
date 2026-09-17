@@ -13,6 +13,7 @@ type AddQuestionRequest struct {
 	Subject        string  `json:"subject" example:"What is a goroutine?"`
 	ExpectedAnswer string  `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
 	GradingPrompt  *string `json:"grading_prompt,omitempty" example:"Be strict about mentioning the Go scheduler."`
+	Hint           *string `json:"hint,omitempty" example:"Think about what the Go runtime schedules onto OS threads."`
 }
 
 func (r *AddQuestionRequest) Validate() error {
@@ -30,6 +31,7 @@ type AddQuestionResponse struct {
 	Subject        string  `json:"subject" example:"What is a goroutine?"`
 	ExpectedAnswer string  `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
 	GradingPrompt  *string `json:"grading_prompt,omitempty" example:"Be strict about mentioning the Go scheduler."`
+	Hint           *string `json:"hint,omitempty" example:"Think about what the Go runtime schedules onto OS threads."`
 	Mastery        int     `json:"mastery" example:"0"`
 	TimesAnswered  int     `json:"times_answered" example:"0"`
 	TimesCorrect   int     `json:"times_correct" example:"0"`
@@ -64,7 +66,7 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := bank.AddQuestionWithGradingPrompt(req.Subject, req.ExpectedAnswer, req.GradingPrompt); err != nil {
+	if err := bank.AddQuestionWithGradingPrompt(req.Subject, req.ExpectedAnswer, req.GradingPrompt, req.Hint); err != nil {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -80,6 +82,7 @@ func (h *Handler) addQuestion(w http.ResponseWriter, r *http.Request) {
 		Subject:        newQuestion.Subject,
 		ExpectedAnswer: newQuestion.ExpectedAnswer,
 		GradingPrompt:  newQuestion.GradingPrompt,
+		Hint:           newQuestion.Hint,
 		Mastery:        0,
 		TimesAnswered:  0,
 		TimesCorrect:   0,
@@ -92,6 +95,7 @@ type UpdateQuestionRequest struct {
 	Subject        string  `json:"subject"`
 	ExpectedAnswer string  `json:"expected_answer"`
 	GradingPrompt  *string `json:"grading_prompt,omitempty"`
+	Hint           *string `json:"hint,omitempty"`
 }
 
 func (r *UpdateQuestionRequest) Validate() error {
@@ -109,6 +113,7 @@ type UpdateQuestionResponse struct {
 	Subject        string  `json:"subject"`
 	ExpectedAnswer string  `json:"expected_answer"`
 	GradingPrompt  *string `json:"grading_prompt,omitempty"`
+	Hint           *string `json:"hint,omitempty"`
 }
 
 // updateQuestion updates an existing question's content.
@@ -140,6 +145,7 @@ func (h *Handler) updateQuestion(w http.ResponseWriter, r *http.Request) {
 		Subject:        req.Subject,
 		ExpectedAnswer: req.ExpectedAnswer,
 		GradingPrompt:  req.GradingPrompt,
+		Hint:           req.Hint,
 	}
 
 	// bankID is enforced by the store: a question owned by another bank reads as
@@ -153,6 +159,7 @@ func (h *Handler) updateQuestion(w http.ResponseWriter, r *http.Request) {
 		Subject:        updated.Subject,
 		ExpectedAnswer: updated.ExpectedAnswer,
 		GradingPrompt:  updated.GradingPrompt,
+		Hint:           updated.Hint,
 	})
 }
 

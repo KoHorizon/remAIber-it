@@ -1738,6 +1738,10 @@
                     "type": "string",
                     "example": "Be strict about mentioning the Go scheduler."
                 },
+                "hint": {
+                    "type": "string",
+                    "example": "Think about what the Go runtime schedules onto OS threads."
+                },
                 "subject": {
                     "type": "string",
                     "example": "What is a goroutine?"
@@ -1754,6 +1758,10 @@
                 "grading_prompt": {
                     "type": "string",
                     "example": "Be strict about mentioning the Go scheduler."
+                },
+                "hint": {
+                    "type": "string",
+                    "example": "Think about what the Go runtime schedules onto OS threads."
                 },
                 "id": {
                     "type": "string",
@@ -2137,6 +2145,9 @@
                 "grading_prompt": {
                     "type": "string"
                 },
+                "hint": {
+                    "type": "string"
+                },
                 "subject": {
                     "type": "string",
                     "example": "What is a goroutine?"
@@ -2450,6 +2461,9 @@
                 "grading_prompt": {
                     "type": "string"
                 },
+                "hint": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string",
                     "example": "q1w2e3r4t5y6u7i8"
@@ -2580,6 +2594,9 @@
                 "grading_prompt": {
                     "type": "string"
                 },
+                "hint": {
+                    "type": "string"
+                },
                 "subject": {
                     "type": "string"
                 }
@@ -2592,6 +2609,9 @@
                     "type": "string"
                 },
                 "grading_prompt": {
+                    "type": "string"
+                },
+                "hint": {
                     "type": "string"
                 },
                 "id": {

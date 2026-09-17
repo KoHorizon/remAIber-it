@@ -138,6 +138,9 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	// Add grading_prompt to questions for per-question grading override
 	_ = addColumnIfNotExists(db, "questions", "grading_prompt", "TEXT")
 
+	// Add hint to questions, shown to the user during practice, never graded
+	_ = addColumnIfNotExists(db, "questions", "hint", "TEXT")
+
 	// Add sort_order to categories for user-defined ordering
 	_ = addColumnIfNotExists(db, "categories", "sort_order", "INTEGER NOT NULL DEFAULT 0")
 
@@ -364,7 +367,7 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 		bank.GradingPrompt = &gradingPrompt.String
 	}
 
-	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, expected_answer, grading_prompt FROM questions WHERE bank_id = ?", id)
+	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, expected_answer, grading_prompt, hint FROM questions WHERE bank_id = ?", id)
 	if err != nil {
 		return nil, err
 	}
@@ -373,11 +376,15 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 	for rows.Next() {
 		var q questionbank.Question
 		var gradingPrompt sql.NullString
-		if err := rows.Scan(&q.ID, &q.Subject, &q.ExpectedAnswer, &gradingPrompt); err != nil {
+		var hint sql.NullString
+		if err := rows.Scan(&q.ID, &q.Subject, &q.ExpectedAnswer, &gradingPrompt, &hint); err != nil {
 			return nil, err
 		}
 		if gradingPrompt.Valid {
 			q.GradingPrompt = &gradingPrompt.String
+		}
+		if hint.Valid {
+			q.Hint = &hint.String
 		}
 		bank.Questions = append(bank.Questions, q)
 	}
@@ -551,8 +558,8 @@ func (s *SQLiteStore) DeleteBank(ctx context.Context, id string) error {
 
 func (s *SQLiteStore) AddQuestion(ctx context.Context, bankID string, question questionbank.Question) error {
 	_, err := s.db.ExecContext(ctx,
-		"INSERT INTO questions (id, bank_id, subject, expected_answer, grading_prompt) VALUES (?, ?, ?, ?, ?)",
-		question.ID, bankID, question.Subject, question.ExpectedAnswer, question.GradingPrompt,
+		"INSERT INTO questions (id, bank_id, subject, expected_answer, grading_prompt, hint) VALUES (?, ?, ?, ?, ?, ?)",
+		question.ID, bankID, question.Subject, question.ExpectedAnswer, question.GradingPrompt, question.Hint,
 	)
 	return err
 }
@@ -562,8 +569,8 @@ func (s *SQLiteStore) AddQuestion(ctx context.Context, bankID string, question q
 // bank that does not own it, so as far as that bank is concerned it isn't there.
 func (s *SQLiteStore) UpdateQuestion(ctx context.Context, bankID string, question questionbank.Question) error {
 	result, err := s.db.ExecContext(ctx,
-		"UPDATE questions SET subject = ?, expected_answer = ?, grading_prompt = ? WHERE id = ? AND bank_id = ?",
-		question.Subject, question.ExpectedAnswer, question.GradingPrompt, question.ID, bankID,
+		"UPDATE questions SET subject = ?, expected_answer = ?, grading_prompt = ?, hint = ? WHERE id = ? AND bank_id = ?",
+		question.Subject, question.ExpectedAnswer, question.GradingPrompt, question.Hint, question.ID, bankID,
 	)
 	if err != nil {
 		return err

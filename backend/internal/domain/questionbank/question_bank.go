@@ -64,11 +64,11 @@ func (qb *QuestionBank) SetCategory(categoryID *string) {
 
 // AddQuestion appends a single question to the bank.
 func (qb *QuestionBank) AddQuestion(subject string, expectedAnswer string) error {
-	return qb.AddQuestionWithGradingPrompt(subject, expectedAnswer, nil)
+	return qb.AddQuestionWithGradingPrompt(subject, expectedAnswer, nil, nil)
 }
 
-// AddQuestionWithGradingPrompt appends a question with optional custom grading prompt.
-func (qb *QuestionBank) AddQuestionWithGradingPrompt(subject string, expectedAnswer string, gradingPrompt *string) error {
+// AddQuestionWithGradingPrompt appends a question with optional custom grading prompt and hint.
+func (qb *QuestionBank) AddQuestionWithGradingPrompt(subject string, expectedAnswer string, gradingPrompt *string, hint *string) error {
 	if subject == "" {
 		return errors.New("question subject cannot be empty")
 	}
@@ -78,6 +78,7 @@ func (qb *QuestionBank) AddQuestionWithGradingPrompt(subject string, expectedAns
 		Subject:        subject,
 		ExpectedAnswer: expectedAnswer,
 		GradingPrompt:  gradingPrompt,
+		Hint:           hint,
 	})
 	return nil
 }

@@ -193,8 +193,8 @@ function App() {
             bankSubject={view.bank.subject}
             bankType={view.bank.type}
             bankLanguage={view.bank.language}
-            onSave={async (question, answer, gradingPrompt) => {
-              await api.addQuestion(view.bank.id, question, answer, gradingPrompt);
+            onSave={async (question, answer, gradingPrompt, hint) => {
+              await api.addQuestion(view.bank.id, question, answer, gradingPrompt, hint);
               navigate.toBank(view.bank.id, view.returnTo);
             }}
             onCancel={() => navigate.toBank(view.bank.id, view.returnTo)}
@@ -211,14 +211,16 @@ function App() {
               subject: view.question.subject,
               expectedAnswer: view.question.answer,
               gradingPrompt: view.question.gradingPrompt,
+              hint: view.question.hint,
             }}
-            onSave={async (question, answer, gradingPrompt) => {
+            onSave={async (question, answer, gradingPrompt, hint) => {
               await api.updateQuestion(
                 view.bank.id,
                 view.question.id,
                 question,
                 answer,
-                gradingPrompt
+                gradingPrompt,
+                hint
               );
               navigate.toBank(view.bank.id, view.returnTo);
             }}

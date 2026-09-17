@@ -191,6 +191,7 @@ export function BankDetail({ bankId, onBack, onAddQuestion, onEditQuestion, onSt
                   subject: q.subject,
                   answer: q.expected_answer ?? "",
                   gradingPrompt: q.grading_prompt,
+                  hint: q.hint,
                 })
               }
               onDelete={() => setShowDeleteConfirm(q.id)}

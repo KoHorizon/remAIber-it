@@ -8,6 +8,9 @@ definitions:
       grading_prompt:
         example: Be strict about mentioning the Go scheduler.
         type: string
+      hint:
+        example: Think about what the Go runtime schedules onto OS threads.
+        type: string
       subject:
         example: What is a goroutine?
         type: string
@@ -19,6 +22,9 @@ definitions:
         type: string
       grading_prompt:
         example: Be strict about mentioning the Go scheduler.
+        type: string
+      hint:
+        example: Think about what the Go runtime schedules onto OS threads.
         type: string
       id:
         example: q1w2e3r4t5y6u7i8
@@ -288,6 +294,8 @@ definitions:
         type: string
       grading_prompt:
         type: string
+      hint:
+        type: string
       subject:
         example: What is a goroutine?
         type: string
@@ -512,6 +520,8 @@ definitions:
         type: string
       grading_prompt:
         type: string
+      hint:
+        type: string
       id:
         example: q1w2e3r4t5y6u7i8
         type: string
@@ -601,6 +611,8 @@ definitions:
         type: string
       grading_prompt:
         type: string
+      hint:
+        type: string
       subject:
         type: string
     type: object
@@ -609,6 +621,8 @@ definitions:
       expected_answer:
         type: string
       grading_prompt:
+        type: string
+      hint:
         type: string
       id:
         type: string

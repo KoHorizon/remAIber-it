@@ -1,12 +1,24 @@
+import { useState } from "react";
 import type { Session, BankType } from "../../types";
 import { Button } from "../ui";
 import { renderFormattedText } from "../../utils/formatText";
 import { CodeEditor } from "../CodeEditor";
 import { TerminalEditor } from "../TerminalEditor";
 
+function HintToggle({ hint }: { hint: string }) {
+  const [show, setShow] = useState(false);
+  return show ? (
+    <div className="question-hint-revealed">{renderFormattedText(hint)}</div>
+  ) : (
+    <button type="button" className="question-hint-toggle" onClick={() => setShow(true)}>
+      Show hint
+    </button>
+  );
+}
+
 type Props = {
   session: Session;
-  currentQuestion: { id: string; subject: string; bank_subject?: string };
+  currentQuestion: { id: string; subject: string; hint?: string | null; bank_subject?: string };
   currentIndex: number;
   totalQuestions: number;
   progress: number;
@@ -101,6 +113,9 @@ export function CodeModeSession({
               <div className="question-text">
                 {renderFormattedText(currentQuestion.subject)}
               </div>
+              {currentQuestion.hint && (
+                <HintToggle key={currentQuestion.id} hint={currentQuestion.hint} />
+              )}
             </div>
           </div>
         </div>

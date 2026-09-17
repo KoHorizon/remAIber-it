@@ -80,15 +80,18 @@ type QuestionBody = {
   subject: string;
   expected_answer: string;
   grading_prompt?: string;
+  hint?: string;
 };
 
 function questionBody(
   subject: string,
   expectedAnswer: string,
-  gradingPrompt?: string | null
+  gradingPrompt?: string | null,
+  hint?: string | null
 ): QuestionBody {
   const body: QuestionBody = { subject, expected_answer: expectedAnswer };
   if (gradingPrompt) body.grading_prompt = gradingPrompt;
+  if (hint) body.hint = hint;
   return body;
 }
 
@@ -96,11 +99,12 @@ export const addQuestion = (
   bankId: string,
   subject: string,
   expectedAnswer: string,
-  gradingPrompt?: string | null
+  gradingPrompt?: string | null,
+  hint?: string | null
 ) =>
   post<Question>(
     `/banks/${bankId}/questions`,
-    questionBody(subject, expectedAnswer, gradingPrompt)
+    questionBody(subject, expectedAnswer, gradingPrompt, hint)
   );
 
 export const updateQuestion = (
@@ -108,11 +112,12 @@ export const updateQuestion = (
   questionId: string,
   subject: string,
   expectedAnswer: string,
-  gradingPrompt?: string | null
+  gradingPrompt?: string | null,
+  hint?: string | null
 ) =>
   put<Question>(
     `/banks/${bankId}/questions/${questionId}`,
-    questionBody(subject, expectedAnswer, gradingPrompt)
+    questionBody(subject, expectedAnswer, gradingPrompt, hint)
   );
 
 export const deleteQuestion = (bankId: string, questionId: string) =>
@@ -154,6 +159,7 @@ export type QuickSessionQuestion = {
   id: string;
   subject: string;
   expected_answer: string;
+  hint?: string | null;
   bank_id: string;
   bank_subject: string;
   bank_type: string;

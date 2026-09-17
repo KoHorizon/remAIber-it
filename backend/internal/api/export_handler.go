@@ -19,6 +19,7 @@ type ExportQuestion struct {
 	Subject        string  `json:"subject" example:"What is a goroutine?"`
 	ExpectedAnswer string  `json:"expected_answer" example:"A goroutine is a lightweight thread managed by the Go runtime."`
 	GradingPrompt  *string `json:"grading_prompt,omitempty"`
+	Hint           *string `json:"hint,omitempty"`
 }
 
 type ExportBank struct {
@@ -192,6 +193,7 @@ func (h *Handler) buildExportCategory(ctx context.Context, cat *category.Categor
 				Subject:        q.Subject,
 				ExpectedAnswer: q.ExpectedAnswer,
 				GradingPrompt:  q.GradingPrompt,
+				Hint:           q.Hint,
 			}
 		}
 
@@ -285,7 +287,7 @@ func (h *Handler) importBanks(ctx context.Context, banks []ExportBank, categoryI
 		result.BanksCreated++
 
 		for _, q := range bank.Questions {
-			if err := newBank.AddQuestionWithGradingPrompt(q.Subject, q.ExpectedAnswer, q.GradingPrompt); err != nil {
+			if err := newBank.AddQuestionWithGradingPrompt(q.Subject, q.ExpectedAnswer, q.GradingPrompt, q.Hint); err != nil {
 				h.importFail(result, err, "failed to add question", "bank", bank.Subject)
 				continue
 			}
