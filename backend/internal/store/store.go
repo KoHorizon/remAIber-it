@@ -112,5 +112,6 @@ type BankWithCount struct {
 	CategoryID    *string
 	BankType      string
 	Language      *string
+	Difficulty    *string
 	QuestionCount int
 }

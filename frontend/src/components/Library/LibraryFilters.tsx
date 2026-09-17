@@ -3,10 +3,12 @@ import { Dropdown, Button } from "../ui";
 type Props = {
   searchQuery: string;
   filterType: string | null;
+  filterDifficulty: string | null;
   hasActiveFilters: boolean;
   canCreateBank: boolean;
   onSearchChange: (query: string) => void;
   onTypeChange: (type: string | null) => void;
+  onDifficultyChange: (difficulty: string | null) => void;
   onClearFilters: () => void;
   onCreateBank: () => void;
 };
@@ -18,13 +20,22 @@ const TYPE_OPTIONS = [
   { value: "cli", label: "CLI" },
 ];
 
+const DIFFICULTY_OPTIONS = [
+  { value: "", label: "All Levels" },
+  { value: "easy", label: "Easy" },
+  { value: "medium", label: "Medium" },
+  { value: "hard", label: "Hard" },
+];
+
 export function LibraryFilters({
   searchQuery,
   filterType,
+  filterDifficulty,
   hasActiveFilters,
   canCreateBank,
   onSearchChange,
   onTypeChange,
+  onDifficultyChange,
   onClearFilters,
   onCreateBank,
 }: Props) {
@@ -55,6 +66,13 @@ export function LibraryFilters({
           options={TYPE_OPTIONS}
           value={filterType || ""}
           onChange={(val) => onTypeChange(val || null)}
+          emptyValue=""
+        />
+
+        <Dropdown
+          options={DIFFICULTY_OPTIONS}
+          value={filterDifficulty || ""}
+          onChange={(val) => onDifficultyChange(val || null)}
           emptyValue=""
         />
 

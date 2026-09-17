@@ -3,6 +3,7 @@ import type {
   Category,
   Bank,
   BankType,
+  BankDifficulty,
   Question,
   Session,
   SessionConfig,
@@ -60,13 +61,15 @@ export const createBank = (
   subject: string,
   categoryId?: string,
   bankType?: BankType,
-  language?: string
+  language?: string,
+  difficulty?: BankDifficulty
 ) =>
   post<Bank>("/banks", {
     subject,
     category_id: categoryId || null,
     bank_type: bankType || "theory",
     language: language || null,
+    difficulty: difficulty || null,
   });
 
 export const updateBankCategory = (bankId: string, categoryId: string | null) =>

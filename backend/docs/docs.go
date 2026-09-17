@@ -1802,6 +1802,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "a1b2c3d4e5f6g7h8"
                 },
+                "difficulty": {
+                    "type": "string",
+                    "example": "medium"
+                },
                 "id": {
                     "type": "string",
                     "example": "x9y8z7w6v5u4t3s2"
@@ -1915,6 +1919,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "a1b2c3d4e5f6g7h8"
                 },
+                "difficulty": {
+                    "type": "string",
+                    "example": "medium"
+                },
                 "language": {
                     "type": "string",
                     "example": "go"
@@ -1935,6 +1943,10 @@ const docTemplate = `{
                 "category_id": {
                     "type": "string",
                     "example": "a1b2c3d4e5f6g7h8"
+                },
+                "difficulty": {
+                    "type": "string",
+                    "example": "medium"
                 },
                 "id": {
                     "type": "string",
@@ -2068,6 +2080,10 @@ const docTemplate = `{
                 "bank_type": {
                     "type": "string",
                     "example": "theory"
+                },
+                "difficulty": {
+                    "type": "string",
+                    "example": "medium"
                 },
                 "language": {
                     "type": "string",
@@ -2240,6 +2256,10 @@ const docTemplate = `{
                 "category_id": {
                     "type": "string",
                     "example": "a1b2c3d4e5f6g7h8"
+                },
+                "difficulty": {
+                    "type": "string",
+                    "example": "medium"
                 },
                 "id": {
                     "type": "string",

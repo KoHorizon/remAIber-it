@@ -14,13 +14,22 @@ const (
 	BankTypeCLI    BankType = "cli"
 )
 
+type BankDifficulty string
+
+const (
+	BankDifficultyEasy   BankDifficulty = "easy"
+	BankDifficultyMedium BankDifficulty = "medium"
+	BankDifficultyHard   BankDifficulty = "hard"
+)
+
 type QuestionBank struct {
 	ID            string
 	Subject       string
-	CategoryID    *string  // Optional - can be nil for uncategorized banks
-	BankType      BankType // theory, code, or cli
-	Language      *string  // Optional - programming language for code banks
-	GradingPrompt *string  // Optional default grading rules for all questions in the bank
+	CategoryID    *string         // Optional - can be nil for uncategorized banks
+	BankType      BankType        // theory, code, or cli
+	Language      *string         // Optional - programming language for code banks
+	Difficulty    *BankDifficulty // Optional - easy, medium, or hard
+	GradingPrompt *string         // Optional default grading rules for all questions in the bank
 	Questions     []Question
 }
 
@@ -43,7 +52,7 @@ func NewWithCategory(subject string, categoryID string) *QuestionBank {
 	}
 }
 
-func NewWithOptions(subject string, categoryID *string, bankType BankType, language *string) *QuestionBank {
+func NewWithOptions(subject string, categoryID *string, bankType BankType, language *string, difficulty *BankDifficulty) *QuestionBank {
 	bt := bankType
 	if bt == "" {
 		bt = BankTypeTheory
@@ -54,6 +63,7 @@ func NewWithOptions(subject string, categoryID *string, bankType BankType, langu
 		CategoryID: categoryID,
 		BankType:   bt,
 		Language:   language,
+		Difficulty: difficulty,
 		Questions:  []Question{},
 	}
 }

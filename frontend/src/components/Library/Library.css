@@ -336,10 +336,11 @@
 }
 
 /* Column widths */
-.col-name { width: 35%; }
-.col-category { width: 20%; }
-.col-type { width: 12%; }
-.col-mastery { width: 18%; }
+.col-name { width: 32%; }
+.col-category { width: 18%; }
+.col-type { width: 10%; }
+.col-difficulty { width: 10%; }
+.col-mastery { width: 15%; }
 .col-questions { width: 10%; text-align: center; }
 .col-actions { width: 5%; text-align: right; }
 
@@ -426,6 +427,37 @@
     color: var(--type-cli);
     border: none;
     outline: 1px solid color-mix(in srgb, var(--type-cli) 30%, transparent);
+}
+
+.difficulty-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: none;
+}
+
+.difficulty-badge.difficulty-easy {
+    background: var(--success-muted);
+    color: var(--success);
+    outline: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+}
+
+.difficulty-badge.difficulty-medium {
+    background: var(--warning-muted);
+    color: var(--warning);
+    outline: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+}
+
+.difficulty-badge.difficulty-hard {
+    background: var(--error-muted);
+    color: var(--error);
+    outline: 1px solid color-mix(in srgb, var(--error) 30%, transparent);
 }
 
 /* Mastery cell */
@@ -588,6 +620,7 @@
     }
 
     .col-category { display: none; }
+    .col-difficulty { display: none; }
     .col-type { width: 15%; }
     .col-mastery { width: 25%; }
 

@@ -14,6 +14,7 @@ type CreateBankRequest struct {
 	CategoryID *string `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
 	BankType   string  `json:"bank_type,omitempty" example:"theory"`
 	Language   *string `json:"language,omitempty" example:"go"`
+	Difficulty string  `json:"difficulty,omitempty" example:"medium"`
 }
 
 func (r *CreateBankRequest) Validate() error {
@@ -27,6 +28,10 @@ func (r *CreateBankRequest) Validate() error {
 	if r.BankType != "" && bt != questionbank.BankTypeTheory && bt != questionbank.BankTypeCode && bt != questionbank.BankTypeCLI {
 		return errors.New("invalid bank_type: must be theory, code, or cli")
 	}
+	bd := questionbank.BankDifficulty(r.Difficulty)
+	if r.Difficulty != "" && bd != questionbank.BankDifficultyEasy && bd != questionbank.BankDifficultyMedium && bd != questionbank.BankDifficultyHard {
+		return errors.New("invalid difficulty: must be easy, medium, or hard")
+	}
 	return nil
 }
 
@@ -36,6 +41,7 @@ type CreateBankResponse struct {
 	CategoryID    *string `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
 	BankType      string  `json:"bank_type" example:"theory"`
 	Language      *string `json:"language,omitempty" example:"go"`
+	Difficulty    *string `json:"difficulty,omitempty" example:"medium"`
 	Mastery       int     `json:"mastery" example:"0"`
 	QuestionCount int     `json:"question_count" example:"5"`
 }
@@ -47,6 +53,7 @@ type BankResponse struct {
 	CategoryID *string `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
 	BankType   string  `json:"bank_type" example:"theory"`
 	Language   *string `json:"language,omitempty" example:"go"`
+	Difficulty *string `json:"difficulty,omitempty" example:"medium"`
 	Mastery    int     `json:"mastery" example:"42"`
 }
 
@@ -56,6 +63,7 @@ type GetBankResponse struct {
 	CategoryID *string            `json:"category_id,omitempty" example:"a1b2c3d4e5f6g7h8"`
 	BankType   string             `json:"bank_type" example:"theory"`
 	Language   *string            `json:"language,omitempty" example:"go"`
+	Difficulty *string            `json:"difficulty,omitempty" example:"medium"`
 	Mastery    int                `json:"mastery" example:"42"`
 	Questions  []QuestionResponse `json:"questions"`
 }
@@ -86,6 +94,14 @@ type QuestionStatsResponse struct {
 	TimesAnswered int    `json:"times_answered" example:"3"`
 	TimesCorrect  int    `json:"times_correct" example:"2"`
 	Mastery       int    `json:"mastery" example:"75"`
+}
+
+func bankDifficultyPtr(d *questionbank.BankDifficulty) *string {
+	if d == nil {
+		return nil
+	}
+	s := string(*d)
+	return &s
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -119,7 +135,13 @@ func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 		bankType = questionbank.BankTypeTheory
 	}
 
-	bank := questionbank.NewWithOptions(req.Subject, req.CategoryID, bankType, req.Language)
+	var difficulty *questionbank.BankDifficulty
+	if req.Difficulty != "" {
+		d := questionbank.BankDifficulty(req.Difficulty)
+		difficulty = &d
+	}
+
+	bank := questionbank.NewWithOptions(req.Subject, req.CategoryID, bankType, req.Language, difficulty)
 
 	if err := h.store.SaveBank(ctx, bank); err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to save bank")
@@ -132,6 +154,7 @@ func (h *Handler) createBank(w http.ResponseWriter, r *http.Request) {
 		CategoryID: bank.CategoryID,
 		BankType:   string(bank.BankType),
 		Language:   bank.Language,
+		Difficulty: bankDifficultyPtr(bank.Difficulty),
 		Mastery:    0,
 	})
 }
@@ -161,6 +184,7 @@ func (h *Handler) listBanks(w http.ResponseWriter, r *http.Request) {
 			CategoryID:    bank.CategoryID,
 			BankType:      string(bank.BankType),
 			Language:      bank.Language,
+			Difficulty:    bank.Difficulty,
 			Mastery:       mastery,
 			QuestionCount: bank.QuestionCount,
 		}
@@ -224,6 +248,7 @@ func (h *Handler) getBank(w http.ResponseWriter, r *http.Request) {
 		CategoryID: bank.CategoryID,
 		BankType:   string(bank.BankType),
 		Language:   bank.Language,
+		Difficulty: bankDifficultyPtr(bank.Difficulty),
 		Mastery:    bankMastery,
 		Questions:  questions,
 	})
@@ -290,6 +315,7 @@ func (h *Handler) updateBankCategory(w http.ResponseWriter, r *http.Request) {
 		CategoryID: bank.CategoryID,
 		BankType:   string(bank.BankType),
 		Language:   bank.Language,
+		Difficulty: bankDifficultyPtr(bank.Difficulty),
 		Mastery:    mastery,
 	})
 }

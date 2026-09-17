@@ -144,6 +144,9 @@ func NewSQLite(dbPath string) (*SQLiteStore, error) {
 	// Add sort_order to categories for user-defined ordering
 	_ = addColumnIfNotExists(db, "categories", "sort_order", "INTEGER NOT NULL DEFAULT 0")
 
+	// Add difficulty to banks, filterable in the library view
+	_ = addColumnIfNotExists(db, "banks", "difficulty", "TEXT")
+
 	// Ensure only one grade per question per session.
 	_, _ = db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_grades_session_question ON grades (session_id, question_id)")
 
@@ -333,7 +336,7 @@ func (s *SQLiteStore) DeleteCategory(ctx context.Context, id string) error {
 // ============================================================================
 
 func (s *SQLiteStore) SaveBank(ctx context.Context, bank *questionbank.QuestionBank) error {
-	_, err := s.db.ExecContext(ctx, "INSERT INTO banks (id, subject, category_id, bank_type, language, grading_prompt) VALUES (?, ?, ?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.BankType, bank.Language, bank.GradingPrompt)
+	_, err := s.db.ExecContext(ctx, "INSERT INTO banks (id, subject, category_id, bank_type, language, difficulty, grading_prompt) VALUES (?, ?, ?, ?, ?, ?, ?)", bank.ID, bank.Subject, bank.CategoryID, bank.BankType, bank.Language, bank.Difficulty, bank.GradingPrompt)
 	return err
 }
 
@@ -342,9 +345,10 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 	var categoryID sql.NullString
 	var bankType sql.NullString
 	var language sql.NullString
+	var difficulty sql.NullString
 	var gradingPrompt sql.NullString
 
-	err := s.db.QueryRowContext(ctx, "SELECT id, subject, category_id, bank_type, language, grading_prompt FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language, &gradingPrompt)
+	err := s.db.QueryRowContext(ctx, "SELECT id, subject, category_id, bank_type, language, difficulty, grading_prompt FROM banks WHERE id = ?", id).Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language, &difficulty, &gradingPrompt)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -362,6 +366,10 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 	}
 	if language.Valid {
 		bank.Language = &language.String
+	}
+	if difficulty.Valid {
+		d := questionbank.BankDifficulty(difficulty.String)
+		bank.Difficulty = &d
 	}
 	if gradingPrompt.Valid {
 		bank.GradingPrompt = &gradingPrompt.String
@@ -396,7 +404,7 @@ func (s *SQLiteStore) GetBank(ctx context.Context, id string) (*questionbank.Que
 }
 
 func (s *SQLiteStore) ListBanks(ctx context.Context) ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, bank_type, language FROM banks")
+	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, bank_type, language, difficulty FROM banks")
 	if err != nil {
 		return nil, err
 	}
@@ -408,7 +416,8 @@ func (s *SQLiteStore) ListBanks(ctx context.Context) ([]*questionbank.QuestionBa
 		var categoryID sql.NullString
 		var bankType sql.NullString
 		var language sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language); err != nil {
+		var difficulty sql.NullString
+		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language, &difficulty); err != nil {
 			return nil, err
 		}
 		if categoryID.Valid {
@@ -422,6 +431,10 @@ func (s *SQLiteStore) ListBanks(ctx context.Context) ([]*questionbank.QuestionBa
 		if language.Valid {
 			bank.Language = &language.String
 		}
+		if difficulty.Valid {
+			d := questionbank.BankDifficulty(difficulty.String)
+			bank.Difficulty = &d
+		}
 		banks = append(banks, &bank)
 	}
 	if err := rows.Err(); err != nil {
@@ -432,7 +445,7 @@ func (s *SQLiteStore) ListBanks(ctx context.Context) ([]*questionbank.QuestionBa
 
 func (s *SQLiteStore) ListBanksWithCounts(ctx context.Context) ([]*BankWithCount, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT b.id, b.subject, b.category_id, b.bank_type, b.language,
+		SELECT b.id, b.subject, b.category_id, b.bank_type, b.language, b.difficulty,
 		       (SELECT COUNT(*) FROM questions q WHERE q.bank_id = b.id) as question_count
 		FROM banks b
 	`)
@@ -447,7 +460,8 @@ func (s *SQLiteStore) ListBanksWithCounts(ctx context.Context) ([]*BankWithCount
 		var categoryID sql.NullString
 		var bankType sql.NullString
 		var language sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language, &bank.QuestionCount); err != nil {
+		var difficulty sql.NullString
+		if err := rows.Scan(&bank.ID, &bank.Subject, &categoryID, &bankType, &language, &difficulty, &bank.QuestionCount); err != nil {
 			return nil, err
 		}
 		if categoryID.Valid {
@@ -461,6 +475,9 @@ func (s *SQLiteStore) ListBanksWithCounts(ctx context.Context) ([]*BankWithCount
 		if language.Valid {
 			bank.Language = &language.String
 		}
+		if difficulty.Valid {
+			bank.Difficulty = &difficulty.String
+		}
 		banks = append(banks, &bank)
 	}
 	if err := rows.Err(); err != nil {
@@ -470,7 +487,7 @@ func (s *SQLiteStore) ListBanksWithCounts(ctx context.Context) ([]*BankWithCount
 }
 
 func (s *SQLiteStore) ListBanksByCategory(ctx context.Context, categoryID string) ([]*questionbank.QuestionBank, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, bank_type, language FROM banks WHERE category_id = ?", categoryID)
+	rows, err := s.db.QueryContext(ctx, "SELECT id, subject, category_id, bank_type, language, difficulty FROM banks WHERE category_id = ?", categoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -482,7 +499,8 @@ func (s *SQLiteStore) ListBanksByCategory(ctx context.Context, categoryID string
 		var catID sql.NullString
 		var bankType sql.NullString
 		var language sql.NullString
-		if err := rows.Scan(&bank.ID, &bank.Subject, &catID, &bankType, &language); err != nil {
+		var difficulty sql.NullString
+		if err := rows.Scan(&bank.ID, &bank.Subject, &catID, &bankType, &language, &difficulty); err != nil {
 			return nil, err
 		}
 		if catID.Valid {
@@ -495,6 +513,10 @@ func (s *SQLiteStore) ListBanksByCategory(ctx context.Context, categoryID string
 		}
 		if language.Valid {
 			bank.Language = &language.String
+		}
+		if difficulty.Valid {
+			d := questionbank.BankDifficulty(difficulty.String)
+			bank.Difficulty = &d
 		}
 		banks = append(banks, &bank)
 	}

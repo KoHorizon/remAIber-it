@@ -29,6 +29,13 @@ function getBankTypeClass(bank: Bank): string {
   return "type-theory";
 }
 
+function getDifficultyLabel(bank: Bank): string {
+  if (bank.difficulty === "easy") return "Easy";
+  if (bank.difficulty === "medium") return "Medium";
+  if (bank.difficulty === "hard") return "Hard";
+  return "—";
+}
+
 function SortIcon({
   field,
   current,
@@ -107,6 +114,10 @@ export function LibraryTable({
               Type
               <SortIcon field="type" current={sortField} direction={sortDirection} />
             </th>
+            <th className="col-difficulty" onClick={() => onSort("difficulty")}>
+              Level
+              <SortIcon field="difficulty" current={sortField} direction={sortDirection} />
+            </th>
             <th className="col-mastery" onClick={() => onSort("mastery")}>
               Mastery
               <SortIcon field="mastery" current={sortField} direction={sortDirection} />
@@ -138,6 +149,13 @@ export function LibraryTable({
                 <span className={`type-badge ${getBankTypeClass(bank)}`}>
                   {getBankTypeLabel(bank)}
                 </span>
+              </td>
+              <td className="col-difficulty">
+                {bank.difficulty && (
+                  <span className={`difficulty-badge difficulty-${bank.difficulty}`}>
+                    {getDifficultyLabel(bank)}
+                  </span>
+                )}
               </td>
               <td className="col-mastery">
                 {(bank.question_count ?? 0) > 0 ? (

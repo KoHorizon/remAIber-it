@@ -18,12 +18,15 @@ export type Category = {
 
 export type BankType = "theory" | "code" | "cli";
 
+export type BankDifficulty = "easy" | "medium" | "hard";
+
 export type Bank = {
   id: string;
   subject: string;
   category_id?: string | null;
   bank_type: BankType;
   language?: string | null;
+  difficulty?: BankDifficulty | null;
   mastery: number;
   question_count?: number;
   questions?: Question[];

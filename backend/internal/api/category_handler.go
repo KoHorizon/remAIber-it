@@ -184,6 +184,7 @@ func (h *Handler) getCategory(w http.ResponseWriter, r *http.Request) {
 			CategoryID: bank.CategoryID,
 			BankType:   string(bank.BankType),
 			Language:   bank.Language,
+			Difficulty: bankDifficultyPtr(bank.Difficulty),
 			Mastery:    bankMasteryMap[bank.ID],
 		}
 	}
@@ -382,6 +383,7 @@ func (h *Handler) listBanksByCategory(w http.ResponseWriter, r *http.Request) {
 			CategoryID: bank.CategoryID,
 			BankType:   string(bank.BankType),
 			Language:   bank.Language,
+			Difficulty: bankDifficultyPtr(bank.Difficulty),
 			Mastery:    masteryMap[bank.ID],
 		}
 	}

@@ -218,6 +218,24 @@
     color: var(--accent);
 }
 
+.cbm-difficulty-easy.active {
+    border-color: var(--success);
+    background: var(--success-muted);
+    color: var(--success);
+}
+
+.cbm-difficulty-medium.active {
+    border-color: var(--warning);
+    background: var(--warning-muted);
+    color: var(--warning);
+}
+
+.cbm-difficulty-hard.active {
+    border-color: var(--error);
+    background: var(--error-muted);
+    color: var(--error);
+}
+
 /* Footer - matches move-modal-footer */
 .cbm-footer {
     display: flex;

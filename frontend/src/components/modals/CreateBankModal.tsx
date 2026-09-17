@@ -1,7 +1,13 @@
 import { useState } from "react";
-import type { BankType } from "../../types";
+import type { BankType, BankDifficulty } from "../../types";
 import { PROGRAMMING_LANGUAGES } from "../../utils/languages";
 import "./CreateBankModal.css";
+
+const DIFFICULTIES: { value: BankDifficulty; label: string }[] = [
+  { value: "easy", label: "Easy" },
+  { value: "medium", label: "Medium" },
+  { value: "hard", label: "Hard" },
+];
 
 type Props = {
   categoryId: string;
@@ -10,7 +16,8 @@ type Props = {
     subject: string,
     categoryId: string,
     bankType: BankType,
-    language?: string
+    language?: string,
+    difficulty?: BankDifficulty
   ) => Promise<void>;
 };
 
@@ -18,6 +25,7 @@ export function CreateBankModal({ categoryId, onClose, onCreate }: Props) {
   const [subject, setSubject] = useState("");
   const [bankType, setBankType] = useState<BankType>("theory");
   const [language, setLanguage] = useState("");
+  const [difficulty, setDifficulty] = useState<BankDifficulty | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -31,7 +39,8 @@ export function CreateBankModal({ categoryId, onClose, onCreate }: Props) {
         subject.trim(),
         categoryId,
         bankType,
-        bankType === "code" ? language : undefined
+        bankType === "code" ? language : undefined,
+        difficulty || undefined
       );
       onClose();
     } catch (err: unknown) {
@@ -130,6 +139,23 @@ export function CreateBankModal({ categoryId, onClose, onCreate }: Props) {
                   <span className="cbm-type-name">CLI</span>
                   <span className="cbm-type-desc">commands, terminal</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Difficulty */}
+            <div className="cbm-field">
+              <label className="cbm-label">Difficulty (optional)</label>
+              <div className="cbm-languages">
+                {DIFFICULTIES.map((d) => (
+                  <button
+                    key={d.value}
+                    type="button"
+                    className={`cbm-lang cbm-difficulty-${d.value} ${difficulty === d.value ? "active" : ""}`}
+                    onClick={() => setDifficulty(difficulty === d.value ? null : d.value)}
+                  >
+                    {d.label}
+                  </button>
+                ))}
               </div>
             </div>
 

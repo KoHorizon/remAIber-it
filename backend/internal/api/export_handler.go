@@ -23,10 +23,11 @@ type ExportQuestion struct {
 }
 
 type ExportBank struct {
-	Subject   string           `json:"subject" example:"Go concurrency patterns"`
-	BankType  string           `json:"bank_type" example:"theory"`
-	Language  *string          `json:"language,omitempty" example:"go"`
-	Questions []ExportQuestion `json:"questions"`
+	Subject    string           `json:"subject" example:"Go concurrency patterns"`
+	BankType   string           `json:"bank_type" example:"theory"`
+	Language   *string          `json:"language,omitempty" example:"go"`
+	Difficulty *string          `json:"difficulty,omitempty" example:"medium"`
+	Questions  []ExportQuestion `json:"questions"`
 }
 
 type ExportCategory struct {
@@ -181,11 +182,18 @@ func (h *Handler) buildExportCategory(ctx context.Context, cat *category.Categor
 			continue
 		}
 
+		var difficulty *string
+		if fullBank.Difficulty != nil {
+			d := string(*fullBank.Difficulty)
+			difficulty = &d
+		}
+
 		exportBank := ExportBank{
-			Subject:   fullBank.Subject,
-			BankType:  string(fullBank.BankType),
-			Language:  fullBank.Language,
-			Questions: make([]ExportQuestion, len(fullBank.Questions)),
+			Subject:    fullBank.Subject,
+			BankType:   string(fullBank.BankType),
+			Language:   fullBank.Language,
+			Difficulty: difficulty,
+			Questions:  make([]ExportQuestion, len(fullBank.Questions)),
 		}
 
 		for i, q := range fullBank.Questions {
@@ -278,7 +286,22 @@ func (h *Handler) importBanks(ctx context.Context, banks []ExportBank, categoryI
 			bankType = questionbank.BankTypeTheory
 		}
 
-		newBank := questionbank.NewWithOptions(bank.Subject, &categoryID, bankType, bank.Language)
+		var difficulty *questionbank.BankDifficulty
+		if bank.Difficulty != nil {
+			switch questionbank.BankDifficulty(*bank.Difficulty) {
+			case questionbank.BankDifficultyEasy:
+				d := questionbank.BankDifficultyEasy
+				difficulty = &d
+			case questionbank.BankDifficultyMedium:
+				d := questionbank.BankDifficultyMedium
+				difficulty = &d
+			case questionbank.BankDifficultyHard:
+				d := questionbank.BankDifficultyHard
+				difficulty = &d
+			}
+		}
+
+		newBank := questionbank.NewWithOptions(bank.Subject, &categoryID, bankType, bank.Language, difficulty)
 
 		if err := h.store.SaveBank(ctx, newBank); err != nil {
 			h.importFail(result, err, "failed to create bank", "subject", bank.Subject)

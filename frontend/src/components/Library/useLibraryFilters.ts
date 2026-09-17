@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import type { Bank, Category } from "../../types";
 import type { SortField, SortDirection } from "./types";
 
+const DIFFICULTY_ORDER: Record<string, number> = { easy: 0, medium: 1, hard: 2, "": 3 };
+
 type UseLibraryFiltersProps = {
   banks: Bank[];
   categories: Category[];
@@ -19,6 +21,7 @@ export function useLibraryFilters({
 }: UseLibraryFiltersProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
+  const [filterDifficulty, setFilterDifficulty] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -59,6 +62,11 @@ export function useLibraryFilters({
       result = result.filter((b) => b.bank_type === filterType);
     }
 
+    // Filter by difficulty
+    if (filterDifficulty) {
+      result = result.filter((b) => b.difficulty === filterDifficulty);
+    }
+
     // Sort
     result.sort((a, b) => {
       let comparison = 0;
@@ -75,6 +83,9 @@ export function useLibraryFilters({
           comparison = (a.bank_type || "theory").localeCompare(
             b.bank_type || "theory"
           );
+          break;
+        case "difficulty":
+          comparison = DIFFICULTY_ORDER[a.difficulty ?? ""] - DIFFICULTY_ORDER[b.difficulty ?? ""];
           break;
         case "mastery":
           comparison = a.mastery - b.mastery;
@@ -95,6 +106,7 @@ export function useLibraryFilters({
     selectedCategoryId,
     searchQuery,
     filterType,
+    filterDifficulty,
     sortField,
     sortDirection,
     getCategoryName,
@@ -112,9 +124,12 @@ export function useLibraryFilters({
   function clearFilters() {
     setSearchQuery("");
     setFilterType(null);
+    setFilterDifficulty(null);
   }
 
-  const hasActiveFilters = Boolean(searchQuery || selectedCategoryId || filterType);
+  const hasActiveFilters = Boolean(
+    searchQuery || selectedCategoryId || filterType || filterDifficulty
+  );
 
   return {
     // Filter state
@@ -122,6 +137,8 @@ export function useLibraryFilters({
     setSearchQuery,
     filterType,
     setFilterType,
+    filterDifficulty,
+    setFilterDifficulty,
 
     // Sort state
     sortField,

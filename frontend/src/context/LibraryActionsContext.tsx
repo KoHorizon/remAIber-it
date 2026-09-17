@@ -7,7 +7,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { api } from "../api";
-import type { Folder, Category, Bank, BankType, ImportResult, ExportData } from "../types";
+import type { Folder, Category, Bank, BankType, BankDifficulty, ImportResult, ExportData } from "../types";
 import { useLibraryData } from "./LibraryDataContext";
 
 type LibraryActionsContextType = {
@@ -20,7 +20,7 @@ type LibraryActionsContextType = {
   moveCategory: (categoryId: string, folderId: string | null) => Promise<Category>;
   deleteCategory: (categoryId: string) => Promise<void>;
   reorderCategories: (ids: string[]) => Promise<void>;
-  createBank: (subject: string, categoryId: string, bankType: BankType, language?: string) => Promise<Bank>;
+  createBank: (subject: string, categoryId: string, bankType: BankType, language?: string, difficulty?: BankDifficulty) => Promise<Bank>;
   deleteBank: (bankId: string) => Promise<void>;
   refreshBank: (bankId: string) => Promise<Bank | null>;
   exportData: () => Promise<void>;
@@ -120,8 +120,8 @@ export function LibraryActionsProvider({
   }, [setCategories]);
 
   const createBank = useCallback(
-    async (subject: string, categoryId: string, bankType: BankType, language?: string) => {
-      const bank = await api.createBank(subject, categoryId, bankType, language);
+    async (subject: string, categoryId: string, bankType: BankType, language?: string, difficulty?: BankDifficulty) => {
+      const bank = await api.createBank(subject, categoryId, bankType, language, difficulty);
       setBanks((prev) => [...prev, bank]);
       return bank;
     },

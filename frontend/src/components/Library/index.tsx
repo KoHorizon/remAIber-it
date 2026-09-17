@@ -219,8 +219,8 @@ export function Library({ onSelectBank }: Props) {
         <CreateBankModal
           categoryId={showCreateBank}
           onClose={() => setShowCreateBank(null)}
-          onCreate={async (subject, categoryId, bankType, language) => {
-            await createBank(subject, categoryId, bankType, language);
+          onCreate={async (subject, categoryId, bankType, language, difficulty) => {
+            await createBank(subject, categoryId, bankType, language, difficulty);
           }}
         />
       )}
@@ -297,10 +297,12 @@ export function Library({ onSelectBank }: Props) {
       <LibraryFilters
         searchQuery={filters.searchQuery}
         filterType={filters.filterType}
+        filterDifficulty={filters.filterDifficulty}
         hasActiveFilters={filters.hasActiveFilters}
         canCreateBank={visibleCategories.length > 0}
         onSearchChange={filters.setSearchQuery}
         onTypeChange={filters.setFilterType}
+        onDifficultyChange={filters.setFilterDifficulty}
         onClearFilters={filters.clearFilters}
         onCreateBank={() =>
           setShowCreateBank(selectedCategoryId || visibleCategories[0]?.id || null)
