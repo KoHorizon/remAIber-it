@@ -8,9 +8,20 @@ import { TerminalEditor } from "../TerminalEditor";
 function HintToggle({ hint }: { hint: string }) {
   const [show, setShow] = useState(false);
   return show ? (
-    <div className="question-hint-revealed">{renderFormattedText(hint)}</div>
+    <div className="question-hint-revealed">
+      <span className="question-hint-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.5.5.8 1 .9 1.5h6.2c.1-.5.4-1 .9-1.5A6 6 0 0 0 12 3Z" />
+        </svg>
+        Hint
+      </span>
+      {renderFormattedText(hint)}
+    </div>
   ) : (
     <button type="button" className="question-hint-toggle" onClick={() => setShow(true)}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.5.5.8 1 .9 1.5h6.2c.1-.5.4-1 .9-1.5A6 6 0 0 0 12 3Z" />
+      </svg>
       Show hint
     </button>
   );

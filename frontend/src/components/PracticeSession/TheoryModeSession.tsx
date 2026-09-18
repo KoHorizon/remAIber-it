@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Session } from "../../types";
 import { Button } from "../ui";
-import { renderFormattedText } from "../../utils/formatText";
+import { renderFormattedText, renderInlineCode } from "../../utils/formatText";
 
 type AnsweredQuestion = {
   index: number;
@@ -97,12 +97,23 @@ export function TheoryModeSession({
         {/* Question hero */}
         <div className="ts-hero">
           <span className="ts-question-eyebrow">Question {currentIndex + 1} of {totalQuestions}</span>
-          <p className="ts-question-text">{currentQuestion.subject}</p>
+          <p className="ts-question-text">{renderInlineCode(currentQuestion.subject)}</p>
           {currentQuestion.hint && (
             showHint ? (
-              <div className="ts-hint-revealed">{renderFormattedText(currentQuestion.hint)}</div>
+              <div className="ts-hint-revealed">
+                <span className="ts-hint-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.5.5.8 1 .9 1.5h6.2c.1-.5.4-1 .9-1.5A6 6 0 0 0 12 3Z" />
+                  </svg>
+                  Hint
+                </span>
+                {renderFormattedText(currentQuestion.hint)}
+              </div>
             ) : (
               <button type="button" className="ts-hint-toggle" onClick={() => setShowHint(true)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.5.5.8 1 .9 1.5h6.2c.1-.5.4-1 .9-1.5A6 6 0 0 0 12 3Z" />
+                </svg>
                 Show hint
               </button>
             )
