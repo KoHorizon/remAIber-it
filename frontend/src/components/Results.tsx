@@ -191,7 +191,7 @@ export function Results({
                     <div className="bcard-diff">
                       {/* Your answer */}
                       <div className={`bcard-diff-pane bcard-diff-yours ${!hasUserAnswer ? "bcard-diff-empty" : ""}`}>
-                        <div className="bcard-diff-label">
+                        <div className={`bcard-diff-label ${scoreClass}`}>
                           <span className={`bcard-diff-dot ${scoreClass}`} />
                           Your answer
                         </div>
@@ -217,7 +217,7 @@ export function Results({
 
                       {/* Expected answer */}
                       <div className="bcard-diff-pane bcard-diff-expected">
-                        <div className="bcard-diff-label">
+                        <div className="bcard-diff-label score-excellent">
                           <span className="bcard-diff-dot score-excellent" />
                           Expected answer
                         </div>
@@ -337,12 +337,12 @@ export function Results({
                   {!hasUserAnswer && hasExpectedAnswer && (
                     <div className="bcard-diff">
                       <div className="bcard-diff-pane bcard-diff-expected">
-                        <div className="bcard-diff-label">
+                        <div className="bcard-diff-label score-excellent">
                           <span className="bcard-diff-dot score-excellent" />
                           Expected answer
                         </div>
                         <div className="bcard-diff-content bcard-diff-content--text">
-                          {question.expected_answer}
+                          {renderFormattedText(question.expected_answer || "")}
                         </div>
                       </div>
                     </div>
@@ -364,24 +364,24 @@ export function Results({
                       {showAnswers && (
                         <div className="bcard-diff">
                           <div className="bcard-diff-pane bcard-diff-yours">
-                            <div className="bcard-diff-label">
+                            <div className={`bcard-diff-label ${scoreClass}`}>
                               <span className={`bcard-diff-dot ${scoreClass}`} />
                               Your answer
                             </div>
                             <div className="bcard-diff-content bcard-diff-content--text">
-                              {result.user_answer}
+                              {renderFormattedText(result.user_answer || "")}
                             </div>
                           </div>
                           {hasExpectedAnswer && (
                             <>
                               <div className="bcard-diff-divider" />
                               <div className="bcard-diff-pane bcard-diff-expected">
-                                <div className="bcard-diff-label">
+                                <div className="bcard-diff-label score-excellent">
                                   <span className="bcard-diff-dot score-excellent" />
                                   Expected answer
                                 </div>
                                 <div className="bcard-diff-content bcard-diff-content--text">
-                                  {question.expected_answer}
+                                  {renderFormattedText(question.expected_answer || "")}
                                 </div>
                               </div>
                             </>

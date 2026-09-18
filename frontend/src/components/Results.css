@@ -351,13 +351,18 @@
     gap: 0.5rem;
     padding: 0.5rem 1.25rem;
     font-size: 0.6875rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--text-muted);
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border);
 }
+
+.bcard-diff-label.score-excellent   { color: var(--success); }
+.bcard-diff-label.score-good        { color: var(--accent); }
+.bcard-diff-label.score-needs-work  { color: var(--warning); }
+.bcard-diff-label.score-poor        { color: var(--error); }
 
 .bcard-diff-dot {
     width: 8px;
