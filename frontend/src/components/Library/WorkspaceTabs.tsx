@@ -1,6 +1,6 @@
+import { useState } from "react";
 import type { Folder } from "../../types";
-import { Tabs, ChipIcons } from "../ui";
-import type { TabItem } from "../ui";
+import { Dropdown, AddChip, IconButton, ChipIcons } from "../ui";
 
 type Props = {
   folders: Folder[];
@@ -16,9 +16,6 @@ type Props = {
   onCreateFolder: (name: string) => Promise<void>;
 };
 
-// Reserved id for the "All" tab
-const ALL_ID = "__all__";
-
 export function WorkspaceTabs({
   folders,
   selectedFolderId,
@@ -32,48 +29,82 @@ export function WorkspaceTabs({
   onDelete,
   onCreateFolder,
 }: Props) {
-  const tabs: TabItem[] = [
-    { id: ALL_ID, label: "All" },
-    ...folders.map((folder) => ({
-      id: folder.id,
-      label: folder.name,
-      actions: [
-        {
-          icon: ChipIcons.edit,
-          label: "Rename",
-          onClick: () => onStartEdit(folder),
-        },
-        {
-          icon: ChipIcons.delete,
-          label: "Delete",
-          onClick: () => onDelete(folder),
-          variant: "danger" as const,
-        },
-      ],
-    })),
-  ];
+  const [isCreating, setIsCreating] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
 
-  function handleSelect(id: string | null) {
-    if (id === ALL_ID || id === null) {
-      onSelectFolder(null);
-    } else {
-      onSelectFolder(id);
+  const selectedFolder = folders.find((f) => f.id === selectedFolderId) ?? null;
+  const isEditingSelected = editingFolderId !== null && editingFolderId === selectedFolderId;
+
+  async function handleCreate() {
+    if (!newFolderName.trim()) {
+      setIsCreating(false);
+      return;
+    }
+    try {
+      await onCreateFolder(newFolderName.trim());
+      setNewFolderName("");
+      setIsCreating(false);
+    } catch (err) {
+      console.error("Failed to create workspace:", err);
     }
   }
 
+  function handleCancelCreate() {
+    setNewFolderName("");
+    setIsCreating(false);
+  }
+
   return (
-    <Tabs
-      tabs={tabs}
-      activeId={selectedFolderId ?? ALL_ID}
-      onSelect={handleSelect}
-      editingId={editingFolderId}
-      editValue={editFolderName}
-      onEditChange={onEditNameChange}
-      onEditSave={onSaveEdit}
-      onEditCancel={onCancelEdit}
-      addLabel="+ Workspace"
-      addPlaceholder="Workspace name…"
-      onAdd={onCreateFolder}
-    />
+    <div className="workspace-bar">
+      {isEditingSelected ? (
+        <input
+          className="workspace-edit-input"
+          autoFocus
+          value={editFolderName}
+          onChange={(e) => onEditNameChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSaveEdit(editingFolderId);
+            if (e.key === "Escape") onCancelEdit();
+          }}
+          onBlur={() => onSaveEdit(editingFolderId)}
+        />
+      ) : (
+        <Dropdown
+          options={folders.map((f) => ({ value: f.id, label: f.name }))}
+          value={selectedFolderId}
+          onChange={onSelectFolder}
+          placeholder="Choose a workspace…"
+        />
+      )}
+
+      {selectedFolder && !isEditingSelected && (
+        <div className="workspace-actions">
+          <IconButton
+            icon={ChipIcons.edit}
+            label="Rename workspace"
+            size="sm"
+            onClick={() => onStartEdit(selectedFolder)}
+          />
+          <IconButton
+            icon={ChipIcons.delete}
+            label="Delete workspace"
+            size="sm"
+            variant="danger"
+            onClick={() => onDelete(selectedFolder)}
+          />
+        </div>
+      )}
+
+      <AddChip
+        label="+ Workspace"
+        isCreating={isCreating}
+        createValue={newFolderName}
+        placeholder="Workspace name…"
+        onStartCreate={() => setIsCreating(true)}
+        onCreateChange={setNewFolderName}
+        onCreateSave={handleCreate}
+        onCreateCancel={handleCancelCreate}
+      />
+    </div>
   );
 }

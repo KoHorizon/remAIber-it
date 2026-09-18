@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLibraryData, useLibraryActions, useLibrarySelection } from "../../context";
 import {
   CreateBankModal,
@@ -66,6 +66,13 @@ export function Library({ onSelectBank }: Props) {
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // No "All" view: always keep a workspace selected once folders exist.
+  useEffect(() => {
+    if (!isLoading && selectedFolderId === null && folders.length > 0) {
+      selectFolder(folders[0].id);
+    }
+  }, [isLoading, selectedFolderId, folders, selectFolder]);
 
   // Folder handlers
   function startEditFolder(folder: Folder) {

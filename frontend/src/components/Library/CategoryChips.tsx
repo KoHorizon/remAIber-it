@@ -103,66 +103,68 @@ export function CategoryChips({
     dragIdRef.current = null;
   }
 
+  function renderChip(category: Category) {
+    const categoryBanks = banks.filter((b) => b.category_id === category.id);
+    const masteryLevel = getMasteryLevel(category.mastery);
+
+    const actions = [
+      ...(hasFolders
+        ? [
+            {
+              icon: ChipIcons.move,
+              label: "Move",
+              onClick: () => onMove(category),
+            },
+          ]
+        : []),
+      {
+        icon: ChipIcons.edit,
+        label: "Rename",
+        onClick: () => onStartEdit(category),
+      },
+      {
+        icon: ChipIcons.delete,
+        label: "Delete",
+        onClick: () => onDelete(category),
+        variant: "danger" as const,
+      },
+    ];
+
+    return (
+      <div
+        key={category.id}
+        draggable
+        onDragStart={(e) => handleDragStart(e, category.id)}
+        onDragOver={(e) => handleDragOver(e, category.id)}
+        onDragLeave={handleDragLeave}
+        onDrop={() => handleDrop(category.id)}
+        onDragEnd={handleDragEnd}
+        className={`category-chip-drag-wrapper${dragOverId === category.id ? " drop-target" : ""}`}
+      >
+        <Chip
+          label={category.name}
+          isActive={filterCategory === category.id}
+          onClick={() =>
+            onFilterChange(filterCategory === category.id ? null : category.id)
+          }
+          badges={categoryBanks.length > 0 ? [
+            ...(category.mastery > 0 ? [{ content: `${category.mastery}%`, className: masteryLevel }] : []),
+            { content: categoryBanks.length },
+          ] : []}
+          actions={actions}
+          isEditing={editingCategoryId === category.id}
+          editValue={editCategoryName}
+          onEditChange={onEditNameChange}
+          onEditSave={() => onSaveEdit(category.id)}
+          onEditCancel={onCancelEdit}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="library-category-chips">
-      {categories.map((category) => {
-        const categoryBanks = banks.filter((b) => b.category_id === category.id);
-        const masteryLevel = getMasteryLevel(category.mastery);
-
-        const actions = [
-          ...(hasFolders
-            ? [
-                {
-                  icon: ChipIcons.move,
-                  label: "Move",
-                  onClick: () => onMove(category),
-                },
-              ]
-            : []),
-          {
-            icon: ChipIcons.edit,
-            label: "Rename",
-            onClick: () => onStartEdit(category),
-          },
-          {
-            icon: ChipIcons.delete,
-            label: "Delete",
-            onClick: () => onDelete(category),
-            variant: "danger" as const,
-          },
-        ];
-
-        return (
-          <div
-            key={category.id}
-            draggable
-            onDragStart={(e) => handleDragStart(e, category.id)}
-            onDragOver={(e) => handleDragOver(e, category.id)}
-            onDragLeave={handleDragLeave}
-            onDrop={() => handleDrop(category.id)}
-            onDragEnd={handleDragEnd}
-            className={`category-chip-drag-wrapper${dragOverId === category.id ? " drop-target" : ""}`}
-          >
-            <Chip
-              label={category.name}
-              isActive={filterCategory === category.id}
-              onClick={() =>
-                onFilterChange(filterCategory === category.id ? null : category.id)
-              }
-              badges={categoryBanks.length > 0 ? [
-                ...(category.mastery > 0 ? [{ content: `${category.mastery}%`, className: masteryLevel }] : []),
-                { content: categoryBanks.length },
-              ] : []}
-              actions={actions}
-              isEditing={editingCategoryId === category.id}
-              editValue={editCategoryName}
-              onEditChange={onEditNameChange}
-              onEditSave={() => onSaveEdit(category.id)}
-              onEditCancel={onCancelEdit}
-            />
-          </div>
-        );
-      })}
+      {categories.map(renderChip)}
 
       <AddChip
         label="+ Category"

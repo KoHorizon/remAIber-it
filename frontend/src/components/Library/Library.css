@@ -40,11 +40,31 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Workspace Tabs (spacing override)
+   Workspace Bar
    ───────────────────────────────────────────────────────────────────────────── */
 
-.library-table .tabs {
+.workspace-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     margin-bottom: 1.25rem;
+}
+
+.workspace-edit-input {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-md);
+    min-width: 160px;
+}
+
+.workspace-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

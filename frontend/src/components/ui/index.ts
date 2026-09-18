@@ -7,5 +7,3 @@ export { Input } from "./Input";
 export { Chip, AddChip, ChipIcons } from "./Chip";
 export type { ChipBadge } from "./Chip";
 export { Tooltip, TooltipTitle, TooltipContent, TooltipHint } from "./Tooltip";
-export { Tabs } from "./Tabs";
-export type { TabItem, TabAction } from "./Tabs";
