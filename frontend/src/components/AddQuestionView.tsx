@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import type { BankType } from "../types";
 import { CodeEditor } from "./CodeEditor";
+import { QuestionBodyEditor, FormattingToolbar } from "./QuestionBodyEditor";
+import type { QuestionBodyEditorHandle } from "./QuestionBodyEditor";
 import { TerminalEditor } from "./TerminalEditor";
 import { Button, TooltipContent, TooltipHint } from "./ui";
 import { getDefaultRules, getAvailableTemplates, DEFAULT_GRADING_RULES, EXTRA_TEMPLATES } from "../utils/gradingTemplates";
@@ -28,6 +30,17 @@ type Props = {
   onCancel: () => void;
 };
 
+
+// Clicking blank space in a theory-doc card should focus its text field, but
+// not when the click is inside an embedded code block — that would yank focus
+// away from the Monaco editor the user just clicked into.
+function focusUnlessCodeBlockClick(
+  e: React.MouseEvent,
+  target: React.RefObject<QuestionBodyEditorHandle | null>
+) {
+  if ((e.target as HTMLElement).closest(".qbe-code-block")) return;
+  target.current?.focus();
+}
 
 function getPresetName(prompt: string, bankType: string): string {
   const trimmed = prompt.trim();
@@ -63,8 +76,8 @@ export function AddQuestionView({
   const extraTemplates = getAvailableTemplates(bankType);
   const defaultRules = getDefaultRules(bankType);
   const presetName = getPresetName(gradingPrompt, bankType);
-  const questionRef = useRef<HTMLTextAreaElement>(null);
-  const answerRef = useRef<HTMLTextAreaElement>(null);
+  const questionBodyRef = useRef<QuestionBodyEditorHandle>(null);
+  const answerBodyRef = useRef<QuestionBodyEditorHandle>(null);
 
 
   async function handleSave() {
@@ -198,11 +211,11 @@ export function AddQuestionView({
     function handleFieldNavKeyDown(e: React.KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "ArrowDown") {
         e.preventDefault();
-        answerRef.current?.focus();
+        answerBodyRef.current?.focus();
       }
       if ((e.metaKey || e.ctrlKey) && e.key === "ArrowUp") {
         e.preventDefault();
-        questionRef.current?.focus();
+        questionBodyRef.current?.focus();
       }
     }
 
@@ -241,32 +254,39 @@ export function AddQuestionView({
         {/* Cards */}
         <div className="theory-doc-body">
 
-          <div className="theory-doc-card" onClick={() => questionRef.current?.focus()}>
+          <div className="theory-doc-card" onClick={(e) => focusUnlessCodeBlockClick(e, questionBodyRef)}>
             <div className="theory-doc-card-header">
-              <span className="theory-doc-card-label">Question</span>
+              <div className="theory-doc-card-header-left">
+                <span className="theory-doc-card-label">Question</span>
+              </div>
+              <FormattingToolbar target={questionBodyRef} />
             </div>
-            <textarea
-              ref={questionRef}
-              className="theory-doc-card-textarea"
-              placeholder="What do you want to be asked?"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              autoFocus
-            />
+            <div className="theory-doc-card-content">
+              <QuestionBodyEditor
+                ref={questionBodyRef}
+                value={question}
+                onChange={setQuestion}
+                placeholder="What do you want to be asked?"
+              />
+            </div>
           </div>
 
-          <div className="theory-doc-card" onClick={() => answerRef.current?.focus()}>
+          <div className="theory-doc-card" onClick={(e) => focusUnlessCodeBlockClick(e, answerBodyRef)}>
             <div className="theory-doc-card-header">
-              <span className="theory-doc-card-label">Expected Answer</span>
-              <span className="theory-doc-card-sublabel">Key points that should be covered</span>
+              <div className="theory-doc-card-header-left">
+                <span className="theory-doc-card-label">Expected Answer</span>
+                <span className="theory-doc-card-sublabel">Key points that should be covered</span>
+              </div>
+              <FormattingToolbar target={answerBodyRef} />
             </div>
-            <textarea
-              ref={answerRef}
-              className="theory-doc-card-textarea"
-              placeholder={question.trim() ? "Now define the key points your answer should cover..." : "List the key concepts, facts, or points the answer should cover..."}
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-            />
+            <div className="theory-doc-card-content">
+              <QuestionBodyEditor
+                ref={answerBodyRef}
+                value={answer}
+                onChange={setAnswer}
+                placeholder={question.trim() ? "Now define the key points your answer should cover..." : "List the key concepts, facts, or points the answer should cover..."}
+              />
+            </div>
           </div>
 
         </div>
@@ -312,16 +332,19 @@ export function AddQuestionView({
       <div className="add-question-view-content">
         <div className="add-question-panel">
           <div className="add-question-panel-header">
-            <h2>Question</h2>
+            <div className="add-question-panel-header-left">
+              <h2>Question</h2>
+              <FormattingToolbar target={questionBodyRef} />
+            </div>
             <span className="add-question-panel-hint">Describe the coding task</span>
           </div>
           <div className="add-question-panel-content">
-            <textarea
-              className="add-question-textarea"
-              placeholder="Describe the coding task..."
+            <QuestionBodyEditor
+              ref={questionBodyRef}
               value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              autoFocus
+              onChange={setQuestion}
+              language={bankLanguage || undefined}
+              placeholder="Describe the coding task..."
             />
           </div>
         </div>
